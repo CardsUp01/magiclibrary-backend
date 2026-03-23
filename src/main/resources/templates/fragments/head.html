@@ -1,0 +1,18 @@
+<head th:fragment="head(pageTitle)" xmlns:th="http://www.thymeleaf.org">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title th:text="${pageTitle}">MagicLibrary</title>
+
+    <!-- Favicon principal -->
+    <link rel="icon"
+          type="image/png"
+          th:href="@{/img/Logo_MagiciensDabord_Amiens.png}"
+          sizes="32x32" />
+
+    <!-- Option compatibilité navigateurs -->
+    <link rel="apple-touch-icon"
+          th:href="@{/img/Logo_MagiciensDabord_Amiens.png}" />
+
+    <link rel="stylesheet" th:href="@{/css/tailwind.css}">
+</head>

@@ -1,0 +1,947 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Bibliothèque numérique – MagicLibrary', activePage='bibliotheque'">
+
+    <th:block th:fragment="content"
+              th:with="itemsCount=${items != null ? #lists.size(items) : 0},
+                       isSingle=${items != null && #lists.size(items) == 1},
+                       hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
+                       resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : itemsCount}">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Bibliothèque numérique</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation des objets disponibles dans la bibliothèque numérique.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/accueil}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à l’accueil
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+
+                    <div class="min-w-0 max-w-full flex-1">
+
+                        <div class="flex max-w-full flex-col gap-3">
+
+                            <form id="searchForm" th:action="@{/bibliotheque-numerique}" method="get" class="max-w-full">
+                                <input type="hidden" name="page" value="0" />
+                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                                <input type="hidden" name="sort" th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort)) ? sort : 'availabilityThenTitle'}" />
+
+                                <div class="relative w-full max-w-full">
+                                    <label for="search" class="sr-only">Rechercher un objet</label>
+
+                                    <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
+                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+
+                                    <input id="search"
+                                           name="q"
+                                           type="text"
+                                           inputmode="search"
+                                           autocomplete="off"
+                                           th:value="${q}"
+                                           placeholder="Rechercher par titre, auteur, catégorie, éditeur, ISBN…"
+                                           class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           aria-describedby="searchHint resultsCount resultsLabel triActive"
+                                           aria-controls="suggestPanel"
+                                           aria-expanded="false" />
+
+                                    <button id="searchClearInline"
+                                            type="button"
+                                            class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                            aria-label="Effacer la recherche">
+                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+
+                                    <button type="submit" class="sr-only">Rechercher</button>
+
+                                    <div id="suggestPanel"
+                                         class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                                         role="listbox"
+                                         aria-label="Suggestions">
+                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+                                    </div>
+
+                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                </div>
+                            </form>
+
+                            <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 max-w-full flex-1">
+                                    <form th:action="@{/bibliotheque-numerique}" method="get" class="max-w-full">
+                                        <input type="hidden" name="page" value="0" />
+                                        <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                                        <input type="hidden" name="q" th:value="${q}" />
+
+                                        <div class="flex max-w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+                                            <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                                                <label for="sortSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                                    Trier par
+                                                </label>
+
+                                                <select id="sortSelect"
+                                                        name="sort"
+                                                        class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72"
+                                                        aria-label="Trier les résultats">
+                                                    <option value="availabilityThenTitle" th:selected="${sort == 'availabilityThenTitle' or sort == null or sort == ''}">Disponibilité puis titre</option>
+                                                    <option value="newest" th:selected="${sort == 'newest'}">Ajout récent</option>
+                                                    <option value="titleAsc" th:selected="${sort == 'titleAsc'}">Titre (A → Z)</option>
+                                                    <option value="titleDesc" th:selected="${sort == 'titleDesc'}">Titre (Z → A)</option>
+                                                    <option value="authorThenTitle" th:selected="${sort == 'authorThenTitle'}">Auteur puis titre</option>
+                                                    <option value="categoryThenTitle" th:selected="${sort == 'categoryThenTitle'}">Catégorie puis titre</option>
+                                                    <option value="publisherThenTitle" th:selected="${sort == 'publisherThenTitle'}">Éditeur puis titre</option>
+                                                    <option value="statusThenTitle" th:selected="${sort == 'statusThenTitle'}">Statut puis titre</option>
+                                                    <option value="conditionThenTitle" th:selected="${sort == 'conditionThenTitle'}">Condition puis titre</option>
+                                                </select>
+
+                                                <button type="submit" class="sr-only">Appliquer le tri</button>
+                                            </div>
+
+                                            <p id="triActive" class="text-xs font-medium text-gray-600 sm:text-sm">
+                                                <span class="text-gray-500">Tri actif :</span>
+                                                <span class="font-medium text-gray-900" th:switch="${sort}">
+                                                    <span th:case="'availabilityThenTitle'">Disponibilité puis titre</span>
+                                                    <span th:case="'newest'">Ajout récent</span>
+                                                    <span th:case="'titleAsc'">Titre (A → Z)</span>
+                                                    <span th:case="'titleDesc'">Titre (Z → A)</span>
+                                                    <span th:case="'authorThenTitle'">Auteur puis titre</span>
+                                                    <span th:case="'categoryThenTitle'">Catégorie puis titre</span>
+                                                    <span th:case="'publisherThenTitle'">Éditeur puis titre</span>
+                                                    <span th:case="'statusThenTitle'">Statut puis titre</span>
+                                                    <span th:case="'conditionThenTitle'">Condition puis titre</span>
+                                                    <span th:case="*">Disponibilité puis titre</span>
+                                                </span>
+                                            </p>
+
+                                            <div id="sortAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                        </div>
+                                    </form>
+
+                                    <p id="searchHint" class="mt-2 text-sm text-gray-600">
+                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
+                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
+                                    </p>
+                                </div>
+
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
+                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
+                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="mt-6 max-w-full text-sm text-gray-700">
+
+                <section class="mt-6 max-w-full first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">Objets</h2>
+
+                    <div class="mt-2 max-w-full space-y-2">
+                        <p th:if="${itemsCount > 0 and hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? 'objet trouvé' : 'objets trouvés'}">objets trouvés</span>
+                        </p>
+
+                        <p th:if="${itemsCount > 0 and !hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${itemsCount}">0</span>
+                            <span th:text="${itemsCount == 1 ? 'objet chargé' : 'objets chargés'}">objets chargés</span>
+                        </p>
+
+                        <p th:if="${itemsCount == 0 and hasQuery}">
+                            Aucun objet ne correspond à cette recherche.
+                        </p>
+
+                        <p th:if="${itemsCount == 0 and !hasQuery}">
+                            Aucun objet disponible pour le moment.
+                        </p>
+
+                        <p th:if="${paginationEnabled}" class="text-sm text-gray-600">
+                            <span>Page </span>
+                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+                            <span> sur </span>
+                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+                            <span> · </span>
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? ' objet au total' : ' objets au total'}"> objets au total</span>
+                        </p>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${itemsCount == 0}">
+                        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                            <h2 class="text-base font-semibold text-gray-900" th:text="${hasQuery ? 'Aucun résultat' : 'Aucun objet disponible'}">Aucun objet disponible</h2>
+                            <div class="mt-2 space-y-2">
+                                <p class="break-words hyphens-auto"
+                                   th:text="${hasQuery ? 'Essaie un autre mot-clé ou efface la recherche.' : 'La bibliothèque numérique ne contient aucun élément pour le moment.'}">
+                                    La bibliothèque numérique ne contient aucun élément pour le moment.
+                                </p>
+                                <div th:if="${hasQuery}">
+                                    <a th:href="@{/bibliotheque-numerique(sort=${sort}, size=${pageSize})}"
+                                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Effacer la recherche
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${itemsCount > 0}">
+
+                        <ul th:if="${isSingle}"
+                            class="grid max-w-full grid-cols-1 gap-4"
+                            role="list">
+
+                            <li th:each="item : ${items}"
+                                data-item-card
+                                th:attr="data-id=${item.idItem},
+                                         data-title=${item.titleItem},
+                                         data-category=${item.categoryItem},
+                                         data-author=${item.authorItem},
+                                         data-publisher=${item.publisherItem},
+                                         data-isbn=${item.isbnItem},
+                                         data-search=${#strings.toLowerCase(
+                                             (item.titleItem ?: '') + ' ' +
+                                             (item.authorItem ?: '') + ' ' +
+                                             (item.publisherItem ?: '') + ' ' +
+                                             (item.categoryItem ?: '') + ' ' +
+                                             (item.isbnItem ?: '') + ' ' +
+                                             (item.publishYearItem ?: '') + ' ' +
+                                             (item.editionItem ?: '') + ' ' +
+                                             (item.formatItem ?: '') + ' ' +
+                                             (item.languageItem ?: '') + ' ' +
+                                             (item.tagsItem ?: '') + ' ' +
+                                             (item.descriptionItem ?: '') + ' ' +
+                                             ((item.availableItem) ? 'disponible dispo available avail' : 'indisponible indispo unavailable unavail') + ' ' +
+                                             (item.idItem ?: '')
+                                         )}"
+                                class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
+
+                                <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+                                    <div class="min-w-0 max-w-full flex-1">
+                                        <div class="flex max-w-full flex-wrap items-start justify-between gap-3">
+                                            <h3 class="min-w-0 flex-1 break-words text-base font-semibold text-gray-900" th:text="${item.titleItem}">
+                                                Titre
+                                            </h3>
+
+                                            <div class="shrink-0">
+                                                <span th:if="${item.availableItem}"
+                                                      class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-900 ring-1 ring-blue-200">
+                                                    Disponible
+                                                </span>
+
+                                                <span th:if="${!item.availableItem}"
+                                                      class="inline-flex rounded-full bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                                                    Indisponible
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 flex flex-col gap-4 sm:flex-row">
+                                            <a th:href="@{/bibliotheque/item/{id}(id=${item.idItem})}"
+                                               class="shrink-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                <div th:if="${item.coverUrlItem != null && !#strings.isEmpty(item.coverUrlItem)}"
+                                                     class="h-24 w-24 overflow-hidden rounded-md bg-gray-50 ring-1 ring-gray-200 sm:h-28 sm:w-28">
+                                                    <img th:src="${item.coverUrlItem}"
+                                                         alt=""
+                                                         class="h-full w-full object-cover object-center"/>
+                                                </div>
+
+                                                <div th:if="${item.coverUrlItem == null || #strings.isEmpty(item.coverUrlItem)}"
+                                                     class="flex h-24 w-24 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200 sm:h-28 sm:w-28">
+                                                    <svg aria-hidden="true" class="h-10 w-10 text-gray-400" viewBox="0 0 24 24" fill="none">
+                                                        <path d="M6 4h10a2 2 0 0 1 2 2v14H8a2 2 0 0 0-2 2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        <path d="M6 20h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                        <path d="M8 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                        <path d="M8 10h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                    </svg>
+                                                </div>
+                                            </a>
+
+                                            <div class="min-w-0 max-w-full flex-1">
+                                                <p class="break-words text-sm text-gray-700">
+                                                    <span th:text="${item.categoryItem}">Catégorie</span>
+                                                    <span class="text-gray-400">•</span>
+                                                    <span class="text-gray-500">ID</span>
+                                                    <span class="font-medium text-gray-900" th:text="${item.idItem}">0</span>
+                                                </p>
+
+                                                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                    <p th:if="${item.authorItem != null && !#strings.isEmpty(item.authorItem)}"
+                                                       class="break-words text-sm text-gray-700">
+                                                        <span class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Auteur</span>
+                                                        <span class="mt-1 block font-medium text-gray-900" th:text="${item.authorItem}">Auteur</span>
+                                                    </p>
+
+                                                    <p th:if="${item.publisherItem != null && !#strings.isEmpty(item.publisherItem)}"
+                                                       class="break-words text-sm text-gray-700">
+                                                        <span class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Éditeur</span>
+                                                        <span class="mt-1 block font-medium text-gray-900" th:text="${item.publisherItem}">Éditeur</span>
+                                                    </p>
+
+                                                    <p th:if="${item.isbnItem != null && !#strings.isEmpty(item.isbnItem)}"
+                                                       class="break-words text-sm text-gray-700 sm:col-span-2">
+                                                        <span class="block text-xs font-semibold uppercase tracking-wide text-gray-500">ISBN</span>
+                                                        <span class="mt-1 block font-medium text-gray-900" th:text="${item.isbnItem}">ISBN</span>
+                                                    </p>
+                                                </div>
+
+                                                <p th:if="${item.descriptionItem != null && !#strings.isEmpty(item.descriptionItem)}"
+                                                   class="mt-4 break-words hyphens-auto text-sm text-gray-600"
+                                                   th:text="${item.descriptionItem}">
+                                                    Description
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="w-full shrink-0 border-t border-gray-100 pt-5 lg:w-auto lg:min-w-[18rem] lg:self-end lg:border-t-0 lg:pt-0">
+                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+                                            <a th:href="@{/bibliotheque/item/{id}(id=${item.idItem})}"
+                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Voir l’objet
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </li>
+                        </ul>
+
+                        <ul th:if="${!isSingle}"
+                            class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                            role="list">
+
+                            <li th:each="item : ${items}"
+                                data-item-card
+                                th:attr="data-id=${item.idItem},
+                                         data-title=${item.titleItem},
+                                         data-category=${item.categoryItem},
+                                         data-author=${item.authorItem},
+                                         data-publisher=${item.publisherItem},
+                                         data-isbn=${item.isbnItem},
+                                         data-search=${#strings.toLowerCase(
+                                             (item.titleItem ?: '') + ' ' +
+                                             (item.authorItem ?: '') + ' ' +
+                                             (item.publisherItem ?: '') + ' ' +
+                                             (item.categoryItem ?: '') + ' ' +
+                                             (item.isbnItem ?: '') + ' ' +
+                                             (item.publishYearItem ?: '') + ' ' +
+                                             (item.editionItem ?: '') + ' ' +
+                                             (item.formatItem ?: '') + ' ' +
+                                             (item.languageItem ?: '') + ' ' +
+                                             (item.tagsItem ?: '') + ' ' +
+                                             (item.descriptionItem ?: '') + ' ' +
+                                             ((item.availableItem) ? 'disponible dispo available avail' : 'indisponible indispo unavailable unavail') + ' ' +
+                                             (item.idItem ?: '')
+                                         )}"
+                                class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+
+                                <div class="flex max-w-full flex-1 flex-col gap-4">
+                                    <div class="flex min-h-[4.5rem] max-w-full items-start justify-between gap-3">
+                                        <h3 class="min-w-0 flex-1 break-words text-base font-semibold leading-6 text-gray-900" th:text="${item.titleItem}">
+                                            Titre
+                                        </h3>
+
+                                        <div class="shrink-0 pt-0.5">
+                                            <span th:if="${item.availableItem}"
+                                                  class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-900 ring-1 ring-blue-200">
+                                                Disponible
+                                            </span>
+
+                                            <span th:if="${!item.availableItem}"
+                                                  class="inline-flex rounded-full bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                                                Indisponible
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="min-w-0 max-w-full flex-1">
+                                        <p class="break-words text-sm text-gray-700">
+                                            <span th:text="${item.categoryItem}">Catégorie</span>
+                                            <span class="text-gray-400">•</span>
+                                            <span class="text-gray-500">ID</span>
+                                            <span class="font-medium text-gray-900" th:text="${item.idItem}">0</span>
+                                        </p>
+
+                                        <div class="mt-4 space-y-3">
+                                            <p th:if="${item.authorItem != null && !#strings.isEmpty(item.authorItem)}"
+                                               class="break-words text-sm text-gray-700"
+                                               th:text="${item.authorItem}">
+                                                Auteur
+                                            </p>
+
+                                            <p th:if="${item.publisherItem != null && !#strings.isEmpty(item.publisherItem)}"
+                                               class="break-words text-sm text-gray-600"
+                                               th:text="${item.publisherItem}">
+                                                Éditeur
+                                            </p>
+                                        </div>
+
+                                        <p th:if="${item.descriptionItem != null && !#strings.isEmpty(item.descriptionItem)}"
+                                           class="mt-4 line-clamp-3 break-words hyphens-auto text-sm text-gray-600"
+                                           th:text="${item.descriptionItem}">
+                                            Description
+                                        </p>
+                                    </div>
+
+                                    <div class="mt-auto border-t border-gray-100 pt-4">
+                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+                                            <a th:href="@{/bibliotheque/item/{id}(id=${item.idItem})}"
+                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Voir l’objet
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </li>
+
+                        </ul>
+
+                        <nav th:if="${paginationEnabled}"
+                             class="mt-6 border-t border-gray-100 pt-6"
+                             aria-label="Pagination des objets">
+                            <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <p class="text-sm text-gray-600">
+                                    Navigation entre les pages de la bibliothèque numérique.
+                                </p>
+
+                                <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+                                    <span th:if="${!hasPrevious}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Précédent
+                                    </span>
+
+                                    <a th:if="${hasPrevious}"
+                                       th:href="@{/bibliotheque-numerique(page=${currentPage - 1}, size=${pageSize}, sort=${sort}, q=${q})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Précédent
+                                    </a>
+
+                                    <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+                                        <span th:if="${pageNumber == currentPage}"
+                                              aria-current="page"
+                                              th:text="${pageNumber + 1}"
+                                              class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm">
+                                            1
+                                        </span>
+
+                                        <a th:if="${pageNumber != currentPage}"
+                                           th:href="@{/bibliotheque-numerique(page=${pageNumber}, size=${pageSize}, sort=${sort}, q=${q})}"
+                                           th:text="${pageNumber + 1}"
+                                           th:aria-label="'Aller à la page ' + (${pageNumber + 1})"
+                                           class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            1
+                                        </a>
+                                    </th:block>
+
+                                    <span th:if="${!hasNext}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Suivant
+                                    </span>
+
+                                    <a th:if="${hasNext}"
+                                       th:href="@{/bibliotheque-numerique(page=${currentPage + 1}, size=${pageSize}, sort=${sort}, q=${q})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Suivant
+                                    </a>
+                                </div>
+                            </div>
+                        </nav>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <script>
+            (function () {
+                const search = document.getElementById('search');
+                const searchForm = document.getElementById('searchForm');
+                const hint = document.getElementById('searchHint');
+                const panel = document.getElementById('suggestPanel');
+                const inner = document.getElementById('suggestInner');
+                const suggestAnnounce = document.getElementById('suggestAnnounce');
+                const clearInline = document.getElementById('searchClearInline');
+                const sortSelect = document.getElementById('sortSelect');
+                const sortAnnounce = document.getElementById('sortAnnounce');
+
+                if (!search || !searchForm) return;
+
+                let activeIndex = -1;
+                let currentOptions = [];
+                let suggestTimer = null;
+                let submitTimer = null;
+                let fetchController = null;
+                let fetchSequence = 0;
+                let lastSubmittedValue = String(search.value || '').trim();
+
+                function isNumericQuery(value) {
+                    return /^[0-9]+$/.test(String(value ?? '').trim());
+                }
+
+                function thresholdReached(q) {
+                    const raw = String(q ?? '').trim();
+                    if (!raw) return false;
+
+                    if (isNumericQuery(raw)) {
+                        return raw.length >= 1;
+                    }
+
+                    return raw.length >= 2;
+                }
+
+                function updateInlineClear(q) {
+                    if (!clearInline) return;
+                    const has = Boolean((q || '').trim());
+                    clearInline.classList.toggle('hidden', !has);
+                }
+
+                function updateHint(q) {
+                    if (!hint) return;
+                    const trimmed = (q || '').trim();
+
+                    if (!trimmed) {
+                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        return;
+                    }
+
+                    if (isNumericQuery(trimmed)) {
+                        hint.textContent = 'Suggestions disponibles dès 1 chiffre pour un identifiant.';
+                        return;
+                    }
+
+                    hint.textContent = 'La page se met à jour automatiquement pendant la saisie.';
+                }
+
+                function escapeHtml(s) {
+                    return String(s ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function setPanel(open) {
+                    if (!panel) return;
+
+                    panel.classList.toggle('hidden', !open);
+                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                    if (!open) {
+                        activeIndex = -1;
+                        currentOptions = [];
+                        search.setAttribute('aria-activedescendant', '');
+                    }
+                }
+
+                function closePanel() {
+                    setPanel(false);
+                    if (inner) inner.innerHTML = '';
+                }
+
+                function openPanel() {
+                    setPanel(true);
+                }
+
+                function renderOptions(list) {
+                    if (!inner) return;
+
+                    if (list.length === 0) {
+                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+                        openPanel();
+                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+                        return;
+                    }
+
+                    let html = '';
+
+                    for (let i = 0; i < list.length; i++) {
+                        const it = list[i];
+                        const optId = 'suggest-opt-' + escapeHtml(it.id) + '-' + i;
+                        const primary = it.title ? it.title : ('Objet ' + (it.id || ''));
+                        const secondaryParts = [
+                            it.category || '',
+                            it.author ? ('Auteur ' + it.author) : '',
+                            it.id ? ('ID ' + it.id) : ''
+                        ].filter(Boolean);
+                        const secondary = secondaryParts.join(' • ');
+                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
+
+                        html +=
+                            '<div ' +
+                            'id="' + optId + '" ' +
+                            'role="option" ' +
+                            'aria-selected="false" ' +
+                            'aria-label="' + escapeHtml(ariaLabel) + '" ' +
+                            'tabindex="-1" ' +
+                            'data-suggest-index="' + i + '" ' +
+                            'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
+                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
+                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
+                            '</div>';
+                    }
+
+                    inner.innerHTML = html;
+                    openPanel();
+
+                    if (suggestAnnounce) {
+                        suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+                    }
+                }
+
+                function setActive(newIndex) {
+                    if (!inner) return;
+
+                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
+                    if (options.length === 0) return;
+
+                    if (newIndex < 0) newIndex = options.length - 1;
+                    if (newIndex >= options.length) newIndex = 0;
+
+                    activeIndex = newIndex;
+
+                    options.forEach(function (el, i) {
+                        const isActive = i === activeIndex;
+                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        el.classList.toggle('bg-gray-50', isActive);
+                    });
+
+                    const activeEl = options[activeIndex];
+                    if (activeEl && activeEl.id) {
+                        search.setAttribute('aria-activedescendant', activeEl.id);
+                        try {
+                            activeEl.scrollIntoView({ block: 'nearest' });
+                        } catch (e) {
+                        }
+                    }
+                }
+
+                function applySuggestionAt(idx) {
+                    const it = currentOptions[idx];
+                    if (!it) return;
+
+                    const currentQuery = String(search.value || '').trim();
+                    const isNumeric = isNumericQuery(currentQuery);
+
+                    search.value = isNumeric ? String(it.id || '') : String(it.title || currentQuery || '');
+                    updateInlineClear(search.value);
+                    updateHint(search.value);
+                    closePanel();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    submitSearchNow();
+                }
+
+                function submitSearchNow() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (trimmed === lastSubmittedValue) {
+                        return;
+                    }
+
+                    lastSubmittedValue = trimmed;
+                    closePanel();
+                    searchForm.requestSubmit();
+                }
+
+                function scheduleSearchSubmit() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    if (!trimmed) {
+                        submitTimer = window.setTimeout(function () {
+                            submitSearchNow();
+                        }, 150);
+                        return;
+                    }
+
+                    if (!thresholdReached(trimmed)) {
+                        return;
+                    }
+
+                    submitTimer = window.setTimeout(function () {
+                        submitSearchNow();
+                    }, 450);
+                }
+
+                async function fetchSuggest(q) {
+                    const trimmed = String(q ?? '').trim();
+
+                    if (!thresholdReached(trimmed)) {
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                        return;
+                    }
+
+                    if (!inner) return;
+
+                    if (fetchController) {
+                        fetchController.abort();
+                    }
+
+                    fetchController = new AbortController();
+                    const currentFetch = ++fetchSequence;
+
+                    try {
+                        const url = '/bibliotheque/suggest?q=' + encodeURIComponent(trimmed);
+                        const res = await fetch(url, {
+                            headers: { 'Accept': 'application/json' },
+                            signal: fetchController.signal
+                        });
+
+                        if (!res.ok || currentFetch !== fetchSequence) {
+                            return;
+                        }
+
+                        const data = await res.json();
+                        if (currentFetch !== fetchSequence) return;
+
+                        const list = Array.isArray(data) ? data : [];
+                        currentOptions = list.slice(0, 8).map(function (it) {
+                            return {
+                                id: it && it.id != null ? it.id : '',
+                                title: it && it.title != null ? it.title : '',
+                                category: it && it.category != null ? it.category : '',
+                                author: it && it.author != null ? it.author : ''
+                            };
+                        });
+
+                        renderOptions(currentOptions);
+
+                        if (currentOptions.length > 0) {
+                            setActive(0);
+                        }
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                    }
+                }
+
+                function scheduleSuggest() {
+                    const q = search.value || '';
+                    updateHint(q);
+
+                    if (suggestTimer) window.clearTimeout(suggestTimer);
+                    suggestTimer = window.setTimeout(function () {
+                        fetchSuggest(q);
+                    }, 180);
+                }
+
+                function clearSearchAndSubmit() {
+                    search.value = '';
+                    updateInlineClear('');
+                    updateHint('');
+                    closePanel();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    submitSearchNow();
+                }
+
+               function handleEscape(e) {
+                   const key = e && e.key ? e.key : '';
+
+               if (key !== 'Escape' && key !== 'Esc') {
+                  return false;
+               }
+
+                e.preventDefault();
+
+                     const currentValue = String(search.value || '').trim();
+
+                if (currentValue) {
+                        clearSearchAndSubmit();
+                    return true;
+                }
+
+                closePanel();
+                         return true;
+                }
+
+
+
+                if (sortSelect) {
+                    sortSelect.addEventListener('change', function () {
+                        const opt = sortSelect.options && sortSelect.selectedIndex >= 0 ? sortSelect.options[sortSelect.selectedIndex] : null;
+                        const label = opt && opt.text ? opt.text : '';
+
+                        if (sortAnnounce) {
+                            sortAnnounce.textContent = label ? ('Tri appliqué : ' + label) : 'Tri appliqué.';
+                        }
+
+                        window.setTimeout(function () {
+                            if (sortSelect.form) sortSelect.form.requestSubmit();
+                        }, 120);
+                    });
+                }
+
+                document.addEventListener('click', function (e) {
+                    if (!panel || panel.classList.contains('hidden')) return;
+                    const target = e.target;
+                    if (target === search || panel.contains(target)) return;
+                    closePanel();
+                });
+
+                window.addEventListener('resize', function () {
+                    closePanel();
+                });
+
+                window.addEventListener('scroll', function () {
+                    if (panel && !panel.classList.contains('hidden')) {
+                        closePanel();
+                    }
+                }, true);
+
+                document.addEventListener('keydown', function (e) {
+                    handleEscape(e);
+                }, true);
+
+                if (inner) {
+                    inner.addEventListener('mousedown', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        e.preventDefault();
+                    });
+
+                    inner.addEventListener('click', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        const idx = Number(opt.getAttribute('data-suggest-index'));
+                        if (!Number.isFinite(idx)) return;
+                        applySuggestionAt(idx);
+                    });
+                }
+
+                if (clearInline) {
+                    clearInline.addEventListener('click', function () {
+                        clearSearchAndSubmit();
+                    });
+                }
+
+                search.addEventListener('keydown', function (e) {
+                    if (handleEscape(e)) return;
+
+                    const isOpen = panel && !panel.classList.contains('hidden');
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (!isOpen) {
+                            scheduleSuggest();
+                            window.setTimeout(function () {
+                                if (panel && !panel.classList.contains('hidden')) {
+                                    setActive(0);
+                                }
+                            }, 200);
+                        } else {
+                            setActive(activeIndex + 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'ArrowUp') {
+                        if (isOpen) {
+                            e.preventDefault();
+                            setActive(activeIndex - 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'Enter') {
+                        if (isOpen && activeIndex >= 0) {
+                            e.preventDefault();
+                            applySuggestionAt(activeIndex);
+                            return;
+                        }
+
+                        if (submitTimer) {
+                            window.clearTimeout(submitTimer);
+                        }
+
+                        submitSearchNow();
+                        return;
+                    }
+
+                    if (e.key === 'Tab' && isOpen) {
+                        closePanel();
+                    }
+                });
+
+                search.addEventListener('input', function () {
+                    updateInlineClear(search.value);
+                    scheduleSuggest();
+                    scheduleSearchSubmit();
+                });
+
+                search.addEventListener('focus', function () {
+                    const q = (search.value || '').trim();
+                    if (q) scheduleSuggest();
+                });
+
+                updateHint(search.value || '');
+                updateInlineClear(search.value || '');
+                closePanel();
+
+                const initialQuery = String(search.value || '').trim();
+
+                if (initialQuery) {
+                    window.setTimeout(function () {
+                        search.focus();
+                        const length = search.value.length;
+                        search.setSelectionRange(length, length);
+                    }, 80);
+                }
+
+                if (thresholdReached(initialQuery)) {
+                    window.setTimeout(function () {
+                        fetchSuggest(initialQuery);
+                    }, 120);
+                }
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

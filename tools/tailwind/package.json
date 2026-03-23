@@ -1,0 +1,12 @@
+{
+  "name": "magiclibrary-tailwind",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i input.css -o ../../src/main/resources/static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i input.css -o ../../src/main/resources/static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

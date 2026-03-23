@@ -1,0 +1,948 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Notifications', activePage='admin-notifications'">
+
+    <th:block th:fragment="content"
+              th:with="notificationsCount=${notifications != null ? #lists.size(notifications) : 0},
+                       isSingle=${notifications != null && #lists.size(notifications) == 1},
+                       hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
+                       resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : notificationsCount}">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Notifications</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation des notifications enregistrées dans l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/accueil}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à l’accueil
+                        </a>
+                    </div>
+                </div>
+
+                <div th:if="${successMessage != null}"
+                     class="max-w-full overflow-hidden rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm"
+                     role="status"
+                     aria-live="polite">
+                    <span class="font-semibold">Succès :</span>
+                    <span th:text="${successMessage}">Notification marquée comme lue.</span>
+                </div>
+
+                <div class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+
+                    <div class="min-w-0 max-w-full flex-1">
+
+                        <div class="flex max-w-full flex-col gap-3">
+
+                            <form id="searchForm" th:action="@{/admin/notifications}" method="get" class="max-w-full">
+                                <input type="hidden" name="page" value="0" />
+                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+
+                                <div class="relative w-full max-w-full">
+
+                                    <label for="search" class="sr-only">Rechercher une notification</label>
+
+                                    <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
+                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+
+                                    <input id="search"
+                                           name="q"
+                                           type="text"
+                                           inputmode="search"
+                                           autocomplete="off"
+                                           th:value="${q}"
+                                           placeholder="Rechercher par ID notif, ID membre, titre, message, type, catégorie, priorité…"
+                                           class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           aria-describedby="searchHint resultsCount resultsLabel"
+                                           aria-controls="suggestPanel"
+                                           aria-expanded="false" />
+
+                                    <button id="searchClearInline"
+                                            type="button"
+                                            class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                            aria-label="Effacer la recherche">
+                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+
+                                    <button type="submit" class="sr-only">Rechercher</button>
+
+                                    <div id="suggestPanel"
+                                         class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                                         role="listbox"
+                                         aria-label="Suggestions">
+                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+                                    </div>
+
+                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                </div>
+                            </form>
+
+                            <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 max-w-full flex-1">
+                                    <p id="searchHint" class="text-sm text-gray-600">
+                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
+                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
+                                    </p>
+                                </div>
+
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
+                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
+                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="mt-6 max-w-full text-sm text-gray-700">
+
+                <section class="mt-6 max-w-full first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">Notifications</h2>
+
+                    <div class="mt-2 max-w-full space-y-2">
+                        <p th:if="${notificationsCount > 0 and hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? 'notification trouvée' : 'notifications trouvées'}">notifications trouvées</span>
+                        </p>
+
+                        <p th:if="${notificationsCount > 0 and !hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${notificationsCount}">0</span>
+                            <span th:text="${notificationsCount == 1 ? 'notification chargée' : 'notifications chargées'}">notifications chargées</span>
+                        </p>
+
+                        <p th:if="${notificationsCount == 0 and hasQuery}">
+                            Aucune notification ne correspond à cette recherche.
+                        </p>
+
+                        <p th:if="${notificationsCount == 0 and !hasQuery}">
+                            Aucune notification disponible pour le moment.
+                        </p>
+
+                        <p th:if="${paginationEnabled}" class="text-sm text-gray-600">
+                            <span>Page </span>
+                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+                            <span> sur </span>
+                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+                            <span> · </span>
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? ' notification au total' : ' notifications au total'}"> notifications au total</span>
+                        </p>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${notificationsCount == 0}">
+                        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                            <h2 class="text-base font-semibold text-gray-900" th:text="${hasQuery ? 'Aucun résultat' : 'Aucune notification disponible'}">Aucune notification disponible</h2>
+                            <div class="mt-2 space-y-2">
+                                <p class="break-words hyphens-auto"
+                                   th:text="${hasQuery ? 'Essaie un autre mot-clé ou efface la recherche.' : 'Aucune notification n’est enregistrée pour le moment.'}">
+                                    Aucune notification n’est enregistrée pour le moment.
+                                </p>
+                                <div th:if="${hasQuery}">
+                                    <a th:href="@{/admin/notifications(size=${pageSize})}"
+                                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Effacer la recherche
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${notificationsCount > 0}">
+
+                        <ul th:if="${isSingle}"
+                            class="grid max-w-full grid-cols-1 gap-4"
+                            role="list">
+
+                            <li th:each="notification, stat : ${notifications}"
+                                data-notification-card
+                                th:attr="data-id-notification=${notification.idNotification},
+                                         data-id-user=${notification.idUser},
+                                         data-title=${notification.titleNotification},
+                                         data-category=${notification.categoryNotification},
+                                         data-type=${notification.typeNotification},
+                                         data-priority=${notification.priorityNotification},
+                                         data-read=${notification.readNotification},
+                                         data-search=${#strings.toLowerCase(
+                                             'notification ' + (notification.idNotification ?: '') + ' ' +
+                                             'notif ' + (notification.idNotification ?: '') + ' ' +
+                                             'membre ' + (notification.idUser ?: '') + ' ' +
+                                             'user ' + (notification.idUser ?: '') + ' ' +
+                                             (notification.titleNotification ?: '') + ' ' +
+                                             (notification.messageNotification ?: '') + ' ' +
+                                             (notification.targetLinkNotification ?: '') + ' ' +
+                                             (notification.categoryNotification != null ? notification.categoryNotification.name() : '') + ' ' +
+                                             (notification.typeNotification != null ? notification.typeNotification.name() : '') + ' ' +
+                                             (notification.priorityNotification ?: '') + ' ' +
+                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm') : '') + ' ' +
+                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'yyyy-MM-dd HH:mm') : '') + ' ' +
+                                             ((notification.readNotification != null && notification.readNotification) ? 'lue lu read traitee traitée' : 'non lue unread nouvelle active')
+                                         )}"
+                                class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
+
+                                <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+                                    <div class="min-w-0 max-w-full flex-1">
+                                        <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+                                            <h3 class="break-words text-base font-semibold text-gray-900">
+                                                <span>Notification</span>
+                                                <span th:text="${notification.idNotification}">0</span>
+                                            </h3>
+
+                                            <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                                  th:text="${notification.readNotification != null && notification.readNotification ? 'Lue' : 'Non lue'}"
+                                                  th:classappend="${notification.readNotification != null && notification.readNotification ? ' bg-gray-50 text-gray-700 ring-gray-200' : ' bg-blue-50 text-blue-900 ring-blue-200'}">
+                                                Non lue
+                                            </span>
+
+                                            <span th:if="${notification.categoryNotification != null}"
+                                                  class="inline-flex rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700"
+                                                  th:text="${notification.categoryNotification}">
+                                                INFO
+                                            </span>
+
+                                            <span th:if="${notification.typeNotification != null}"
+                                                  class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600"
+                                                  th:text="${notification.typeNotification}">
+                                                SYSTEM
+                                            </span>
+
+                                            <span th:if="${notification.priorityNotification != null && !#strings.isEmpty(#strings.trim(notification.priorityNotification))}"
+                                                  class="inline-flex rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700"
+                                                  th:text="${notification.priorityNotification}">
+                                                HIGH
+                                            </span>
+
+                                            <span th:if="${currentUserNotifications[stat.index]}"
+                                                  class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900">
+                                                Mes notifications
+                                            </span>
+                                        </div>
+
+                                        <p class="mt-4 break-words text-base font-semibold text-gray-900"
+                                           th:text="${notification.titleNotification != null && !#strings.isEmpty(#strings.trim(notification.titleNotification)) ? notification.titleNotification : 'Notification sans titre'}">
+                                            Notification sans titre
+                                        </p>
+
+                                        <p class="mt-1 break-words text-sm text-gray-600">
+                                            <span>ID membre</span>
+                                            <span class="font-medium text-gray-900" th:text="${notification.idUser}">—</span>
+                                        </p>
+
+                                        <p class="mt-3 break-words hyphens-auto text-sm text-gray-700"
+                                           th:text="${notification.messageNotification != null && !#strings.isEmpty(#strings.trim(notification.messageNotification)) ? notification.messageNotification : 'Aucun message disponible.'}">
+                                            Aucun message disponible.
+                                        </p>
+
+                                        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Date</p>
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm') : '—'}">
+                                                    —
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">État</p>
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${notification.readNotification != null && notification.readNotification ? 'Déjà lue' : 'À consulter'}">
+                                                    À consulter
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Type</p>
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${notification.typeNotification != null ? notification.typeNotification : '—'}">
+                                                    —
+                                                </p>
+                                            </div>
+
+                                            <div th:if="${notification.targetLinkNotification != null && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}">
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Lien</p>
+                                                <p class="mt-2 break-all text-sm text-gray-700"
+                                                   th:text="${notification.targetLinkNotification}">
+                                                    /lien
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="w-full shrink-0 border-t border-gray-100 pt-5 lg:w-auto lg:min-w-[24rem] lg:self-end lg:border-t-0 lg:pt-0">
+                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+                                            <a th:if="${notification.targetLinkNotification != null && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}"
+                                               th:href="${notification.targetLinkNotification}"
+                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Ouvrir le lien
+                                            </a>
+
+                                            <form th:if="${notification.readNotification == null || !notification.readNotification}"
+                                                  th:action="@{/admin/notifications/{id}/read(id=${notification.idNotification})}"
+                                                  method="post"
+                                                  class="flex w-full flex-1">
+                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                <input type="hidden" name="page" th:value="${currentPage}" />
+                                                <input type="hidden" name="size" th:value="${pageSize}" />
+                                                <input type="hidden" name="q" th:value="${q}" />
+                                                <input type="hidden" name="selectedNotificationId" th:value="${selectedNotificationId}" />
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Marquer comme lue
+                                                </button>
+                                            </form>
+
+                                            <span th:if="${notification.readNotification != null && notification.readNotification}"
+                                                  class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm font-semibold text-gray-500 shadow-sm">
+                                                Déjà lue
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </li>
+                        </ul>
+
+                        <ul th:if="${!isSingle}"
+                            class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                            role="list">
+
+                            <li th:each="notification, stat : ${notifications}"
+                                data-notification-card
+                                th:attr="data-id-notification=${notification.idNotification},
+                                         data-id-user=${notification.idUser},
+                                         data-title=${notification.titleNotification},
+                                         data-category=${notification.categoryNotification},
+                                         data-type=${notification.typeNotification},
+                                         data-priority=${notification.priorityNotification},
+                                         data-read=${notification.readNotification},
+                                         data-search=${#strings.toLowerCase(
+                                             'notification ' + (notification.idNotification ?: '') + ' ' +
+                                             'notif ' + (notification.idNotification ?: '') + ' ' +
+                                             'membre ' + (notification.idUser ?: '') + ' ' +
+                                             'user ' + (notification.idUser ?: '') + ' ' +
+                                             (notification.titleNotification ?: '') + ' ' +
+                                             (notification.messageNotification ?: '') + ' ' +
+                                             (notification.targetLinkNotification ?: '') + ' ' +
+                                             (notification.categoryNotification != null ? notification.categoryNotification.name() : '') + ' ' +
+                                             (notification.typeNotification != null ? notification.typeNotification.name() : '') + ' ' +
+                                             (notification.priorityNotification ?: '') + ' ' +
+                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm') : '') + ' ' +
+                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'yyyy-MM-dd HH:mm') : '') + ' ' +
+                                             ((notification.readNotification != null && notification.readNotification) ? 'lue lu read traitee traitée' : 'non lue unread nouvelle active')
+                                         )}"
+                                class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+
+                                <div class="flex max-w-full flex-1 flex-col gap-4">
+                                    <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+                                        <h3 class="break-words text-base font-semibold text-gray-900">
+                                            <span>Notification</span>
+                                            <span th:text="${notification.idNotification}">0</span>
+                                        </h3>
+
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                              th:text="${notification.readNotification != null && notification.readNotification ? 'Lue' : 'Non lue'}"
+                                              th:classappend="${notification.readNotification != null && notification.readNotification ? ' bg-gray-50 text-gray-700 ring-gray-200' : ' bg-blue-50 text-blue-900 ring-blue-200'}">
+                                            Non lue
+                                        </span>
+
+                                        <span th:if="${notification.categoryNotification != null}"
+                                              class="inline-flex rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700"
+                                              th:text="${notification.categoryNotification}">
+                                            INFO
+                                        </span>
+
+                                        <span th:if="${currentUserNotifications[stat.index]}"
+                                              class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900">
+                                            Mes notifications
+                                        </span>
+                                    </div>
+
+                                    <div class="min-w-0 max-w-full flex-1">
+                                        <p class="break-words text-base font-semibold text-gray-900"
+                                           th:text="${notification.titleNotification != null && !#strings.isEmpty(#strings.trim(notification.titleNotification)) ? notification.titleNotification : 'Notification sans titre'}">
+                                            Notification sans titre
+                                        </p>
+
+                                        <p class="mt-1 break-words text-sm text-gray-600">
+                                            <span>ID membre</span>
+                                            <span class="font-medium text-gray-900" th:text="${notification.idUser}">—</span>
+                                        </p>
+
+                                        <p class="mt-3 line-clamp-4 break-words hyphens-auto text-sm text-gray-700"
+                                           th:text="${notification.messageNotification != null && !#strings.isEmpty(#strings.trim(notification.messageNotification)) ? notification.messageNotification : 'Aucun message disponible.'}">
+                                            Aucun message disponible.
+                                        </p>
+
+                                        <p class="mt-3 break-words hyphens-auto text-sm text-gray-700"
+                                           th:text="${notification.dateNotification != null ? 'Reçue le ' + #temporals.format(notification.dateNotification, 'dd/MM/yyyy à HH:mm') : 'Date non définie'}">
+                                            Reçue le —
+                                        </p>
+
+                                        <p class="mt-2 break-words hyphens-auto text-sm text-gray-500"
+                                           th:text="${notification.typeNotification != null ? notification.typeNotification : 'Type non défini'}">
+                                            Type non défini
+                                        </p>
+                                    </div>
+
+                                    <div class="mt-auto border-t border-gray-100 pt-4">
+                                        <div class="flex w-full flex-col items-stretch gap-3">
+                                            <a th:if="${notification.targetLinkNotification != null && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}"
+                                               th:href="${notification.targetLinkNotification}"
+                                               class="inline-flex min-h-10 h-full w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Ouvrir le lien
+                                            </a>
+
+                                            <form th:if="${notification.readNotification == null || !notification.readNotification}"
+                                                  th:action="@{/admin/notifications/{id}/read(id=${notification.idNotification})}"
+                                                  method="post"
+                                                  class="flex w-full">
+                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                <input type="hidden" name="page" th:value="${currentPage}" />
+                                                <input type="hidden" name="size" th:value="${pageSize}" />
+                                                <input type="hidden" name="q" th:value="${q}" />
+                                                <input type="hidden" name="selectedNotificationId" th:value="${selectedNotificationId}" />
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 h-full w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Marquer comme lue
+                                                </button>
+                                            </form>
+
+                                            <span th:if="${notification.readNotification != null && notification.readNotification}"
+                                                  class="inline-flex min-h-10 h-full w-full items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm font-semibold text-gray-500 shadow-sm">
+                                                Déjà lue
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </li>
+
+                        </ul>
+
+                        <nav th:if="${paginationEnabled}"
+                             class="mt-6 border-t border-gray-100 pt-6"
+                             aria-label="Pagination des notifications">
+                            <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <p class="text-sm text-gray-600">
+                                    Navigation entre les pages de notifications.
+                                </p>
+
+                                <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+                                    <span th:if="${!hasPrevious}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Précédent
+                                    </span>
+
+                                    <a th:if="${hasPrevious}"
+                                       th:href="@{/admin/notifications(page=${currentPage - 1}, size=${pageSize}, q=${q}, selectedNotificationId=${selectedNotificationId})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Précédent
+                                    </a>
+
+                                    <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+                                        <span th:if="${pageNumber == currentPage}"
+                                              aria-current="page"
+                                              th:text="${pageNumber + 1}"
+                                              class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm">
+                                            1
+                                        </span>
+
+                                        <a th:if="${pageNumber != currentPage}"
+                                           th:href="@{/admin/notifications(page=${pageNumber}, size=${pageSize}, q=${q}, selectedNotificationId=${selectedNotificationId})}"
+                                           th:text="${pageNumber + 1}"
+                                           th:aria-label="'Aller à la page ' + (${pageNumber + 1})"
+                                           class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            1
+                                        </a>
+                                    </th:block>
+
+                                    <span th:if="${!hasNext}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Suivant
+                                    </span>
+
+                                    <a th:if="${hasNext}"
+                                       th:href="@{/admin/notifications(page=${currentPage + 1}, size=${pageSize}, q=${q}, selectedNotificationId=${selectedNotificationId})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Suivant
+                                    </a>
+                                </div>
+                            </div>
+                        </nav>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <script>
+            (function () {
+                const search = document.getElementById('search');
+                const searchForm = document.getElementById('searchForm');
+                const hint = document.getElementById('searchHint');
+                const panel = document.getElementById('suggestPanel');
+                const inner = document.getElementById('suggestInner');
+                const suggestAnnounce = document.getElementById('suggestAnnounce');
+                const clearInline = document.getElementById('searchClearInline');
+
+                if (!search || !searchForm) return;
+
+                let activeIndex = -1;
+                let currentOptions = [];
+                let suggestTimer = null;
+                let submitTimer = null;
+                let fetchController = null;
+                let fetchSequence = 0;
+                let lastSubmittedValue = String(search.value || '').trim();
+
+                function isNumericQuery(value) {
+                    return /^[0-9]+$/.test(String(value ?? '').trim());
+                }
+
+                function thresholdReached(q) {
+                    const raw = String(q ?? '').trim();
+                    if (!raw) return false;
+
+                    if (isNumericQuery(raw)) {
+                        return raw.length >= 1;
+                    }
+
+                    return raw.length >= 2;
+                }
+
+                function updateInlineClear(q) {
+                    if (!clearInline) return;
+                    const has = Boolean((q || '').trim());
+                    clearInline.classList.toggle('hidden', !has);
+                }
+
+                function updateHint(q) {
+                    if (!hint) return;
+                    const trimmed = (q || '').trim();
+
+                    if (!trimmed) {
+                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        return;
+                    }
+
+                    if (isNumericQuery(trimmed)) {
+                        hint.textContent = 'Suggestions disponibles dès 1 chiffre pour un identifiant.';
+                        return;
+                    }
+
+                    hint.textContent = 'La page se met à jour automatiquement pendant la saisie.';
+                }
+
+                function escapeHtml(s) {
+                    return String(s ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function setPanel(open) {
+                    if (!panel) return;
+
+                    panel.classList.toggle('hidden', !open);
+                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                    if (!open) {
+                        activeIndex = -1;
+                        currentOptions = [];
+                        search.setAttribute('aria-activedescendant', '');
+                    }
+                }
+
+                function closePanel() {
+                    setPanel(false);
+                    if (inner) inner.innerHTML = '';
+                }
+
+                function openPanel() {
+                    setPanel(true);
+                }
+
+                function renderOptions(list) {
+                    if (!inner) return;
+
+                    if (list.length === 0) {
+                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+                        openPanel();
+                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+                        return;
+                    }
+
+                    let html = '';
+
+                    for (let i = 0; i < list.length; i++) {
+                        const it = list[i];
+                        const optId = 'suggest-opt-notification-' + escapeHtml(it.idNotification) + '-' + i;
+                        const primary = it.title ? ('Notification ' + (it.idNotification || '') + ' • ' + it.title) : ('Notification ' + (it.idNotification || ''));
+                        const secondaryParts = [
+                            it.idUser ? ('ID membre ' + it.idUser) : '',
+                            it.category || '',
+                            it.type || '',
+                            it.priority || '',
+                            it.readStatus || '',
+                            it.date || ''
+                        ].filter(Boolean);
+                        const secondary = secondaryParts.join(' • ');
+                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
+                        const selectedNotificationUrl = '/admin/notifications?selectedNotificationId=' + encodeURIComponent(it.idNotification) + '&q=' + encodeURIComponent(String(search.value || '').trim());
+
+                        html +=
+                            '<div ' +
+                            'id="' + optId + '" ' +
+                            'role="option" ' +
+                            'aria-selected="false" ' +
+                            'aria-label="' + escapeHtml(ariaLabel) + '" ' +
+                            'tabindex="-1" ' +
+                            'data-suggest-index="' + i + '" ' +
+                            'data-suggest-url="' + escapeHtml(selectedNotificationUrl) + '" ' +
+                            'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
+                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
+                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
+                            '</div>';
+                    }
+
+                    inner.innerHTML = html;
+                    openPanel();
+
+                    if (suggestAnnounce) {
+                        suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+                    }
+                }
+
+                function setActive(newIndex) {
+                    if (!inner) return;
+
+                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
+                    if (options.length === 0) return;
+
+                    if (newIndex < 0) newIndex = options.length - 1;
+                    if (newIndex >= options.length) newIndex = 0;
+
+                    activeIndex = newIndex;
+
+                    options.forEach(function (el, i) {
+                        const isActive = i === activeIndex;
+                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        el.classList.toggle('bg-gray-50', isActive);
+                    });
+
+                    const activeEl = options[activeIndex];
+                    if (activeEl && activeEl.id) {
+                        search.setAttribute('aria-activedescendant', activeEl.id);
+                        try {
+                            activeEl.scrollIntoView({ block: 'nearest' });
+                        } catch (e) {
+                        }
+                    }
+                }
+
+                function goToSuggestionAt(idx) {
+                    const it = currentOptions[idx];
+                    if (!it || !it.idNotification) return;
+
+                    const currentQuery = encodeURIComponent(String(search.value || '').trim());
+
+                    window.location.href =
+                        '/admin/notifications?selectedNotificationId=' +
+                        encodeURIComponent(it.idNotification) +
+                        '&q=' +
+                        currentQuery;
+                }
+
+                function submitSearchNow() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (trimmed === lastSubmittedValue) {
+                        return;
+                    }
+
+                    lastSubmittedValue = trimmed;
+                    closePanel();
+                    searchForm.requestSubmit();
+                }
+
+                function scheduleSearchSubmit() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    if (!trimmed) {
+                        submitTimer = window.setTimeout(function () {
+                            submitSearchNow();
+                        }, 150);
+                        return;
+                    }
+
+                    if (!thresholdReached(trimmed)) {
+                        return;
+                    }
+
+                    submitTimer = window.setTimeout(function () {
+                        submitSearchNow();
+                    }, 450);
+                }
+
+                async function fetchSuggest(q) {
+                    const trimmed = String(q ?? '').trim();
+
+                    if (!thresholdReached(trimmed)) {
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                        return;
+                    }
+
+                    if (!inner) return;
+
+                    if (fetchController) {
+                        fetchController.abort();
+                    }
+
+                    fetchController = new AbortController();
+                    const currentFetch = ++fetchSequence;
+
+                    try {
+                        const url = '/admin/notifications/suggest?q=' + encodeURIComponent(trimmed);
+                        const res = await fetch(url, {
+                            headers: { 'Accept': 'application/json' },
+                            signal: fetchController.signal
+                        });
+
+                        if (!res.ok || currentFetch !== fetchSequence) {
+                            return;
+                        }
+
+                        const data = await res.json();
+                        if (currentFetch !== fetchSequence) return;
+
+                        const list = Array.isArray(data) ? data : [];
+                        currentOptions = list.slice(0, 8).map(function (it) {
+                            return {
+                                idNotification: it && it.idNotification != null ? it.idNotification : '',
+                                idUser: it && it.idUser != null ? it.idUser : '',
+                                title: it && it.title != null ? it.title : '',
+                                category: it && it.category != null ? it.category : '',
+                                type: it && it.type != null ? it.type : '',
+                                priority: it && it.priority != null ? it.priority : '',
+                                readStatus: it && it.readStatus != null ? it.readStatus : '',
+                                date: it && it.date != null ? it.date : ''
+                            };
+                        });
+
+                        renderOptions(currentOptions);
+
+                        if (currentOptions.length > 0) {
+                            setActive(0);
+                        }
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                    }
+                }
+
+                function scheduleSuggest() {
+                    const q = search.value || '';
+                    updateHint(q);
+
+                    if (suggestTimer) window.clearTimeout(suggestTimer);
+                    suggestTimer = window.setTimeout(function () {
+                        fetchSuggest(q);
+                    }, 180);
+                }
+
+                function clearSearchAndSubmit() {
+                    search.value = '';
+                    updateInlineClear('');
+                    updateHint('');
+                    closePanel();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    submitSearchNow();
+                }
+
+                function handleEscape(e) {
+                    const key = e && e.key ? e.key : '';
+
+                    if (key !== 'Escape' && key !== 'Esc') {
+                        return false;
+                    }
+
+                    e.preventDefault();
+
+                    const currentValue = String(search.value || '').trim();
+
+                    if (currentValue) {
+                        clearSearchAndSubmit();
+                        return true;
+                    }
+
+                    closePanel();
+                    return true;
+                }
+
+                document.addEventListener('click', function (e) {
+                    if (!panel || panel.classList.contains('hidden')) return;
+                    const target = e.target;
+                    if (target === search || panel.contains(target)) return;
+                    closePanel();
+                });
+
+                window.addEventListener('resize', function () {
+                    closePanel();
+                });
+
+                window.addEventListener('scroll', function () {
+                    if (panel && !panel.classList.contains('hidden')) {
+                        closePanel();
+                    }
+                }, true);
+
+                document.addEventListener('keydown', function (e) {
+                    handleEscape(e);
+                }, true);
+
+                if (inner) {
+                    inner.addEventListener('mousedown', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        e.preventDefault();
+                    });
+
+                    inner.addEventListener('click', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        const idx = Number(opt.getAttribute('data-suggest-index'));
+                        if (!Number.isFinite(idx)) return;
+                        goToSuggestionAt(idx);
+                    });
+                }
+
+                if (clearInline) {
+                    clearInline.addEventListener('click', function () {
+                        clearSearchAndSubmit();
+                    });
+                }
+
+                search.addEventListener('keydown', function (e) {
+                    const isOpen = panel && !panel.classList.contains('hidden');
+
+                    if (handleEscape(e)) return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (!isOpen) {
+                            scheduleSuggest();
+                            window.setTimeout(function () {
+                                if (panel && !panel.classList.contains('hidden')) {
+                                    setActive(0);
+                                }
+                            }, 200);
+                        } else {
+                            setActive(activeIndex + 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'ArrowUp') {
+                        if (isOpen) {
+                            e.preventDefault();
+                            setActive(activeIndex - 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'Enter') {
+                        if (isOpen && activeIndex >= 0) {
+                            e.preventDefault();
+                            goToSuggestionAt(activeIndex);
+                            return;
+                        }
+
+                        if (submitTimer) {
+                            window.clearTimeout(submitTimer);
+                        }
+
+                        submitSearchNow();
+                        return;
+                    }
+
+                    if (e.key === 'Tab' && isOpen) {
+                        closePanel();
+                    }
+                });
+
+                search.addEventListener('input', function () {
+                    updateInlineClear(search.value);
+                    scheduleSuggest();
+                    scheduleSearchSubmit();
+                });
+
+                search.addEventListener('focus', function () {
+                    const q = (search.value || '').trim();
+                    if (q) scheduleSuggest();
+                });
+
+                updateHint(search.value || '');
+                updateInlineClear(search.value || '');
+                closePanel();
+
+                const initialQuery = String(search.value || '').trim();
+
+                if (initialQuery) {
+                    window.setTimeout(function () {
+                        search.focus();
+                        const length = search.value.length;
+                        search.setSelectionRange(length, length);
+                    }, 80);
+                }
+
+                if (thresholdReached(initialQuery)) {
+                    window.setTimeout(function () {
+                        fetchSuggest(initialQuery);
+                    }, 120);
+                }
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

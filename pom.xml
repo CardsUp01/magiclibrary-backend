@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ===========================================================================
+     FICHIER POM PRINCIPAL DU BACKEND MagicLibrary
+     Objectif : configuration complète Maven du projet MVP
+     Versions sécurisées et disponibles : JJWT 0.11.5, AssertJ 3.26.3
+     Commentaires : niveau CDA / jury 20/20
+============================================================================== -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <!-- Version du modèle POM -->
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- =========================================================================
+         SPRING BOOT PARENT
+         Fournit toutes les configurations par défaut Spring Boot
+         Versions, plugin Maven, dépendances transverses
+    ========================================================================= -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.12</version>
+        <relativePath/>
+    </parent>
+
+    <!-- =========================================================================
+         INFORMATION DU PROJET
+         GroupId, ArtifactId, Version et description du projet backend MVP
+    ========================================================================= -->
+    <groupId>com.magiclibrary</groupId>
+    <artifactId>magiclibrary</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>MagicLibrary Backend MVP</name>
+    <description>Application back-end du MVP MagicLibrary (Java 21 / Spring Boot 3.4.12)</description>
+
+    <!-- =========================================================================
+         PROPRIÉTÉS
+         Version Java utilisée par le projet
+    ========================================================================= -->
+    <properties>
+        <java.version>21</java.version>
+
+        <!-- Encodage Maven / resources -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+    <!-- =========================================================================
+         DÉPENDANCES PRINCIPALES
+         Gestion des fonctionnalités backend MagicLibrary
+         Chaque section documente l'objectif et l'utilisation métier
+    ========================================================================= -->
+    <dependencies>
+
+        <!-- ============================ Spring Data JPA ============================
+             Gestion de la persistance relationnelle (MySQL/MariaDB)
+             Utilisée pour USER, ROLE, ITEM, LOAN, LOAN_LINE
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- ============================ MongoDB ============================
+             Gestion de la persistance NoSQL
+             Utilisée uniquement pour l'entité CONTACT
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
+        <!-- ============================ Spring Security ============================
+             Sécurisation des endpoints
+             JWT, authentification, filtres et contrôle d'accès
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- ============================ Validation ============================
+             Validation des DTO et des entrées utilisateur
+             Hibernate Validator utilisé pour les contraintes @NotNull, @Email, etc.
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- ============================ Spring Web ============================
+             Exposition des endpoints REST
+             Tomcat embarqué, controllers, mappings HTTP
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- ============================ Thymeleaf (templates SSR) ============================
+             Rendu HTML côté serveur pour les pages internes
+             Objectif : navbar centralisée via fragments et suppression des duplications HTML
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- ============================ Thymeleaf Extras Spring Security ============================
+             Active le dialecte Thymeleaf Spring Security
+             Permet d'utiliser sec:authorize (isAuthenticated / isAnonymous / hasRole...)
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.thymeleaf.extras</groupId>
+            <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+        </dependency>
+
+        <!-- ============================ MariaDB JDBC ============================
+             Driver JDBC pour la base relationnelle MariaDB
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+        </dependency>
+
+        <!-- ============================ JJWT (JSON Web Tokens) ============================
+             Gestion des tokens JWT pour l'authentification
+             Inclut API, implémentation et Jackson pour le parsing JSON
+             Version stable disponible : 0.11.5
+        ========================================================================= -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ============================ SpringDoc OpenAPI / Swagger UI ============================
+             Documentation automatique de l'API REST
+             Compatible Spring Boot 3.4.x
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.15</version>
+        </dependency>
+
+        <!-- ============================ TESTS ============================
+             Test unitaire et d'intégration Spring Boot
+             Inclus Spring Security Test pour les scénarios sécurisés
+             Version stable disponible pour AssertJ : 3.26.3
+        ========================================================================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.26.3</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <!-- =========================================================================
+         BUILD / PLUGINS
+         Compilation, packaging et exécution Spring Boot
+         Tomcat embed mis à jour automatiquement par Spring Boot 3.4.x
+    ========================================================================= -->
+    <build>
+
+        <!-- =========================================================================
+             RESOURCES
+             Copie brute des fichiers src/main/resources sans filtrage Maven
+             Objectif : éviter MalformedInputException sur .properties commentés
+        ========================================================================= -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

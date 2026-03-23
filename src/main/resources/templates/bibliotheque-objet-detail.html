@@ -1,0 +1,284 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Objet – MagicLibrary', activePage='bibliotheque'">
+
+    <th:block th:fragment="content">
+
+        <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
+
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between max-w-full">
+                <div class="min-w-0 max-w-full">
+                    <h1 class="text-base font-semibold text-gray-900 break-words">Objet</h1>
+                    <p class="mt-2 text-sm text-gray-700 break-words hyphens-auto">
+                        Détails complets de l’objet sélectionné dans la bibliothèque numérique.
+                    </p>
+                </div>
+
+                <div class="shrink-0 flex items-center gap-2">
+                    <a th:href="@{/bibliotheque-numerique}"
+                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        Retour à la bibliothèque numérique
+                    </a>
+                </div>
+            </div>
+
+            <div class="mt-6 max-w-full" th:if="${item == null}">
+                <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
+                    <h2 class="text-base font-semibold text-gray-900 break-words">Objet introuvable</h2>
+                    <div class="mt-2 space-y-2 max-w-full">
+                        <p class="text-sm text-gray-700 break-words hyphens-auto">
+                            Aucun objet n’a été trouvé ou l’objet n’est plus disponible.
+                        </p>
+                    </div>
+                </section>
+            </div>
+
+            <div class="mt-6 max-w-full" th:if="${item != null}">
+
+                <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
+
+                    <div class="flex flex-col gap-5 md:flex-row md:items-start md:justify-between max-w-full">
+
+                        <div class="flex gap-4 min-w-0 max-w-full">
+                            <div class="shrink-0">
+                                <div th:if="${item.coverUrlItem != null && !#strings.isEmpty(item.coverUrlItem)}"
+                                     class="h-24 w-24 sm:h-28 sm:w-28 rounded-md overflow-hidden ring-1 ring-gray-200 bg-gray-50">
+                                    <img th:src="${item.coverUrlItem}"
+                                         alt=""
+                                         class="h-full w-full object-cover object-center"/>
+                                </div>
+
+                                <div th:if="${item.coverUrlItem == null || #strings.isEmpty(item.coverUrlItem)}"
+                                     class="h-24 w-24 sm:h-28 sm:w-28 rounded-md ring-1 ring-gray-200 bg-gray-50 flex items-center justify-center">
+                                    <svg aria-hidden="true" class="h-10 w-10 text-gray-400" viewBox="0 0 24 24" fill="none">
+                                        <path d="M6 4h10a2 2 0 0 1 2 2v14H8a2 2 0 0 0-2 2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M6 20h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <path d="M8 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <path d="M8 10h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="min-w-0 max-w-full">
+                                <div class="flex flex-wrap items-start gap-x-3 gap-y-2 max-w-full">
+                                    <h2 class="text-lg font-semibold text-gray-900 break-words"
+                                        th:text="${item.titleItem != null ? item.titleItem : 'Sans titre'}">
+                                        Sans titre
+                                    </h2>
+
+                                    <span th:if="${item.availableItem}"
+                                          class="inline-flex max-w-full rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">
+                                        Disponible
+                                    </span>
+                                    <span th:if="${item.availableItem == false}"
+                                          class="inline-flex max-w-full rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 ring-1 ring-gray-200">
+                                        Indisponible
+                                    </span>
+                                </div>
+
+                                <p class="mt-2 text-sm text-gray-700 break-words hyphens-auto">
+                                    <span th:text="${item.categoryItem != null ? item.categoryItem : 'Catégorie non renseignée'}">Catégorie</span>
+                                    <span class="text-gray-400">•</span>
+                                    <span class="text-gray-500">ID</span>
+                                    <span class="font-medium text-gray-900" th:text="${item.idItem}">0</span>
+
+                                    <span th:if="${item.authorItem != null && !#strings.isEmpty(item.authorItem)}">
+                                        <span class="text-gray-400">•</span>
+                                        <span th:text="${item.authorItem}">Auteur</span>
+                                    </span>
+                                </p>
+
+                                <p th:if="${item.descriptionItem != null && !#strings.isEmpty(item.descriptionItem)}"
+                                   class="mt-3 text-sm text-gray-700 break-words hyphens-auto"
+                                   th:text="${item.descriptionItem}">
+                                    Description
+                                </p>
+
+                                <p th:if="${item.descriptionItem == null || #strings.isEmpty(item.descriptionItem)}"
+                                   class="mt-3 text-sm text-gray-500 break-words hyphens-auto">
+                                    Description : non renseignée.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="shrink-0 w-full md:w-80 max-w-full">
+                            <div class="rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200 max-w-full overflow-hidden">
+                                <h3 class="text-sm font-semibold text-gray-900 break-words">Résumé</h3>
+
+                                <dl class="mt-3 space-y-2 text-sm max-w-full">
+                                    <div class="flex items-start justify-between gap-3 max-w-full">
+                                        <dt class="text-gray-600 shrink-0">Statut</dt>
+                                        <dd class="text-gray-900 font-medium min-w-0 break-words text-right">
+                                            <span th:switch="${item.statusItem}">
+                                                <span th:case="${null}">Non renseigné</span>
+                                                <span th:case="'AVAILABLE'">Disponible</span>
+                                                <span th:case="'UNAVAILABLE'">Indisponible</span>
+                                                <span th:case="'ARCHIVED'">Archivé</span>
+                                                <span th:case="*"
+                                                      th:text="${item.statusItem}">Non renseigné</span>
+                                            </span>
+                                        </dd>
+                                    </div>
+
+                                    <div class="flex items-start justify-between gap-3 max-w-full">
+                                        <dt class="text-gray-600 shrink-0">Condition</dt>
+                                        <dd class="text-gray-900 font-medium min-w-0 break-words text-right">
+                                            <span th:switch="${item.conditionItem}">
+                                                <span th:case="${null}">Non renseignée</span>
+                                                <span th:case="'NEW'">Neuf</span>
+                                                <span th:case="'EXCELLENT'">Excellent état</span>
+                                                <span th:case="'GOOD'">Bon état</span>
+                                                <span th:case="'FAIR'">État correct</span>
+                                                <span th:case="'POOR'">Mauvais état</span>
+                                                <span th:case="*"
+                                                      th:text="${item.conditionItem}">Non renseignée</span>
+                                            </span>
+                                        </dd>
+                                    </div>
+
+                                    <div class="flex items-start justify-between gap-3 max-w-full">
+                                        <dt class="text-gray-600 shrink-0">Format</dt>
+                                        <dd class="text-gray-900 font-medium min-w-0 break-words text-right">
+                                            <span th:switch="${item.formatItem}">
+                                                <span th:case="${null}">Non renseigné</span>
+                                                <span th:case="'BOOK'">Livre</span>
+                                                <span th:case="'DVD'">DVD</span>
+                                                <span th:case="'MAGAZINE'">Magazine</span>
+                                                <span th:case="'ACCESSORY'">Accessoire</span>
+                                                <span th:case="'OBJECT'">Objet</span>
+                                                <span th:case="'PEDAGOGICAL_SUPPORT'">Support pédagogique</span>
+                                                <span th:case="*"
+                                                      th:text="${item.formatItem}">Non renseigné</span>
+                                            </span>
+                                        </dd>
+                                    </div>
+
+                                    <div class="flex items-start justify-between gap-3 max-w-full">
+                                        <dt class="text-gray-600 shrink-0">Langue</dt>
+                                        <dd class="text-gray-900 font-medium min-w-0 break-words text-right">
+                                            <span th:switch="${item.languageItem}">
+                                                <span th:case="${null}">Non renseignée</span>
+                                                <span th:case="'FR'">Français</span>
+                                                <span th:case="'EN'">Anglais</span>
+                                                <span th:case="'ES'">Espagnol</span>
+                                                <span th:case="'DE'">Allemand</span>
+                                                <span th:case="'IT'">Italien</span>
+                                                <span th:case="*"
+                                                      th:text="${item.languageItem}">Non renseignée</span>
+                                            </span>
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <section class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 max-w-full">
+
+                    <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
+                        <h3 class="text-base font-semibold text-gray-900 break-words">Informations</h3>
+
+                        <dl class="mt-4 space-y-3 text-sm max-w-full">
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Auteur</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.authorItem != null && !#strings.isEmpty(item.authorItem) ? item.authorItem : 'Non renseigné'}">
+                                    Non renseigné
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Éditeur</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.publisherItem != null && !#strings.isEmpty(item.publisherItem) ? item.publisherItem : 'Non renseigné'}">
+                                    Non renseigné
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Année</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.publishYearItem != null ? item.publishYearItem : 'Non renseignée'}">
+                                    Non renseignée
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Édition</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.editionItem != null && !#strings.isEmpty(item.editionItem) ? item.editionItem : 'Non renseignée'}">
+                                    Non renseignée
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">ISBN</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.isbnItem != null && !#strings.isEmpty(item.isbnItem) ? item.isbnItem : 'Non renseigné'}">
+                                    Non renseigné
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Nombre de pages</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.pageCountItem != null ? item.pageCountItem : 'Non renseigné'}">
+                                    Non renseigné
+                                </dd>
+                            </div>
+
+                        </dl>
+                    </section>
+
+                    <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
+                        <h3 class="text-base font-semibold text-gray-900 break-words">Métadonnées</h3>
+
+                        <dl class="mt-4 space-y-3 text-sm max-w-full">
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Ajouté le</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.addedDateItem != null ? #temporals.format(item.addedDateItem, 'dd/MM/yyyy HH:mm') : 'Non renseigné'}">
+                                    Non renseigné
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Mis à jour le</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.updatedAtItem != null ? #temporals.format(item.updatedAtItem, 'dd/MM/yyyy HH:mm') : 'Non renseigné'}">
+                                    Non renseigné
+                                </dd>
+                            </div>
+
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4 max-w-full">
+                                <dt class="text-gray-600 shrink-0">Archivé le</dt>
+                                <dd class="text-gray-900 font-medium min-w-0 break-words sm:text-right"
+                                    th:text="${item.deletedDateItem != null ? #temporals.format(item.deletedDateItem, 'dd/MM/yyyy') : 'Non'}">
+                                    Non
+                                </dd>
+                            </div>
+
+                            <div class="pt-2 border-t border-gray-200">
+                                <dt class="text-gray-600">Tags</dt>
+                                <dd class="mt-2 text-gray-900 break-words hyphens-auto"
+                                    th:text="${item.tagsItem != null && !#strings.isEmpty(item.tagsItem) ? item.tagsItem : 'Non renseignés'}">
+                                    Non renseignés
+                                </dd>
+                            </div>
+
+                        </dl>
+                    </section>
+
+                </section>
+
+            </div>
+
+        </section>
+
+    </th:block>
+
+</th:block>

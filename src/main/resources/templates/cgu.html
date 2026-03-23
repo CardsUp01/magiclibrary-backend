@@ -1,0 +1,161 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Conditions générales d’utilisation – MagicLibrary'">
+
+    <th:block th:fragment="content">
+
+        <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+            <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <h1 class="text-lg font-semibold text-gray-900">Conditions générales d’utilisation</h1>
+
+                    <p class="mt-2 text-xs text-gray-500">Version 1.0 – Janvier 2026</p>
+
+                    <p class="mt-2 text-sm text-gray-600">
+                        Les présentes Conditions générales d’utilisation (CGU) s’appliquent à l’utilisation de l’application
+                        <strong class="font-semibold">MagicLibrary</strong>, outil interne de l’association, réservé aux membres habilités.
+                    </p>
+                </div>
+
+                <div th:if="${#authorization.expression('isAuthenticated()')}"
+                     class="shrink-0 sm:self-start">
+                    <a th:href="@{/accueil}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">
+                        Retour à l’accueil
+                    </a>
+                </div>
+            </header>
+
+            <div class="mt-6 break-words text-sm text-gray-700">
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-objet">
+                    <h2 id="cgu-objet" class="text-base font-semibold text-gray-900">1. Objet</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Les présentes Conditions générales d’utilisation définissent les règles d’accès et d’usage de l’application MagicLibrary.
+                            Elles visent à garantir un usage conforme aux objectifs de l’association, à la sécurité du système et à la protection des données.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-acces">
+                    <h2 id="cgu-acces" class="text-base font-semibold text-gray-900">2. Accès à l’application</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application est strictement réservée à un usage interne. Elle n’est pas accessible au public et ne fait l’objet d’aucune exploitation commerciale.
+                        </p>
+                        <p>
+                            L’accès est conditionné à l’authentification de l’utilisateur. Les droits et fonctionnalités disponibles varient selon le rôle attribué
+                            (Invité, Membre, Administrateur).
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-compte">
+                    <h2 id="cgu-compte" class="text-base font-semibold text-gray-900">3. Comptes, identifiants et responsabilités</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Chaque utilisateur est responsable de la confidentialité de ses identifiants et de l’usage effectué depuis son compte.
+                            Toute action réalisée via un compte est réputée effectuée par son titulaire.
+                        </p>
+                        <p>
+                            En cas de suspicion d’accès non autorisé, l’utilisateur doit en informer l’association dès que possible via la page
+                            <a th:href="@{/contact}" class="font-medium text-indigo-700 hover:underline">Contact</a>.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-usage">
+                    <h2 id="cgu-usage" class="text-base font-semibold text-gray-900">4. Règles d’utilisation</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>L’utilisateur s’engage à utiliser l’application de manière loyale, conformément à sa finalité et aux règles internes de l’association.</p>
+
+                        <ul class="mt-3 list-disc space-y-2 pl-4 text-sm text-gray-700">
+                            <li>Ne pas tenter de contourner l’authentification, les contrôles d’accès ou les restrictions de sécurité.</li>
+                            <li>Ne pas perturber le fonctionnement de l’application, notamment par des actions automatisées ou abusives.</li>
+                            <li>Ne pas introduire de contenu illicite, injurieux, diffamatoire ou contraire aux valeurs de l’association.</li>
+                            <li>Ne pas tenter d’accéder aux données d’autres utilisateurs sans autorisation.</li>
+                            <li>Signaler à l’association tout dysfonctionnement majeur ou incident de sécurité constaté.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-fonctionnalites">
+                    <h2 id="cgu-fonctionnalites" class="text-base font-semibold text-gray-900">5. Fonctionnalités et périmètre</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application permet notamment la gestion des emprunts des objets de la bibliothèque réelle et la consultation du catalogue interne.
+                            Certaines fonctionnalités peuvent être réservées aux administrateurs.
+                        </p>
+                        <p>
+                            L’association peut faire évoluer l’application afin d’améliorer son fonctionnement, sa sécurité et l’expérience utilisateur,
+                            sans obligation de maintenir une interface identique.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-donnees">
+                    <h2 id="cgu-donnees" class="text-base font-semibold text-gray-900">6. Données et confidentialité</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Les données traitées dans le cadre de l’utilisation de l’application sont destinées exclusivement au fonctionnement interne de l’association.
+                            Elles ne sont pas utilisées à des fins commerciales, publicitaires ou de suivi.
+                        </p>
+                        <p>
+                            Les informations relatives aux données traitées, aux finalités et aux droits des utilisateurs sont décrites dans la page
+                            <a th:href="@{/confidentialite}" class="font-medium text-indigo-700 hover:underline">Confidentialité &amp; protection des données</a>.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-dispo">
+                    <h2 id="cgu-dispo" class="text-base font-semibold text-gray-900">7. Disponibilité, maintenance et sécurité</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application est fournie “en l’état” pour les besoins internes de l’association. L’association met en œuvre des mesures raisonnables
+                            pour assurer la sécurité et la disponibilité du service, sans garantie d’absence d’interruption.
+                        </p>
+                        <p>
+                            Des opérations de maintenance, de mise à jour ou de correction peuvent entraîner une indisponibilité temporaire.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-responsabilite">
+                    <h2 id="cgu-responsabilite" class="text-base font-semibold text-gray-900">8. Responsabilité</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’association ne saurait être tenue responsable des dommages indirects résultant de l’usage de l’application, notamment en cas
+                            d’erreur de saisie, de mauvaise utilisation ou d’indisponibilité temporaire du service.
+                        </p>
+                        <p>
+                            L’utilisateur demeure responsable de la vérification des informations qu’il consulte ou saisit, et du respect des règles internes
+                            applicables à la gestion des emprunts.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-contact">
+                    <h2 id="cgu-contact" class="text-base font-semibold text-gray-900">9. Contact</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Pour toute question relative aux présentes CGU, vous pouvez contacter l’association via la page
+                            <a th:href="@{/contact}" class="font-medium text-indigo-700 hover:underline">Contact</a>.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="cgu-maj">
+                    <h2 id="cgu-maj" class="text-base font-semibold text-gray-900">10. Mise à jour des CGU</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Les présentes CGU peuvent être mises à jour à tout moment afin de refléter les évolutions de l’application, des usages internes
+                            et des exigences de sécurité. La version applicable est celle disponible dans l’application.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+    </th:block>
+
+</th:block>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NavbarProfileSandboxCompactFinal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+
+<header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto flex min-h-20 max-w-7xl items-center justify-between px-4 py-3">
+        <div class="flex min-w-0 items-center gap-3">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-500">
+                LOGO
+            </div>
+            <span class="hidden truncate text-lg font-semibold tracking-tight text-slate-900 sm:block">
+                MagicLibrary
+            </span>
+        </div>
+
+        <button type="button"
+                class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 shadow-sm hover:bg-slate-50">
+            <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </div>
+</header>
+
+<main class="mx-auto max-w-5xl p-8">
+    <div class="space-y-6">
+
+        <!-- ADMIN -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="mb-4 text-sm font-semibold text-slate-600">Navbar — Admin</p>
+
+            <div class="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-800 text-base font-semibold text-slate-100 shadow-sm">
+                    LN
+                </span>
+
+                <div class="min-w-0">
+                    <p class="max-w-[150px] truncate text-base font-semibold text-slate-900">
+                        Lalalala Ninninin
+                    </p>
+                    <p class="text-sm font-medium text-slate-600">
+                        Admin
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 shadow-sm hover:bg-slate-50">
+                    <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- MEMBRE -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="mb-4 text-sm font-semibold text-slate-600">Navbar — Membre</p>
+
+            <div class="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-800 text-base font-semibold text-slate-100 shadow-sm">
+                    PM
+                </span>
+
+                <div class="min-w-0">
+                    <p class="max-w-[150px] truncate text-base font-semibold text-slate-900">
+                        Paul Martin
+                    </p>
+                    <p class="text-sm font-medium text-blue-700">
+                        Membre
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 shadow-sm hover:bg-slate-50">
+                    <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <!-- INVITE -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="mb-4 text-sm font-semibold text-slate-600">Navbar — Invité</p>
+
+            <div class="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-800 text-base font-semibold text-slate-100 shadow-sm">
+                    IV
+                </span>
+
+                <div class="min-w-0">
+                    <p class="max-w-[150px] truncate text-base font-semibold text-slate-900">
+                        Invité Démo
+                    </p>
+                    <p class="text-sm font-medium text-slate-400">
+                        Invité
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 shadow-sm hover:bg-slate-50">
+                    <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 12h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+</body>
+</html>

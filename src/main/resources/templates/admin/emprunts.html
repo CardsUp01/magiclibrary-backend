@@ -1,0 +1,1132 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Emprunts', activePage='admin-loans'">
+
+    <th:block th:fragment="content"
+              th:with="loansCount=${loans != null ? #lists.size(loans) : 0},
+                       isSingle=${loans != null && #lists.size(loans) == 1},
+                       hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
+                       resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : loansCount}">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Emprunts</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation des emprunts enregistrés dans l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/accueil}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à l’accueil
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+
+                    <div class="min-w-0 max-w-full flex-1">
+
+                        <div class="flex max-w-full flex-col gap-3">
+
+                            <form id="searchForm" th:action="@{/admin/emprunts}" method="get" class="max-w-full">
+                                <input type="hidden" name="page" value="0" />
+                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                                <input type="hidden" name="sort" th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort)) ? sort : 'recent'}" />
+
+                                <div class="relative w-full max-w-full">
+
+                                    <label for="search" class="sr-only">Rechercher un emprunt</label>
+
+                                    <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
+                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+
+                                    <input id="search"
+                                           name="q"
+                                           type="text"
+                                           inputmode="search"
+                                           autocomplete="off"
+                                           th:value="${q}"
+                                           placeholder="Rechercher par ID emprunt, ID membre, membre, statut, origine…"
+                                           class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           aria-describedby="searchHint resultsCount resultsLabel triActive"
+                                           aria-controls="suggestPanel"
+                                           aria-expanded="false" />
+
+                                    <button id="searchClearInline"
+                                            type="button"
+                                            class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                            aria-label="Effacer la recherche">
+                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+
+                                    <button type="submit" class="sr-only">Rechercher</button>
+
+                                    <div id="suggestPanel"
+                                         class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                                         role="listbox"
+                                         aria-label="Suggestions">
+                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+                                    </div>
+
+                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                </div>
+                            </form>
+
+                            <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 max-w-full flex-1">
+                                    <form th:action="@{/admin/emprunts}" method="get" class="max-w-full">
+                                        <input type="hidden" name="page" value="0" />
+                                        <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                                        <input type="hidden" name="q" th:value="${q}" />
+
+                                        <div class="flex max-w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+                                            <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                                                <label for="sortSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                                    Trier par
+                                                </label>
+
+                                                <select id="sortSelect"
+                                                        name="sort"
+                                                        class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72"
+                                                        aria-label="Trier les résultats">
+                                                    <option value="recent" th:selected="${sort == 'recent' or sort == null or sort == ''}">Ajout récent</option>
+                                                    <option value="oldest" th:selected="${sort == 'oldest'}">Ajout ancien</option>
+                                                    <option value="dueSoon" th:selected="${sort == 'dueSoon'}">Échéance proche</option>
+                                                    <option value="status" th:selected="${sort == 'status'}">Statut puis date</option>
+                                                    <option value="member" th:selected="${sort == 'member'}">Membre puis date</option>
+                                                    <option value="origin" th:selected="${sort == 'origin'}">Origine puis date</option>
+                                                </select>
+
+                                                <button type="submit" class="sr-only">Appliquer le tri</button>
+                                            </div>
+
+                                            <p id="triActive" class="text-xs font-medium text-gray-600 sm:text-sm">
+                                                <span class="text-gray-500">Tri actif :</span>
+                                                <span class="font-medium text-gray-900" th:switch="${sort}">
+                                                    <span th:case="'recent'">Ajout récent</span>
+                                                    <span th:case="'oldest'">Ajout ancien</span>
+                                                    <span th:case="'dueSoon'">Échéance proche</span>
+                                                    <span th:case="'status'">Statut puis date</span>
+                                                    <span th:case="'member'">Membre puis date</span>
+                                                    <span th:case="'origin'">Origine puis date</span>
+                                                    <span th:case="*">Ajout récent</span>
+                                                </span>
+                                            </p>
+
+                                            <div id="sortAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                        </div>
+                                    </form>
+
+                                    <p id="searchHint" class="mt-2 text-sm text-gray-600">
+                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
+                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
+                                    </p>
+                                </div>
+
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
+                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
+                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="mt-6 max-w-full text-sm text-gray-700">
+
+                <section class="mt-6 max-w-full first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">Prêts</h2>
+
+                    <div class="mt-2 max-w-full space-y-2">
+                        <p th:if="${loansCount > 0 and hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? 'emprunt trouvé' : 'emprunts trouvés'}">emprunts trouvés</span>
+                        </p>
+
+                        <p th:if="${loansCount > 0 and !hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${loansCount}">0</span>
+                            <span th:text="${loansCount == 1 ? 'emprunt chargé' : 'emprunts chargés'}">emprunts chargés</span>
+                        </p>
+
+                        <p th:if="${loansCount == 0 and hasQuery}">
+                            Aucun emprunt ne correspond à cette recherche.
+                        </p>
+
+                        <p th:if="${loansCount == 0 and !hasQuery}">
+                            Aucun emprunt disponible pour le moment.
+                        </p>
+
+                        <p th:if="${paginationEnabled}" class="text-sm text-gray-600">
+                            <span>Page </span>
+                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+                            <span> sur </span>
+                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+                            <span> · </span>
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? ' emprunt au total' : ' emprunts au total'}"> emprunts au total</span>
+                        </p>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${loansCount == 0}">
+                        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                            <h2 class="text-base font-semibold text-gray-900" th:text="${hasQuery ? 'Aucun résultat' : 'Aucun emprunt disponible'}">Aucun emprunt disponible</h2>
+                            <div class="mt-2 space-y-2">
+                                <p class="break-words hyphens-auto"
+                                   th:text="${hasQuery ? 'Essaie un autre mot-clé ou efface la recherche.' : 'Aucun prêt n’est enregistré pour le moment.'}">
+                                    Aucun prêt n’est enregistré pour le moment.
+                                </p>
+                                <div th:if="${hasQuery}">
+                                    <a th:href="@{/admin/emprunts(sort=${sort}, size=${pageSize})}"
+                                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Effacer la recherche
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${loansCount > 0}">
+
+                        <ul th:if="${isSingle}"
+                            class="grid max-w-full grid-cols-1 gap-4"
+                            role="list">
+
+                            <li th:each="loan : ${loans}"
+                                data-loan-card
+                                th:attr="data-id-loan=${loan.idLoan},
+                                         data-id-user=${loan.idUser},
+                                         data-first-name=${loan.firstNameUser},
+                                         data-last-name=${loan.lastNameUser},
+                                         data-status=${loan.statusLoanLabel},
+                                         data-origin=${loan.originLoanLabel},
+                                         data-items=${loanItemCounts[loan.idLoan] ?: 0},
+                                         data-item-summary=${loanItemSummaries[loan.idLoan] ?: ''},
+                                         data-search=${#strings.toLowerCase(
+                                             'emprunt ' + (loan.idLoan ?: '') + ' ' +
+                                             'pret ' + (loan.idLoan ?: '') + ' ' +
+                                             'loan ' + (loan.idLoan ?: '') + ' ' +
+                                             'membre ' + (loan.idUser ?: '') + ' ' +
+                                             'user ' + (loan.idUser ?: '') + ' ' +
+                                             (loan.firstNameUser ?: '') + ' ' +
+                                             (loan.lastNameUser ?: '') + ' ' +
+                                             ((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')) + ' ' +
+                                             (loan.statusLoan ?: '') + ' ' +
+                                             (loan.statusLoanLabel ?: '') + ' ' +
+                                             (loan.originLoan ?: '') + ' ' +
+                                             (loan.originLoanLabel ?: '') + ' ' +
+                                             (loan.startDateLoan != null ? #temporals.format(loan.startDateLoan, 'dd/MM/yyyy HH:mm') : '') + ' ' +
+                                             (loan.startDateLoan != null ? #temporals.format(loan.startDateLoan, 'yyyy-MM-dd HH:mm') : '') + ' ' +
+                                             (loan.dueDateLoan != null ? #temporals.format(loan.dueDateLoan, 'dd/MM/yyyy') : '') + ' ' +
+                                             (loan.dueDateLoan != null ? #temporals.format(loan.dueDateLoan, 'yyyy-MM-dd') : '') + ' ' +
+                                             ((loan.returnedLoan != null && loan.returnedLoan) ? 'retourne rendu restitue retournee returned' : 'en cours actif ongoing non retourne') + ' ' +
+                                             ((loan.overdueLoan != null && loan.overdueLoan) ? 'retard late overdue' : '') + ' ' +
+                                             (loanItemSummaries[loan.idLoan] ?: '') + ' ' +
+                                             ((loanItemCounts[loan.idLoan] ?: 0) + ' objet objets item items')
+                                         )}"
+                                class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
+
+                                <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+                                    <div class="min-w-0 max-w-full flex-1">
+                                        <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+                                            <h3 class="break-words text-base font-semibold text-gray-900">
+                                                <span>Emprunt</span>
+                                                <span th:text="${loan.idLoan}">0</span>
+                                            </h3>
+
+                                            <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                                  th:text="${loan.statusLoan == T(com.magiclibrary.enums.LoanStatus).RETURNED ? 'Restitué' : (loan.overdueLoan ? 'En retard' : 'En cours')}"
+                                                  th:classappend="${loan.statusLoan == T(com.magiclibrary.enums.LoanStatus).RETURNED ? ' bg-gray-50 text-gray-700 ring-gray-200' : (loan.overdueLoan ? ' bg-gray-900 text-white ring-gray-900' : ' bg-blue-50 text-blue-900 ring-blue-200')}">
+                                                En cours
+                                            </span>
+
+                                            <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
+                                                  th:text="${loan.originLoanLabel ?: 'Origine inconnue'}"
+                                                  th:classappend="${loan.originLoan == 'ADMIN' ? ' border-gray-300 bg-white text-gray-700' : ' border-gray-200 bg-gray-50 text-gray-600'}">
+                                                Administrateur
+                                            </span>
+
+                                            <span th:if="${currentUserLoans[loan.idLoan]}"
+                                                  class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900">
+                                                Mon emprunt
+                                            </span>
+                                        </div>
+
+                                        <p class="mt-4 break-words text-base font-semibold text-gray-900"
+                                           th:text="${((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')).trim().isEmpty() ? 'Membre inconnu' : ((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')).trim()}">
+                                            Nom du membre
+                                        </p>
+
+                                        <p class="mt-1 break-words text-sm text-gray-600">
+                                            <span>ID membre</span>
+                                            <span class="font-medium text-gray-900" th:text="${loan.idUser}">—</span>
+                                        </p>
+
+                                        <p class="mt-3 break-words hyphens-auto text-sm text-gray-500"
+                                           th:text="${loanItemSummaries[loan.idLoan] ?: 'Aucun objet associé'}">
+                                            Aucun objet associé
+                                        </p>
+
+                                        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Début</p>
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${loan.startDateLoan != null ? #temporals.format(loan.startDateLoan, 'dd/MM/yyyy HH:mm') : '—'}">
+                                                    —
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Échéance</p>
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${loan.dueDateLoan != null ? #temporals.format(loan.dueDateLoan, 'dd/MM/yyyy') : '—'}">
+                                                    —
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Retour</p>
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${loan.returnDateLoan != null ? #temporals.format(loan.returnDateLoan, 'dd/MM/yyyy HH:mm') : 'Non restitué'}">
+                                                    Non restitué
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Objets</p>
+                                                <div class="mt-2">
+                                                    <span class="inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium"
+                                                          th:text="${(loanItemCounts[loan.idLoan] ?: 0) == 1 ? '1 objet' : (loanItemCounts[loan.idLoan] ?: 0) + ' objets'}"
+                                                          th:classappend="${(loanItemCounts[loan.idLoan] ?: 0) > 0 ? ' border-blue-200 bg-blue-50 text-blue-900' : ' border-gray-300 bg-gray-50 text-gray-700'}">
+                                                        0 objets
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="w-full shrink-0 border-t border-gray-100 pt-5 lg:w-auto lg:min-w-[24rem] lg:self-end lg:border-t-0 lg:pt-0">
+                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+                                            <a th:href="@{/admin/emprunts/{id}(id=${loan.idLoan})}"
+                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Voir l’emprunt
+                                            </a>
+
+                                            <form th:if="${loan.returnedLoan == null or !loan.returnedLoan}"
+                                                  th:action="@{/admin/emprunts/{id}/return(id=${loan.idLoan})}"
+                                                  method="post"
+                                                  class="flex w-full flex-1">
+                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                <button type="button"
+                                                        data-open-return-modal
+                                                        class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Restituer
+                                                </button>
+
+                                                <div data-return-modal
+                                                     class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
+                                                     aria-hidden="true">
+                                                    <div data-close-return-modal
+                                                         class="absolute inset-0 bg-gray-900/50 backdrop-blur-[1px]"></div>
+
+                                                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
+                                                        <div class="space-y-3">
+                                                            <h3 class="text-lg font-semibold text-gray-900">
+                                                                Confirmer la restitution
+                                                            </h3>
+
+                                                            <p class="text-sm text-gray-700">
+                                                                Cet emprunt va être marqué comme restitué. Cette action doit être confirmée avant validation.
+                                                            </p>
+                                                        </div>
+
+                                                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                                            <button type="button"
+                                                                    data-cancel-return-modal
+                                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                                Annuler
+                                                            </button>
+
+                                                            <button type="submit"
+                                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                                Confirmer la restitution
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </li>
+                        </ul>
+
+                        <ul th:if="${!isSingle}"
+                            class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                            role="list">
+
+                            <li th:each="loan : ${loans}"
+                                data-loan-card
+                                th:attr="data-id-loan=${loan.idLoan},
+                                         data-id-user=${loan.idUser},
+                                         data-first-name=${loan.firstNameUser},
+                                         data-last-name=${loan.lastNameUser},
+                                         data-status=${loan.statusLoanLabel},
+                                         data-origin=${loan.originLoanLabel},
+                                         data-items=${loanItemCounts[loan.idLoan] ?: 0},
+                                         data-item-summary=${loanItemSummaries[loan.idLoan] ?: ''},
+                                         data-search=${#strings.toLowerCase(
+                                             'emprunt ' + (loan.idLoan ?: '') + ' ' +
+                                             'pret ' + (loan.idLoan ?: '') + ' ' +
+                                             'loan ' + (loan.idLoan ?: '') + ' ' +
+                                             'membre ' + (loan.idUser ?: '') + ' ' +
+                                             'user ' + (loan.idUser ?: '') + ' ' +
+                                             (loan.firstNameUser ?: '') + ' ' +
+                                             (loan.lastNameUser ?: '') + ' ' +
+                                             ((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')) + ' ' +
+                                             (loan.statusLoan ?: '') + ' ' +
+                                             (loan.statusLoanLabel ?: '') + ' ' +
+                                             (loan.originLoan ?: '') + ' ' +
+                                             (loan.originLoanLabel ?: '') + ' ' +
+                                             (loan.startDateLoan != null ? #temporals.format(loan.startDateLoan, 'dd/MM/yyyy HH:mm') : '') + ' ' +
+                                             (loan.startDateLoan != null ? #temporals.format(loan.startDateLoan, 'yyyy-MM-dd HH:mm') : '') + ' ' +
+                                             (loan.dueDateLoan != null ? #temporals.format(loan.dueDateLoan, 'dd/MM/yyyy') : '') + ' ' +
+                                             (loan.dueDateLoan != null ? #temporals.format(loan.dueDateLoan, 'yyyy-MM-dd') : '') + ' ' +
+                                             ((loan.returnedLoan != null && loan.returnedLoan) ? 'retourne rendu restitue retournee returned' : 'en cours actif ongoing non retourne') + ' ' +
+                                             ((loan.overdueLoan != null && loan.overdueLoan) ? 'retard late overdue' : '') + ' ' +
+                                             (loanItemSummaries[loan.idLoan] ?: '') + ' ' +
+                                             ((loanItemCounts[loan.idLoan] ?: 0) + ' objet objets item items')
+                                         )}"
+                                class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+
+                                <div class="flex max-w-full flex-1 flex-col gap-4">
+                                    <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+                                        <h3 class="break-words text-base font-semibold text-gray-900">
+                                            <span>Emprunt</span>
+                                            <span th:text="${loan.idLoan}">0</span>
+                                        </h3>
+
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                              th:text="${loan.statusLoan == T(com.magiclibrary.enums.LoanStatus).RETURNED ? 'Restitué' : (loan.overdueLoan ? 'En retard' : 'En cours')}"
+                                              th:classappend="${loan.statusLoan == T(com.magiclibrary.enums.LoanStatus).RETURNED ? ' bg-gray-50 text-gray-700 ring-gray-200' : (loan.overdueLoan ? ' bg-gray-900 text-white ring-gray-900' : ' bg-blue-50 text-blue-900 ring-blue-200')}">
+                                            En cours
+                                        </span>
+
+                                        <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
+                                              th:text="${loan.originLoanLabel ?: 'Origine inconnue'}"
+                                              th:classappend="${loan.originLoan == 'ADMIN' ? ' border-gray-300 bg-white text-gray-700' : ' border-gray-200 bg-gray-50 text-gray-600'}">
+                                            Administrateur
+                                        </span>
+
+                                        <span th:if="${currentUserLoans[loan.idLoan]}"
+                                              class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900">
+                                            Mon emprunt
+                                        </span>
+                                    </div>
+
+                                    <div class="min-w-0 max-w-full flex-1">
+                                        <p class="break-words text-base font-semibold text-gray-900"
+                                           th:text="${((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')).trim().isEmpty() ? 'Membre inconnu' : ((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')).trim()}">
+                                            Nom du membre
+                                        </p>
+
+                                        <p class="mt-1 break-words text-sm text-gray-600">
+                                            <span>ID membre</span>
+                                            <span class="font-medium text-gray-900" th:text="${loan.idUser}">—</span>
+                                        </p>
+
+                                        <p class="mt-3 break-words hyphens-auto text-sm text-gray-500"
+                                           th:text="${loanItemSummaries[loan.idLoan] ?: 'Aucun objet associé'}">
+                                            Aucun objet associé
+                                        </p>
+
+                                        <p class="mt-3 break-words hyphens-auto text-sm text-gray-700"
+                                           th:text="${loan.dueDateLoan != null ? 'Échéance ' + #temporals.format(loan.dueDateLoan, 'dd/MM/yyyy') : 'Échéance non définie'}">
+                                            Échéance —
+                                        </p>
+
+                                        <p class="mt-2 break-words hyphens-auto text-sm text-gray-700"
+                                           th:text="${(loanItemCounts[loan.idLoan] ?: 0) == 1 ? '1 objet' : (loanItemCounts[loan.idLoan] ?: 0) + ' objets'}">
+                                            0 objets
+                                        </p>
+                                    </div>
+
+                                    <div class="mt-auto border-t border-gray-100 pt-4">
+                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+                                            <a th:href="@{/admin/emprunts/{id}(id=${loan.idLoan})}"
+                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Voir l’emprunt
+                                            </a>
+
+                                            <form th:if="${loan.returnedLoan == null or !loan.returnedLoan}"
+                                                  th:action="@{/admin/emprunts/{id}/return(id=${loan.idLoan})}"
+                                                  method="post"
+                                                  class="flex w-full flex-1">
+                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                                <button type="button"
+                                                        data-open-return-modal
+                                                        class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Restituer
+                                                </button>
+
+                                                <div data-return-modal
+                                                     class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
+                                                     aria-hidden="true">
+                                                    <div data-close-return-modal
+                                                         class="absolute inset-0 bg-gray-900/50 backdrop-blur-[1px]"></div>
+
+                                                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
+                                                        <div class="space-y-3">
+                                                            <h3 class="text-lg font-semibold text-gray-900">
+                                                                Confirmer la restitution
+                                                            </h3>
+
+                                                            <p class="text-sm text-gray-700">
+                                                                Cet emprunt va être marqué comme restitué. Cette action doit être confirmée avant validation.
+                                                            </p>
+                                                        </div>
+
+                                                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                                            <button type="button"
+                                                                    data-cancel-return-modal
+                                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                                Annuler
+                                                            </button>
+
+                                                            <button type="submit"
+                                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                                Confirmer la restitution
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </li>
+
+                        </ul>
+
+                        <nav th:if="${paginationEnabled}"
+                             class="mt-6 border-t border-gray-100 pt-6"
+                             aria-label="Pagination des emprunts">
+                            <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <p class="text-sm text-gray-600">
+                                    Navigation entre les pages d’emprunts.
+                                </p>
+
+                                <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+                                    <span th:if="${!hasPrevious}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Précédent
+                                    </span>
+
+                                    <a th:if="${hasPrevious}"
+                                       th:href="@{/admin/emprunts(page=${currentPage - 1}, size=${pageSize}, sort=${sort}, q=${q})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Précédent
+                                    </a>
+
+                                    <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+                                        <span th:if="${pageNumber == currentPage}"
+                                              aria-current="page"
+                                              th:text="${pageNumber + 1}"
+                                              class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm">
+                                            1
+                                        </span>
+
+                                        <a th:if="${pageNumber != currentPage}"
+                                           th:href="@{/admin/emprunts(page=${pageNumber}, size=${pageSize}, sort=${sort}, q=${q})}"
+                                           th:text="${pageNumber + 1}"
+                                           th:aria-label="'Aller à la page ' + (${pageNumber + 1})"
+                                           class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            1
+                                        </a>
+                                    </th:block>
+
+                                    <span th:if="${!hasNext}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Suivant
+                                    </span>
+
+                                    <a th:if="${hasNext}"
+                                       th:href="@{/admin/emprunts(page=${currentPage + 1}, size=${pageSize}, sort=${sort}, q=${q})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Suivant
+                                    </a>
+                                </div>
+                            </div>
+                        </nav>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <script>
+            (function () {
+                const search = document.getElementById('search');
+                const searchForm = document.getElementById('searchForm');
+                const hint = document.getElementById('searchHint');
+                const panel = document.getElementById('suggestPanel');
+                const inner = document.getElementById('suggestInner');
+                const suggestAnnounce = document.getElementById('suggestAnnounce');
+                const clearInline = document.getElementById('searchClearInline');
+                const sortSelect = document.getElementById('sortSelect');
+                const sortAnnounce = document.getElementById('sortAnnounce');
+                const modalForms = Array.from(document.querySelectorAll('form')).filter(function (form) {
+                    return form.querySelector('[data-open-return-modal]') && form.querySelector('[data-return-modal]');
+                });
+
+                if (!search || !searchForm) return;
+
+                let activeIndex = -1;
+                let currentOptions = [];
+                let suggestTimer = null;
+                let submitTimer = null;
+                let fetchController = null;
+                let fetchSequence = 0;
+                let lastSubmittedValue = String(search.value || '').trim();
+
+                function isNumericQuery(value) {
+                    return /^[0-9]+$/.test(String(value ?? '').trim());
+                }
+
+                function thresholdReached(q) {
+                    const raw = String(q ?? '').trim();
+                    if (!raw) return false;
+
+                    if (isNumericQuery(raw)) {
+                        return raw.length >= 1;
+                    }
+
+                    return raw.length >= 2;
+                }
+
+                function updateInlineClear(q) {
+                    if (!clearInline) return;
+                    const has = Boolean((q || '').trim());
+                    clearInline.classList.toggle('hidden', !has);
+                }
+
+                function updateHint(q) {
+                    if (!hint) return;
+                    const trimmed = (q || '').trim();
+
+                    if (!trimmed) {
+                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        return;
+                    }
+
+                    if (isNumericQuery(trimmed)) {
+                        hint.textContent = 'Suggestions disponibles dès 1 chiffre pour un identifiant.';
+                        return;
+                    }
+
+                    hint.textContent = 'La page se met à jour automatiquement pendant la saisie.';
+                }
+
+                function escapeHtml(s) {
+                    return String(s ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function setPanel(open) {
+                    if (!panel) return;
+
+                    panel.classList.toggle('hidden', !open);
+                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                    if (!open) {
+                        activeIndex = -1;
+                        currentOptions = [];
+                        search.setAttribute('aria-activedescendant', '');
+                    }
+                }
+
+                function closePanel() {
+                    setPanel(false);
+                    if (inner) inner.innerHTML = '';
+                }
+
+                function openPanel() {
+                    setPanel(true);
+                }
+
+                function renderOptions(list) {
+                    if (!inner) return;
+
+                    if (list.length === 0) {
+                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+                        openPanel();
+                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+                        return;
+                    }
+
+                    let html = '';
+
+                    for (let i = 0; i < list.length; i++) {
+                        const it = list[i];
+                        const optId = 'suggest-opt-' + escapeHtml(it.idLoan) + '-' + i;
+                        const memberFullName = [it.firstName, it.lastName].filter(Boolean).join(' ').trim();
+                        const primary = memberFullName ? ('Emprunt ' + (it.idLoan || '') + ' • ' + memberFullName) : ('Emprunt ' + (it.idLoan || ''));
+                        const secondaryParts = [
+                            it.idUser ? ('ID membre ' + it.idUser) : '',
+                            it.status || '',
+                            it.origin || ''
+                        ].filter(Boolean);
+                        const secondary = secondaryParts.join(' • ');
+                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
+                        const selectedLoanUrl = '/admin/emprunts?selectedLoanId=' + encodeURIComponent(it.idLoan);
+
+                        html +=
+                            '<div ' +
+                            'id="' + optId + '" ' +
+                            'role="option" ' +
+                            'aria-selected="false" ' +
+                            'aria-label="' + escapeHtml(ariaLabel) + '" ' +
+                            'tabindex="-1" ' +
+                            'data-suggest-index="' + i + '" ' +
+                            'data-suggest-url="' + escapeHtml(selectedLoanUrl) + '" ' +
+                            'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
+                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
+                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
+                            '</div>';
+                    }
+
+                    inner.innerHTML = html;
+                    openPanel();
+
+                    if (suggestAnnounce) {
+                        suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+                    }
+                }
+
+                function setActive(newIndex) {
+                    if (!inner) return;
+
+                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
+                    if (options.length === 0) return;
+
+                    if (newIndex < 0) newIndex = options.length - 1;
+                    if (newIndex >= options.length) newIndex = 0;
+
+                    activeIndex = newIndex;
+
+                    options.forEach(function (el, i) {
+                        const isActive = i === activeIndex;
+                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        el.classList.toggle('bg-gray-50', isActive);
+                    });
+
+                    const activeEl = options[activeIndex];
+                    if (activeEl && activeEl.id) {
+                        search.setAttribute('aria-activedescendant', activeEl.id);
+                        try {
+                            activeEl.scrollIntoView({ block: 'nearest' });
+                        } catch (e) {
+                        }
+                    }
+                }
+
+                function goToSuggestionAt(idx) {
+                    const it = currentOptions[idx];
+                    if (!it || !it.idLoan) return;
+
+                    const currentQuery = encodeURIComponent(String(search.value || '').trim());
+
+                    window.location.href =
+                        '/admin/emprunts?selectedLoanId=' +
+                        encodeURIComponent(it.idLoan) +
+                        '&q=' +
+                        currentQuery;
+                }
+
+                function submitSearchNow() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (trimmed === lastSubmittedValue) {
+                        return;
+                    }
+
+                    lastSubmittedValue = trimmed;
+                    closePanel();
+                    searchForm.requestSubmit();
+                }
+
+                function scheduleSearchSubmit() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    if (!trimmed) {
+                        submitTimer = window.setTimeout(function () {
+                            submitSearchNow();
+                        }, 150);
+                        return;
+                    }
+
+                    if (!thresholdReached(trimmed)) {
+                        return;
+                    }
+
+                    submitTimer = window.setTimeout(function () {
+                        submitSearchNow();
+                    }, 450);
+                }
+
+                async function fetchSuggest(q) {
+                    const trimmed = String(q ?? '').trim();
+
+                    if (!thresholdReached(trimmed)) {
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                        return;
+                    }
+
+                    if (!inner) return;
+
+                    if (fetchController) {
+                        fetchController.abort();
+                    }
+
+                    fetchController = new AbortController();
+                    const currentFetch = ++fetchSequence;
+
+                    try {
+                        const url = '/admin/emprunts/suggest?q=' + encodeURIComponent(trimmed);
+                        const res = await fetch(url, {
+                            headers: { 'Accept': 'application/json' },
+                            signal: fetchController.signal
+                        });
+
+                        if (!res.ok || currentFetch !== fetchSequence) {
+                            return;
+                        }
+
+                        const data = await res.json();
+                        if (currentFetch !== fetchSequence) return;
+
+                        const list = Array.isArray(data) ? data : [];
+                        currentOptions = list.slice(0, 8).map(function (it) {
+                            return {
+                                idLoan: it && it.idLoan != null ? it.idLoan : '',
+                                idUser: it && it.idUser != null ? it.idUser : '',
+                                firstName: it && it.firstName != null ? it.firstName : '',
+                                lastName: it && it.lastName != null ? it.lastName : '',
+                                status: it && it.status != null ? it.status : '',
+                                origin: it && it.origin != null ? it.origin : ''
+                            };
+                        });
+
+                        renderOptions(currentOptions);
+
+                        if (currentOptions.length > 0) {
+                            setActive(0);
+                        }
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                    }
+                }
+
+                function scheduleSuggest() {
+                    const q = search.value || '';
+                    updateHint(q);
+
+                    if (suggestTimer) window.clearTimeout(suggestTimer);
+                    suggestTimer = window.setTimeout(function () {
+                        fetchSuggest(q);
+                    }, 180);
+                }
+
+                function clearSearchAndSubmit() {
+                    search.value = '';
+                    updateInlineClear('');
+                    updateHint('');
+                    closePanel();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    submitSearchNow();
+                }
+
+                function closeModal(modal) {
+                    if (!modal) return;
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+
+                    const anotherOpenModal = modalForms.some(function (form) {
+                        const currentModal = form.querySelector('[data-return-modal]');
+                        return currentModal && currentModal.getAttribute('aria-hidden') === 'false';
+                    });
+
+                    if (!anotherOpenModal) {
+                        document.body.classList.remove('overflow-hidden');
+                    }
+                }
+
+                function openModal(modal) {
+                    if (!modal) return;
+
+                    modalForms.forEach(function (form) {
+                        const currentModal = form.querySelector('[data-return-modal]');
+                        if (currentModal && currentModal !== modal) {
+                            closeModal(currentModal);
+                        }
+                    });
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                function handleEscape(e) {
+                    const key = e && e.key ? e.key : '';
+
+                    const openReturnModal = modalForms
+                        .map(function (form) {
+                            return form.querySelector('[data-return-modal]');
+                        })
+                        .find(function (modal) {
+                            return modal && modal.getAttribute('aria-hidden') === 'false';
+                        });
+
+                    if (openReturnModal) {
+                        if (key === 'Escape' || key === 'Esc') {
+                            e.preventDefault();
+                            closeModal(openReturnModal);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    if (key !== 'Escape' && key !== 'Esc') {
+                        return false;
+                    }
+
+                    e.preventDefault();
+
+                    const currentValue = String(search.value || '').trim();
+
+                    if (currentValue) {
+                        clearSearchAndSubmit();
+                        return true;
+                    }
+
+                    closePanel();
+                    return true;
+                }
+
+                if (sortSelect) {
+                    sortSelect.addEventListener('change', function () {
+                        const opt = sortSelect.options && sortSelect.selectedIndex >= 0 ? sortSelect.options[sortSelect.selectedIndex] : null;
+                        const label = opt && opt.text ? opt.text : '';
+
+                        if (sortAnnounce) {
+                            sortAnnounce.textContent = label ? ('Tri appliqué : ' + label) : 'Tri appliqué.';
+                        }
+
+                        window.setTimeout(function () {
+                            if (sortSelect.form) sortSelect.form.requestSubmit();
+                        }, 120);
+                    });
+                }
+
+                document.addEventListener('click', function (e) {
+                    if (!panel || panel.classList.contains('hidden')) return;
+                    const target = e.target;
+                    if (target === search || panel.contains(target)) return;
+                    closePanel();
+                });
+
+                window.addEventListener('resize', function () {
+                    closePanel();
+                    modalForms.forEach(function (form) {
+                        const modal = form.querySelector('[data-return-modal]');
+                        if (modal) {
+                            closeModal(modal);
+                        }
+                    });
+                });
+
+                window.addEventListener('scroll', function () {
+                    if (panel && !panel.classList.contains('hidden')) {
+                        closePanel();
+                    }
+                }, true);
+
+                document.addEventListener('keydown', function (e) {
+                    handleEscape(e);
+                }, true);
+
+                if (inner) {
+                    inner.addEventListener('mousedown', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        e.preventDefault();
+                    });
+
+                    inner.addEventListener('click', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        const idx = Number(opt.getAttribute('data-suggest-index'));
+                        if (!Number.isFinite(idx)) return;
+                        goToSuggestionAt(idx);
+                    });
+                }
+
+                if (clearInline) {
+                    clearInline.addEventListener('click', function () {
+                        clearSearchAndSubmit();
+                    });
+                }
+
+                modalForms.forEach(function (form) {
+                    const openButton = form.querySelector('[data-open-return-modal]');
+                    const modal = form.querySelector('[data-return-modal]');
+                    const cancelButton = form.querySelector('[data-cancel-return-modal]');
+                    const overlay = modal ? modal.querySelector('[data-close-return-modal]') : null;
+
+                    if (!openButton || !modal || !cancelButton || !overlay) {
+                        return;
+                    }
+
+                    openButton.addEventListener('click', function () {
+                        openModal(modal);
+                    });
+
+                    cancelButton.addEventListener('click', function () {
+                        closeModal(modal);
+                    });
+
+                    overlay.addEventListener('click', function () {
+                        closeModal(modal);
+                    });
+                });
+
+                search.addEventListener('keydown', function (e) {
+                    if (handleEscape(e)) return;
+
+                    const isOpen = panel && !panel.classList.contains('hidden');
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (!isOpen) {
+                            scheduleSuggest();
+                            window.setTimeout(function () {
+                                if (panel && !panel.classList.contains('hidden')) {
+                                    setActive(0);
+                                }
+                            }, 200);
+                        } else {
+                            setActive(activeIndex + 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'ArrowUp') {
+                        if (isOpen) {
+                            e.preventDefault();
+                            setActive(activeIndex - 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'Enter') {
+                        if (isOpen && activeIndex >= 0) {
+                            e.preventDefault();
+                            goToSuggestionAt(activeIndex);
+                            return;
+                        }
+
+                        if (submitTimer) {
+                            window.clearTimeout(submitTimer);
+                        }
+
+                        submitSearchNow();
+                        return;
+                    }
+
+                    if (e.key === 'Tab' && isOpen) {
+                        closePanel();
+                    }
+                });
+
+                search.addEventListener('input', function () {
+                    updateInlineClear(search.value);
+                    scheduleSuggest();
+                    scheduleSearchSubmit();
+                });
+
+                search.addEventListener('focus', function () {
+                    const q = (search.value || '').trim();
+                    if (q) scheduleSuggest();
+                });
+
+                updateHint(search.value || '');
+                updateInlineClear(search.value || '');
+                closePanel();
+
+                const initialQuery = String(search.value || '').trim();
+
+                if (initialQuery) {
+                    window.setTimeout(function () {
+                        search.focus();
+                        const length = search.value.length;
+                        search.setSelectionRange(length, length);
+                    }, 80);
+                }
+
+                if (thresholdReached(initialQuery)) {
+                    window.setTimeout(function () {
+                        fetchSuggest(initialQuery);
+                    }, 120);
+                }
+
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

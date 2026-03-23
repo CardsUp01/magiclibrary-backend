@@ -1,0 +1,125 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Mentions légales'">
+
+    <th:block th:fragment="content">
+
+        <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+            <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <h1 class="text-lg font-semibold text-gray-900">Mentions légales</h1>
+
+                    <p class="mt-2 text-xs text-gray-500">Dernière mise à jour : Janvier 2026</p>
+
+                    <p class="mt-2 text-sm text-gray-600">
+                        Application réservée à un usage interne par les membres habilités de l’association.
+                    </p>
+                </div>
+
+                <div th:if="${#authorization.expression('isAuthenticated()')}"
+                     class="shrink-0 sm:self-start">
+                    <a th:href="@{/accueil}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">
+                        Retour à l’accueil
+                    </a>
+                </div>
+            </header>
+
+            <div class="mt-6 break-words text-sm text-gray-700">
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">1. Éditeur de l’application</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application <span class="font-medium">MagicLibrary</span> est éditée par l’association
+                            <span class="font-medium">Les Magiciens d’Abord</span>, association loi 1901 déclarée en France.
+                        </p>
+                        <p>
+                            L’application est exclusivement destinée à un usage interne par les membres habilités de l’association.
+                            Elle n’est pas accessible au public et n’a aucune vocation commerciale.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">2. Responsable de publication</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Le responsable de publication est le représentant légal de l’association Les Magiciens d’Abord.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">3. Hébergement</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application est hébergée sur un environnement technique interne sécurisé, administré pour les besoins de l’association.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">4. Finalité de l’application</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            <span class="font-medium">MagicLibrary</span> est un outil interne permettant :
+                        </p>
+                        <ul class="list-disc space-y-1 pl-4">
+                            <li>la gestion des objets de la bibliothèque réelle.</li>
+                            <li>la gestion des emprunts.</li>
+                            <li>l’administration des comptes utilisateurs.</li>
+                            <li>la communication interne via le formulaire de contact.</li>
+                        </ul>
+                        <p>L’application n’a aucune vocation commerciale.</p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">5. Propriété intellectuelle</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Le nom MagicLibrary, le logo de l’association ainsi que l’ensemble des éléments graphiques et contenus présents dans l’application
+                            sont protégés.
+                        </p>
+                        <p>
+                            Toute reproduction, diffusion ou utilisation non autorisée est interdite.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">6. Liens externes</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application peut contenir des liens vers des sites externes (Facebook, site officiel de l’association).
+                            L’association ne peut être tenue responsable du contenu ou des pratiques de ces sites tiers.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">7. Limitation de responsabilité</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’association s’efforce d’assurer l’exactitude des informations présentes dans l’application, sans pouvoir garantir l’absence
+                            d’erreurs ou d’omissions. L’application étant destinée à un usage interne, l’utilisateur demeure responsable de la vérification
+                            des informations qu’il consulte ou saisit.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">8. Contact</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Pour toute question relative aux mentions légales, vous pouvez utiliser la page
+                            <a th:href="@{/contact}" class="font-medium text-blue-700 hover:underline">Contact</a>.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+    </th:block>
+
+</th:block>

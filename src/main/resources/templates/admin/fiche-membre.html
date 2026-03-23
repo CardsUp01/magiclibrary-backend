@@ -1,0 +1,307 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Fiche membre', activePage='admin-members'">
+
+    <th:block th:fragment="content">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Fiche membre</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation détaillée d’un compte membre de l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/admin/membres}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour aux membres
+                        </a>
+                    </div>
+                </div>
+
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                    <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+                        <div class="min-w-0 max-w-full flex-1">
+                            <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-start">
+                                <div class="shrink-0">
+                                    <div th:if="${user.avatar != null and !#strings.isEmpty(user.avatar)}"
+                                         class="h-20 w-20 overflow-hidden rounded-full ring-1 ring-gray-200">
+                                        <img th:src="${user.avatar}"
+                                             th:alt="${'Avatar de ' + ((user.firstName ?: '') + ' ' + (user.lastName ?: ''))}"
+                                             class="h-full w-full object-cover" />
+                                    </div>
+
+                                    <div th:if="${user.avatar == null or #strings.isEmpty(user.avatar)}"
+                                         class="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 text-lg font-semibold text-gray-700 ring-1 ring-gray-200"
+                                         aria-hidden="true"
+                                         th:text="${#strings.substring((user.firstName ?: ''), 0, user.firstName != null && !#strings.isEmpty(user.firstName) ? 1 : 0) + #strings.substring((user.lastName ?: ''), 0, user.lastName != null && !#strings.isEmpty(user.lastName) ? 1 : 0)}">
+                                        JD
+                                    </div>
+                                </div>
+
+                                <div class="min-w-0 max-w-full flex-1">
+                                    <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+                                        <h2 class="break-words text-xl font-semibold text-gray-900"
+                                            th:text="${(user.firstName ?: '') + ' ' + (user.lastName ?: '')}">
+                                            Jean Dupont
+                                        </h2>
+
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                              th:classappend="${user.roleLabel == 'ADMIN' ? ' bg-gray-900 text-white ring-gray-900' : (user.roleLabel == 'MEMBRE' ? ' bg-blue-50 text-blue-900 ring-blue-200' : ' bg-gray-50 text-gray-700 ring-gray-200')}">
+                                            <span th:switch="${user.roleLabel}">
+                                                <span th:case="'ADMIN'">Administrateur</span>
+                                                <span th:case="'MEMBRE'">Membre</span>
+                                                <span th:case="'INVITE'">Invité</span>
+                                                <span th:case="*" th:text="${user.roleLabel}">Membre</span>
+                                            </span>
+                                        </span>
+
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                              th:text="${user.activeUser == true ? 'Actif' : 'Inactif'}"
+                                              th:classappend="${user.activeUser == true ? ' bg-blue-50 text-blue-900 ring-blue-200' : ' bg-gray-50 text-gray-700 ring-gray-200'}">
+                                            Actif
+                                        </span>
+                                    </div>
+
+                                    <p class="mt-2 break-all text-sm text-gray-700" th:text="${user.email}">
+                                        jean.dupont@example.com
+                                    </p>
+
+                                    <p class="mt-2 text-sm text-gray-700">
+                                        <span class="text-gray-500">ID</span>
+                                        <span class="font-medium text-gray-900" th:text="${user.idUser}">12</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shrink-0">
+                            <a th:href="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
+                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Modifier
+                            </a>
+                        </div>
+
+                    </div>
+                </section>
+
+                <div class="grid max-w-full grid-cols-1 gap-4 lg:grid-cols-3">
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                        <h2 class="text-base font-semibold text-gray-900">Informations du membre</h2>
+
+                        <div class="mt-6 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Civilité</p>
+                                <p class="mt-1 break-words text-sm text-gray-900"
+                                   th:text="${user.civility != null && !#strings.isEmpty(user.civility) ? user.civility : '—'}">
+                                    M
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">ID utilisateur</p>
+                                <p class="mt-1 break-words text-sm text-gray-900" th:text="${user.idUser}">12</p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Prénom</p>
+                                <p class="mt-1 break-words text-sm text-gray-900" th:text="${user.firstName}">Jean</p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Nom</p>
+                                <p class="mt-1 break-words text-sm text-gray-900" th:text="${user.lastName}">Dupont</p>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <p class="text-sm font-medium text-gray-500">Email</p>
+                                <p class="mt-1 break-all text-sm text-gray-900" th:text="${user.email}">jean.dupont@example.com</p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Téléphone</p>
+                                <p class="mt-1 break-words text-sm text-gray-900"
+                                   th:text="${user.phone != null && !#strings.isEmpty(user.phone) ? user.phone : 'Non renseigné'}">
+                                    Non renseigné
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Adresse</p>
+                                <p class="mt-1 break-words text-sm text-gray-900"
+                                   th:text="${user.address != null && !#strings.isEmpty(user.address) ? user.address : 'Non renseignée'}">
+                                    Non renseignée
+                                </p>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                        <h2 class="text-base font-semibold text-gray-900">Statut et compte</h2>
+
+                        <div class="mt-6 space-y-5">
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Rôle</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                          th:classappend="${user.roleLabel == 'ADMIN' ? ' bg-gray-900 text-white ring-gray-900' : (user.roleLabel == 'MEMBRE' ? ' bg-blue-50 text-blue-900 ring-blue-200' : ' bg-gray-50 text-gray-700 ring-gray-200')}">
+                                        <span th:switch="${user.roleLabel}">
+                                            <span th:case="'ADMIN'">Administrateur</span>
+                                            <span th:case="'MEMBRE'">Membre</span>
+                                            <span th:case="'INVITE'">Invité</span>
+                                            <span th:case="*" th:text="${user.roleLabel}">Membre</span>
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Statut du compte</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                          th:text="${user.activeUser == true ? 'Actif' : 'Inactif'}"
+                                          th:classappend="${user.activeUser == true ? ' bg-blue-50 text-blue-900 ring-blue-200' : ' bg-gray-50 text-gray-700 ring-gray-200'}">
+                                        Actif
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Cotisation</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full border px-3 py-1.5 text-xs font-medium"
+                                          th:text="${user.subscriptionUser == true ? 'Active' : 'Inactive'}"
+                                          th:classappend="${user.subscriptionUser == true ? ' border-blue-200 bg-blue-50 text-blue-900' : ' border-gray-300 bg-gray-50 text-gray-700'}">
+                                        Active
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Caution</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full border px-3 py-1.5 text-xs font-medium"
+                                          th:text="${user.depositUser == true ? 'Déposée' : 'Non déposée'}"
+                                          th:classappend="${user.depositUser == true ? ' border-blue-200 bg-blue-50 text-blue-900' : ' border-gray-300 bg-gray-50 text-gray-700'}">
+                                        Déposée
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Email vérifié</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full border px-3 py-1.5 text-xs font-medium"
+                                          th:text="${user.emailVerified == true ? 'Oui' : 'Non'}"
+                                          th:classappend="${user.emailVerified == true ? ' border-blue-200 bg-blue-50 text-blue-900' : ' border-gray-300 bg-gray-50 text-gray-700'}">
+                                        Oui
+                                    </span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                        <h2 class="text-base font-semibold text-gray-900">Activité et adhésion</h2>
+
+                        <div class="mt-6 space-y-5">
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Membre FFAP</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full border px-3 py-1.5 text-xs font-medium"
+                                          th:text="${user.ffapMember == true ? 'Oui' : 'Non'}"
+                                          th:classappend="${user.ffapMember == true ? ' border-blue-200 bg-blue-50 text-blue-900' : ' border-gray-300 bg-gray-50 text-gray-700'}">
+                                        Oui
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Numéro FFAP</p>
+                                <p class="mt-1 break-words text-sm text-gray-900"
+                                   th:text="${user.ffapNumber != null && !#strings.isEmpty(user.ffapNumber) ? user.ffapNumber : 'Non renseigné'}">
+                                    Non renseigné
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Date d’inscription</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${user.signupDateUser != null ? #temporals.format(user.signupDateUser, 'dd/MM/yyyy HH:mm') : '—'}">
+                                    01/01/2025 10:00
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Adhésion association</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${user.associationJoinDateUser != null ? #temporals.format(user.associationJoinDateUser, 'dd/MM/yyyy') : 'Non renseignée'}">
+                                    Non renseignée
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Dernière connexion</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${user.lastLoginUser != null ? #temporals.format(user.lastLoginUser, 'dd/MM/yyyy HH:mm') : 'Jamais connectée'}">
+                                    Jamais connectée
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Dernière mise à jour</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${user.updatedAtUser != null ? #temporals.format(user.updatedAtUser, 'dd/MM/yyyy HH:mm') : 'Jamais modifié'}">
+                                    Jamais modifié
+                                </p>
+                            </div>
+
+                        </div>
+                    </section>
+
+                </div>
+
+                <div class="grid max-w-full grid-cols-1 gap-4"
+                     th:if="${(user.bio != null and !#strings.isEmpty(user.bio)) or (user.notes != null and !#strings.isEmpty(user.notes))}">
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6"
+                             th:if="${user.bio != null and !#strings.isEmpty(user.bio)}">
+                        <h2 class="text-base font-semibold text-gray-900">Biographie</h2>
+                        <p class="mt-4 whitespace-pre-line break-words text-sm leading-6 text-gray-900"
+                           th:text="${user.bio}">
+                            Biographie du membre
+                        </p>
+                    </section>
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6"
+                             th:if="${user.notes != null and !#strings.isEmpty(user.notes)}">
+                        <h2 class="text-base font-semibold text-gray-900">Notes</h2>
+                        <p class="mt-4 whitespace-pre-line break-words text-sm leading-6 text-gray-900"
+                           th:text="${user.notes}">
+                            Notes internes
+                        </p>
+                    </section>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </th:block>
+</th:block>

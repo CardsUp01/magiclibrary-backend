@@ -1,0 +1,280 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Ajouter un utilisateur', activePage='admin-members'">
+
+    <th:block th:fragment="content">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Ajouter un utilisateur</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Création d’un nouveau compte utilisateur dans l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/admin/membres}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour aux membres
+                        </a>
+                    </div>
+                </div>
+
+                <div th:if="${successMessage}"
+                     class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                     role="status"
+                     aria-live="polite"
+                     th:text="'Succès : ' + ${successMessage}">
+                    Succès : opération effectuée.
+                </div>
+
+                <div th:if="${errorMessage}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive"
+                     th:text="'Erreur : ' + ${errorMessage}">
+                    Erreur : une anomalie est survenue.
+                </div>
+
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                    <h2 class="text-base font-semibold text-gray-900">Formulaire</h2>
+
+                    <div class="mt-2 space-y-2">
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Renseigne les informations nécessaires pour créer un nouveau compte membre.
+                        </p>
+                    </div>
+
+                    <form th:action="@{/admin/membres/ajouter}"
+                          th:object="${userCreateDTO}"
+                          method="post"
+                          class="mt-6 max-w-full">
+                        <div class="grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                            <div class="min-w-0 max-w-full">
+                                <label for="civility"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Civilité <span aria-hidden="true">*</span>
+                                </label>
+                                <select id="civility"
+                                        th:field="*{civility}"
+                                        required
+                                        aria-required="true"
+                                        class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    <option value="">Sélectionner une civilité</option>
+                                    <option value="M">M</option>
+                                    <option value="Mme">Mme</option>
+                                </select>
+                                <p th:if="${#fields.hasErrors('civility')}"
+                                   th:errors="*{civility}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur civilité
+                                </p>
+                            </div>
+
+                            <div class="min-w-0 max-w-full">
+                                <label for="firstName"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Prénom <span aria-hidden="true">*</span>
+                                </label>
+                                <input id="firstName"
+                                       th:field="*{firstName}"
+                                       type="text"
+                                       autocomplete="given-name"
+                                       required
+                                       aria-required="true"
+                                       class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                       placeholder="Prénom de l’utilisateur" />
+                                <p th:if="${#fields.hasErrors('firstName')}"
+                                   th:errors="*{firstName}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur prénom
+                                </p>
+                            </div>
+
+                            <div class="min-w-0 max-w-full">
+                                <label for="lastName"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Nom <span aria-hidden="true">*</span>
+                                </label>
+                                <input id="lastName"
+                                       th:field="*{lastName}"
+                                       type="text"
+                                       autocomplete="family-name"
+                                       required
+                                       aria-required="true"
+                                       class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                       placeholder="Nom de l’utilisateur" />
+                                <p th:if="${#fields.hasErrors('lastName')}"
+                                   th:errors="*{lastName}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur nom
+                                </p>
+                            </div>
+
+                            <div class="min-w-0 max-w-full md:col-span-2">
+                                <label for="email"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Email <span aria-hidden="true">*</span>
+                                </label>
+                                <input id="email"
+                                       th:field="*{email}"
+                                       type="email"
+                                       autocomplete="email"
+                                       required
+                                       aria-required="true"
+                                       class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                       placeholder="adresse@example.com" />
+                                <p th:if="${#fields.hasErrors('email')}"
+                                   th:errors="*{email}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur email
+                                </p>
+                            </div>
+
+                            <div class="min-w-0 max-w-full md:col-span-2">
+                                <label for="password"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Mot de passe <span aria-hidden="true">*</span>
+                                </label>
+
+                                <div class="relative w-full max-w-full">
+                                    <input id="password"
+                                           th:field="*{password}"
+                                           type="password"
+                                           autocomplete="new-password"
+                                           required
+                                           aria-required="true"
+                                           class="h-11 w-full rounded-md bg-white px-3 pr-12 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Mot de passe temporaire" />
+
+                                    <button type="button"
+                                            class="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                            aria-label="Afficher le mot de passe"
+                                            aria-pressed="false"
+                                            data-password-toggle
+                                            data-password-target="password">
+                                        <span class="sr-only">Afficher ou masquer le mot de passe</span>
+
+                                        <svg data-eye-open
+                                             aria-hidden="true"
+                                             class="h-5 w-5"
+                                             viewBox="0 0 24 24"
+                                             fill="none">
+                                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"
+                                                  stroke-linejoin="round"/>
+                                            <circle cx="12"
+                                                    cy="12"
+                                                    r="3"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"/>
+                                        </svg>
+
+                                        <svg data-eye-closed
+                                             aria-hidden="true"
+                                             class="hidden h-5 w-5"
+                                             viewBox="0 0 24 24"
+                                             fill="none">
+                                            <path d="M3 3l18 18"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"
+                                                  stroke-linejoin="round"/>
+                                            <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"
+                                                  stroke-linejoin="round"/>
+                                            <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4c6.5 0 10 8 10 8a17.46 17.46 0 0 1-2.38 3.19"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"
+                                                  stroke-linejoin="round"/>
+                                            <path d="M6.61 6.61A17.33 17.33 0 0 0 2 12s3.5 8 10 8a10.94 10.94 0 0 0 5.39-1.61"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"
+                                                  stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <p th:if="${#fields.hasErrors('password')}"
+                                   th:errors="*{password}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur mot de passe
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div class="mt-6 flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                            <a th:href="@{/admin/membres}"
+                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Annuler
+                            </a>
+
+                            <button type="submit"
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+            </div>
+
+        </section>
+
+        <script>
+            (function () {
+                const toggles = document.querySelectorAll('[data-password-toggle]');
+
+                toggles.forEach(function (toggle) {
+                    const targetId = toggle.getAttribute('data-password-target');
+                    const input = targetId ? document.getElementById(targetId) : null;
+
+                    if (!input) {
+                        return;
+                    }
+
+                    const eyeOpen = toggle.querySelector('[data-eye-open]');
+                    const eyeClosed = toggle.querySelector('[data-eye-closed]');
+
+                    function syncPasswordToggleState() {
+                        const isVisible = input.type === 'text';
+
+                        if (eyeOpen) {
+                            eyeOpen.classList.toggle('hidden', isVisible);
+                        }
+
+                        if (eyeClosed) {
+                            eyeClosed.classList.toggle('hidden', !isVisible);
+                        }
+
+                        toggle.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+                        toggle.setAttribute('aria-label', isVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+                    }
+
+                    toggle.addEventListener('click', function () {
+                        input.type = input.type === 'password' ? 'text' : 'password';
+                        syncPasswordToggleState();
+                    });
+
+                    syncPasswordToggleState();
+                });
+            })();
+        </script>
+
+    </th:block>
+</th:block>

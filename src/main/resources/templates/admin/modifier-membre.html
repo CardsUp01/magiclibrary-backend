@@ -1,0 +1,143 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Modifier un utilisateur', activePage='admin-members'">
+
+    <th:block th:fragment="content">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Modifier un utilisateur</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Mise à jour des informations principales d’un compte membre de l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à la fiche
+                        </a>
+                    </div>
+                </div>
+
+                <div th:if="${successMessage}"
+                     class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                     role="status"
+                     aria-live="polite"
+                     th:text="'Succès : ' + ${successMessage}">
+                    Succès : opération effectuée.
+                </div>
+
+                <div th:if="${errorMessage}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive"
+                     th:text="'Erreur : ' + ${errorMessage}">
+                    Erreur : une anomalie est survenue.
+                </div>
+
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                    <h2 class="text-base font-semibold text-gray-900">Formulaire</h2>
+
+                    <div class="mt-2 space-y-2">
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Modifie les informations principales du compte membre. La civilité est contrôlée, le prénom est normalisé et le nom est enregistré en majuscules.
+                        </p>
+                    </div>
+
+                    <form th:action="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
+                          th:object="${userUpdateDTO}"
+                          method="post"
+                          class="mt-6 max-w-full">
+                        <div class="grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                            <div class="min-w-0 max-w-full">
+                                <label for="civility"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Civilité <span aria-hidden="true">*</span>
+                                </label>
+                                <select id="civility"
+                                        th:field="*{civility}"
+                                        required
+                                        aria-required="true"
+                                        class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    <option value="">Sélectionner une civilité</option>
+                                    <option value="M">M</option>
+                                    <option value="Mme">Mme</option>
+                                </select>
+                                <p th:if="${#fields.hasErrors('civility')}"
+                                   th:errors="*{civility}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur civilité
+                                </p>
+                            </div>
+
+                            <div class="min-w-0 max-w-full">
+                                <label for="firstName"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Prénom <span aria-hidden="true">*</span>
+                                </label>
+                                <input id="firstName"
+                                       th:field="*{firstName}"
+                                       type="text"
+                                       autocomplete="given-name"
+                                       required
+                                       aria-required="true"
+                                       class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                       placeholder="Prénom du membre" />
+                                <p th:if="${#fields.hasErrors('firstName')}"
+                                   th:errors="*{firstName}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur prénom
+                                </p>
+                            </div>
+
+                            <div class="min-w-0 max-w-full">
+                                <label for="lastName"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Nom <span aria-hidden="true">*</span>
+                                </label>
+                                <input id="lastName"
+                                       th:field="*{lastName}"
+                                       type="text"
+                                       autocomplete="family-name"
+                                       required
+                                       aria-required="true"
+                                       class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                       placeholder="Nom du membre" />
+                                <p th:if="${#fields.hasErrors('lastName')}"
+                                   th:errors="*{lastName}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur nom
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div class="mt-6 flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                            <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
+                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Annuler
+                            </a>
+
+                            <button type="submit"
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+            </div>
+
+        </section>
+
+    </th:block>
+</th:block>
