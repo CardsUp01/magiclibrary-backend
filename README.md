@@ -1,5 +1,7 @@
 # MagicLibrary Backend
 
+This is a sanitized public version of the project for demonstration purposes. Sensitive configurations have been removed.
+
 Backend of the MagicLibrary project, a web application for managing a thematic library (magic-related items).
 
 ## 🚀 Features
