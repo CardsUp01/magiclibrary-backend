@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="layout(content)">
+
+<head th:replace="~{fragments/head :: head(${pageTitle != null ? pageTitle : 'MagicLibrary'})}"></head>
+
+<body class="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
+
+<header th:replace="~{fragments/navbar :: nav}"></header>
+
+<main id="main" role="main" tabindex="-1"
+      class="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <th:block th:replace="${content}">
+        <section class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200">
+            <h1 class="text-lg font-semibold text-gray-900">Contenu indisponible</h1>
+            <p class="mt-2 text-sm text-gray-600">Aucune section n’a été injectée dans le layout.</p>
+        </section>
+    </th:block>
+</main>
+
+<footer th:replace="~{fragments/footer :: footer}"></footer>
+
+</body>
+</html>

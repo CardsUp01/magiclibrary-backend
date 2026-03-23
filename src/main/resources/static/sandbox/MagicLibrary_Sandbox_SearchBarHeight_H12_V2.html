@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Sandbox Search Bar Height Test</title>
+</head>
+<body class="bg-slate-100 min-h-screen p-8">
+<div class="max-w-5xl mx-auto rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-4">
+            <h1 class="text-base font-semibold text-gray-900">Bibliothèque numérique</h1>
+            <p class="mt-2 text-sm text-gray-700">Consultation des objets disponibles dans la bibliothèque numérique.</p>
+        </div>
+
+        <div class="lg:col-span-8">
+            <div class="relative w-full">
+                <div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 flex items-center">
+                    <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
+                        <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+
+                <input type="text"
+                       placeholder="Rechercher par titre, auteur, catégorie, éditeur, ISBN…"
+                       class="w-full h-12 rounded-md bg-white pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+            </div>
+
+            <div class="mt-3 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-700">Trier par</label>
+                    <select class="h-10 rounded-md px-3 text-sm ring-1 ring-gray-200 bg-white">
+                        <option>Disponibilité puis titre</option>
+                    </select>
+                </div>
+                <div class="text-sm font-medium text-gray-700">25 résultats</div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Fiche emprunt', activePage=${activePage}">
+
+    <th:block th:fragment="content"
+              th:with="objectsCount=${loanLines != null ? #lists.size(loanLines) : 0},
+                       memberFullName=${((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')).trim()},
+                       isAdminContext=${loanDetailContext == 'admin'}">
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Fiche emprunt</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation détaillée d’un emprunt enregistré dans l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="${isAdminContext} ? @{/admin/emprunts} : @{/mes-emprunts}"
+                           th:text="${isAdminContext} ? 'Retour aux emprunts' : 'Retour à mes emprunts'"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        </a>
+                    </div>
+                </div>
+
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                    <div class="flex max-w-full flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+
+                        <div class="min-w-0 max-w-full flex-1">
+                            <div class="flex max-w-full flex-col gap-3.5">
+
+                                <div class="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+                                    <h2 class="break-words text-xl font-semibold text-gray-900">
+                                        <span>Emprunt n°</span>
+                                        <span th:text="${loan.idLoan}"></span>
+                                    </h2>
+
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                          th:text="${loan.statusLoanLabel ?: 'Statut inconnu'}"
+                                          th:classappend="${loan.statusLoan == T(com.magiclibrary.enums.LoanStatus).RETURNED ? ' bg-gray-50 text-gray-700 ring-gray-200' : (loan.overdueLoan ? ' bg-gray-900 text-white ring-gray-900' : ' bg-blue-50 text-blue-900 ring-blue-200')}">
+                                    </span>
+
+                                    <span class="inline-flex rounded-full border border-gray-300 bg-gray-50 px-4 py-1 text-xs font-medium text-gray-700"
+                                          th:text="${'Origine : ' + (loan.originLoanLabel ?: 'Origine inconnue')}">
+                                    </span>
+                                </div>
+
+                                <div class="min-w-0 max-w-full space-y-1.5">
+                                    <p class="break-words text-lg font-semibold text-gray-900"
+                                       th:text="${memberFullName.isEmpty() ? 'Membre inconnu' : memberFullName}">
+                                    </p>
+
+                                    <div class="flex max-w-full flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+                                        <p class="break-words">
+                                            <span>Membre n°</span>
+                                            <span class="font-medium text-gray-900" th:text="${loan.idUser}"></span>
+                                        </p>
+
+                                        <p class="break-words">
+                                            <span class="font-medium text-gray-900" th:text="${objectsCount}"></span>
+                                            <span th:text="${objectsCount == 1 ? 'objet associé' : 'objets associés'}"></span>
+                                        </p>
+                                    </div>
+
+                                    <p class="pt-0.5 text-sm text-gray-700"
+                                       th:if="${loan.returnDateLoan == null}"
+                                       th:text="${loan.dueDateLoan != null ? 'Échéance ' + #temporals.format(loan.dueDateLoan, 'dd/MM/yyyy') : 'Échéance non renseignée'}">
+                                    </p>
+
+                                    <p class="pt-0.5 text-sm text-gray-700"
+                                       th:if="${loan.returnDateLoan != null}"
+                                       th:text="${'Restitué le ' + #temporals.format(loan.returnDateLoan, 'dd/MM/yyyy HH:mm')}">
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shrink-0 self-start lg:pl-4"
+                             th:if="${isAdminContext and (loan.returnedLoan == null or !loan.returnedLoan)}">
+                            <form th:action="@{/admin/emprunts/{id}/return(id=${loan.idLoan})}" method="post" class="inline-flex">
+                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="button"
+                                        data-open-return-modal
+                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Restituer
+                                </button>
+
+                                <div data-return-modal
+                                     class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
+                                     aria-hidden="true">
+                                    <div data-close-return-modal
+                                         class="absolute inset-0 bg-gray-900/50 backdrop-blur-[1px]"></div>
+
+                                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
+                                        <div class="space-y-3">
+                                            <h3 class="text-lg font-semibold text-gray-900">
+                                                Confirmer la restitution
+                                            </h3>
+
+                                            <p class="text-sm text-gray-700">
+                                                Cet emprunt va être marqué comme restitué. Cette action doit être confirmée avant validation.
+                                            </p>
+                                        </div>
+
+                                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                            <button type="button"
+                                                    data-cancel-return-modal
+                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Annuler
+                                            </button>
+
+                                            <button type="submit"
+                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Confirmer la restitution
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                    </div>
+                </section>
+
+                <div class="grid max-w-full grid-cols-1 gap-4 lg:grid-cols-2">
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                        <h2 class="text-base font-semibold text-gray-900">Dates et références</h2>
+
+                        <div class="mt-6 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Emprunt</p>
+                                <p class="mt-1 break-words text-sm text-gray-900">
+                                    <span>n°</span>
+                                    <span th:text="${loan.idLoan}"></span>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Membre</p>
+                                <p class="mt-1 break-words text-sm text-gray-900">
+                                    <span>n°</span>
+                                    <span th:text="${loan.idUser}"></span>
+                                </p>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <p class="text-sm font-medium text-gray-500">Nom du membre</p>
+                                <p class="mt-1 break-words text-sm text-gray-900"
+                                   th:text="${memberFullName.isEmpty() ? 'Membre inconnu' : memberFullName}">
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Date de début</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${loan.startDateLoan != null ? #temporals.format(loan.startDateLoan, 'dd/MM/yyyy HH:mm') : '—'}">
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Date d’échéance</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${loan.dueDateLoan != null ? #temporals.format(loan.dueDateLoan, 'dd/MM/yyyy') : '—'}">
+                                </p>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <p class="text-sm font-medium text-gray-500">Date de retour</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${loan.returnDateLoan != null ? #temporals.format(loan.returnDateLoan, 'dd/MM/yyyy HH:mm') : 'Non restitué'}">
+                                </p>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                        <h2 class="text-base font-semibold text-gray-900">Statut et suivi</h2>
+
+                        <div class="mt-6 space-y-5">
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Restitué</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full border px-3 py-1.5 text-xs font-medium"
+                                          th:text="${loan.returnedLoan != null && loan.returnedLoan ? 'Oui' : 'Non'}"
+                                          th:classappend="${loan.returnedLoan != null && loan.returnedLoan ? ' border-gray-300 bg-gray-50 text-gray-700' : ' border-blue-200 bg-blue-50 text-blue-900'}">
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div th:if="${loan.returnedLoan == null or !loan.returnedLoan}">
+                                <p class="text-sm font-medium text-gray-500">En retard</p>
+                                <div class="mt-2">
+                                    <span class="inline-flex rounded-full border px-3 py-1.5 text-xs font-medium"
+                                          th:text="${loan.overdueLoan != null && loan.overdueLoan ? 'Oui' : 'Non'}"
+                                          th:classappend="${loan.overdueLoan != null && loan.overdueLoan ? ' border-gray-900 bg-gray-900 text-white' : ' border-gray-300 bg-gray-50 text-gray-700'}">
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Nombre d’objets</p>
+                                <p class="mt-1 text-sm text-gray-900">
+                                    <span class="font-medium" th:text="${objectsCount}"></span>
+                                    <span th:text="${objectsCount == 1 ? 'objet associé' : 'objets associés'}"></span>
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Origine de création</p>
+                                <p class="mt-1 text-sm text-gray-900"
+                                   th:text="${loan.originLoanLabel ?: 'Origine inconnue'}">
+                                </p>
+                            </div>
+
+                        </div>
+                    </section>
+
+                </div>
+
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                    <h2 class="text-base font-semibold text-gray-900">Objets empruntés</h2>
+
+                    <div class="mt-2 max-w-full space-y-2" th:if="${loanLines != null and !#lists.isEmpty(loanLines)}">
+                        <p class="text-sm text-gray-700">
+                            <span class="font-medium text-gray-900" th:text="${objectsCount}"></span>
+                            <span th:text="${objectsCount == 1 ? 'objet associé' : 'objets associés'}"></span>
+                        </p>
+                    </div>
+
+                    <div class="mt-6 max-w-full" th:if="${loanLines != null and !#lists.isEmpty(loanLines)}">
+                        <ul class="grid max-w-full grid-cols-1 gap-4" role="list">
+
+                            <li th:each="loanLine : ${loanLines}"
+                                class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md sm:p-5">
+
+                                <div class="flex max-w-full items-start gap-4">
+
+                                    <div class="shrink-0 pt-0.5">
+                                        <div th:if="${loanLine.coverUrlItem != null and !#strings.isEmpty(loanLine.coverUrlItem)}"
+                                             class="h-24 w-24 overflow-hidden rounded-md bg-gray-50 ring-1 ring-gray-200 sm:h-28 sm:w-28">
+                                            <img th:src="${loanLine.coverUrlItem}"
+                                                 th:alt="${loanLine.titleItem}"
+                                                 class="h-full w-full object-cover object-center" />
+                                        </div>
+
+                                        <div th:if="${loanLine.coverUrlItem == null or #strings.isEmpty(loanLine.coverUrlItem)}"
+                                             class="flex h-24 w-24 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200 sm:h-28 sm:w-28">
+                                            <svg aria-hidden="true" class="h-10 w-10 text-gray-400" viewBox="0 0 24 24" fill="none">
+                                                <path d="M6 4h10a2 2 0 0 1 2 2v14H8a2 2 0 0 0-2 2V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M6 20h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                <path d="M8 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                <path d="M8 10h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    <div class="min-w-0 max-w-xl flex-1">
+                                        <div class="flex max-w-full flex-col gap-2">
+
+                                            <div class="flex max-w-full flex-wrap items-center gap-x-8 gap-y-2">
+                                                <h3 class="break-words text-base font-semibold text-gray-900"
+                                                    th:text="${loanLine.titleItem != null && !#strings.isEmpty(loanLine.titleItem) ? loanLine.titleItem : 'Objet sans titre'}">
+                                                </h3>
+
+                                                <span class="inline-flex self-center rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                                      th:classappend="${loanLine.statusLoanLine != null and loanLine.statusLoanLine.name() == 'ACTIVE' ? ' bg-blue-50 text-blue-900 ring-blue-200' : (loanLine.statusLoanLine != null and loanLine.statusLoanLine.name() == 'RETURNED' ? ' bg-gray-50 text-gray-700 ring-gray-200' : ' bg-gray-900 text-white ring-gray-900')}">
+                                                    <span th:switch="${loanLine.statusLoanLine != null ? loanLine.statusLoanLine.name() : ''}">
+                                                        <span th:case="'ACTIVE'">En cours</span>
+                                                        <span th:case="'RETURNED'">Restituée</span>
+                                                        <span th:case="'LOST'">Perdue</span>
+                                                        <span th:case="*">Statut inconnu</span>
+                                                    </span>
+                                                </span>
+                                            </div>
+
+                                            <p class="break-words text-sm text-gray-700">
+                                                <span th:text="${loanLine.categoryItem != null && !#strings.isEmpty(loanLine.categoryItem) ? loanLine.categoryItem : 'Catégorie non renseignée'}">
+                                                </span>
+                                                <span class="text-gray-400">•</span>
+                                                <span class="text-gray-500">ID</span>
+                                                <span class="font-medium text-gray-900" th:text="${loanLine.idItem}"></span>
+                                            </p>
+
+                                            <div class="flex max-w-full flex-wrap items-center gap-x-6 gap-y-2">
+                                                <p class="text-sm text-gray-900"
+                                                   th:text="${loanLine.quantityLoanLine != null ? 'Quantité ' + loanLine.quantityLoanLine : 'Quantité non renseignée'}">
+                                                </p>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </li>
+
+                        </ul>
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <script th:if="${isAdminContext and (loan.returnedLoan == null or !loan.returnedLoan)}">
+            document.addEventListener('DOMContentLoaded', function () {
+                const openButton = document.querySelector('[data-open-return-modal]');
+                const modal = document.querySelector('[data-return-modal]');
+                const cancelButton = document.querySelector('[data-cancel-return-modal]');
+                const overlay = modal ? modal.querySelector('[data-close-return-modal]') : null;
+
+                if (!openButton || !modal || !cancelButton || !overlay) {
+                    return;
+                }
+
+                const openModal = function () {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('overflow-hidden');
+                };
+
+                const closeModal = function () {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('overflow-hidden');
+                };
+
+                openButton.addEventListener('click', openModal);
+                cancelButton.addEventListener('click', closeModal);
+                overlay.addEventListener('click', closeModal);
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') {
+                        closeModal();
+                    }
+                });
+            });
+        </script>
+
+    </th:block>
+</th:block>

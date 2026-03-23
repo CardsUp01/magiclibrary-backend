@@ -1,0 +1,140 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+          th:with="pageTitle='App – MagicLibrary'"
+          th:replace="~{layout :: layout(~{::content})}">
+
+    <th:block th:fragment="content">
+
+        <section>
+
+            <header class="mb-6">
+                <h1 class="text-2xl font-semibold text-gray-900">Accueil</h1>
+                <p class="mt-1 text-sm text-gray-600">Bienvenue sur l’application MagicLibrary.</p>
+
+                <div class="mt-4 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200">
+                    <p class="text-sm text-gray-700">
+                        Accès rapide aux fonctions principales. Les rubriques complètes sont disponibles dans la barre de navigation.
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <a href="#conformite"
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
+                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Usage interne
+                        </a>
+                        <a href="#conformite"
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
+                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Accès sécurisé
+                        </a>
+                        <a href="#conformite"
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
+                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Données personnelles
+                        </a>
+                        <a href="#conformite"
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
+                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            RGPD
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <section aria-label="Accès rapides" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+                <a sec:authorize="hasAnyRole('MEMBRE','ADMIN')"
+                   th:href="@{/bibliotheque-numerique}"
+                   class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                    <div class="flex items-start gap-3">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                <path d="M6 4h11a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                                      stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M6 4v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+
+                        <div class="min-w-0">
+                            <h2 class="text-lg font-semibold text-gray-900">Bibliothèque numérique</h2>
+                            <p class="mt-1 text-sm text-gray-600">Consulter les objets du catalogue numérique.</p>
+
+                            <div class="mt-4 inline-flex items-center gap-2">
+                                <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm
+                                             hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Consulter
+                                </span>
+                                <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+                <a sec:authorize="isAuthenticated()"
+                   th:href="@{/contact}"
+                   class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                    <div class="flex items-start gap-3">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                <path d="M4 7h16v10H4V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="m4 8 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+
+                        <div class="min-w-0">
+                            <h2 class="text-lg font-semibold text-gray-900">Contact</h2>
+                            <p class="mt-1 text-sm text-gray-600">Contacter l’équipe via le formulaire.</p>
+
+                            <div class="mt-4 inline-flex items-center gap-2">
+                                <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm
+                                             hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Écrire
+                                </span>
+                                <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+            </section>
+
+            <section id="conformite" aria-label="Conformité et informations" class="mt-8 rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200">
+                <h2 class="text-base font-semibold text-gray-900">Conformité &amp; informations</h2>
+
+                <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <h3 class="text-sm font-semibold text-gray-900">Usage interne</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Application réservée aux personnes habilitées de l’association. Accès contrôlé.
+                        </p>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <h3 class="text-sm font-semibold text-gray-900">Sécurité</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Authentification et contrôle d’accès par rôles. Protection CSRF sur les actions SSR.
+                        </p>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <h3 class="text-sm font-semibold text-gray-900">Données personnelles</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Données limitées à la gestion interne (emprunts, comptes). Demandes RGPD via Contact.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <a th:href="@{/contact}"
+                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm
+                              hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        Contacter l’équipe
+                    </a>
+                </div>
+            </section>
+
+        </section>
+
+    </th:block>
+
+</th:block>

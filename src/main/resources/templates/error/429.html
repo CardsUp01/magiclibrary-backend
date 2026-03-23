@@ -1,0 +1,123 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Trop de tentatives – MagicLibrary'">
+
+    <th:block th:fragment="content">
+
+        <section class="mx-auto max-w-5xl">
+            <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div class="self-start">
+                        <span class="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm sm:px-5 sm:text-base"
+                              style="background-color: #8b5e3c;">
+                            Erreur 429
+                        </span>
+                    </div>
+
+                    <div class="self-start sm:mt-0 sm:shrink-0">
+                        <a id="backToLogin"
+                           th:href="@{/login}"
+                           th:attr="aria-disabled=${retryAfterSeconds != null && retryAfterSeconds > 0 ? 'true' : 'false'}"
+                           th:classappend="${retryAfterSeconds != null && retryAfterSeconds > 0} ? ' pointer-events-none opacity-50' : ''"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:px-4">
+                            Retour à la connexion
+                        </a>
+                    </div>
+
+                </header>
+
+                <div class="mt-4 rounded-xl bg-white p-4 ring-1 ring-gray-200 sm:p-6">
+                    <div class="min-w-0 space-y-4 break-words hyphens-auto">
+                        <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">
+                            Trop de tentatives
+                        </h1>
+
+                        <p class="text-sm leading-6 text-gray-700 sm:text-base sm:leading-7">
+                            L’accès est temporairement limité après plusieurs tentatives de connexion infructueuses.
+                        </p>
+
+                        <p class="text-sm leading-6 text-gray-600 sm:text-base sm:leading-7">
+                            Attends quelques instants avant de réessayer.
+                        </p>
+
+                        <p th:if="${retryAfterSeconds != null && retryAfterSeconds > 0}"
+                           id="retryInfo"
+                           role="status"
+                           aria-live="polite"
+                           class="text-sm leading-6 text-gray-700 sm:text-base sm:leading-7"
+                           th:attr="data-retry=${retryAfterSeconds}">
+                            Réessaie dans
+                            <span id="retrySeconds" class="font-semibold text-gray-900" th:text="${retryAfterSeconds}">10</span>
+                            <span id="retryLabel" th:text="${retryAfterSeconds == 1 ? 'seconde' : 'secondes'}">secondes</span>.
+                        </p>
+
+                        <p th:if="${retryAfterSeconds == null}"
+                           id="retryFallback"
+                           role="status"
+                           aria-live="polite"
+                           class="text-sm leading-6 text-gray-700 sm:text-base sm:leading-7">
+                            Réessaie dans quelques instants.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <script>
+            (function () {
+                const info = document.getElementById('retryInfo');
+                const fallback = document.getElementById('retryFallback');
+                const secondsEl = document.getElementById('retrySeconds');
+                const labelEl = document.getElementById('retryLabel');
+                const back = document.getElementById('backToLogin');
+
+                if (!back) return;
+
+                function enableBackButton() {
+                    back.setAttribute('aria-disabled', 'false');
+                    back.classList.remove('pointer-events-none', 'opacity-50');
+                }
+
+                if (!info || !secondsEl || !labelEl) {
+                    enableBackButton();
+                    return;
+                }
+
+                const raw = info.getAttribute('data-retry');
+                let remaining = raw ? parseInt(raw, 10) : NaN;
+
+                if (!Number.isFinite(remaining) || remaining <= 0) {
+                    info.textContent = 'Tu peux réessayer maintenant.';
+                    enableBackButton();
+                    return;
+                }
+
+                function tick() {
+                    remaining = Math.max(0, remaining - 1);
+
+                    if (remaining <= 0) {
+                        info.textContent = 'Tu peux réessayer maintenant.';
+                        enableBackButton();
+                        return;
+                    }
+
+                    secondsEl.textContent = String(remaining);
+                    labelEl.textContent = remaining === 1 ? 'seconde' : 'secondes';
+
+                    window.setTimeout(tick, 1000);
+                }
+
+                if (fallback) {
+                    fallback.textContent = 'Réessaie dans quelques instants.';
+                }
+
+                window.setTimeout(tick, 1000);
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

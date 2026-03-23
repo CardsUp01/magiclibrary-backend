@@ -1,0 +1,386 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout-auth :: authLayout(~{::content})}"
+          th:with="pageTitle='Connexion - MagicLibrary'">
+
+    <th:block th:fragment="content">
+
+        <section id="login" class="w-full max-w-md">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-8">
+
+                <div class="flex flex-col items-center text-center gap-3">
+                    <img
+                            th:src="@{/img/Logo_MagiciensDabord_Amiens.png}"
+                            alt="Logo MagicLibrary"
+                            class="h-20 w-20 object-contain"
+                    />
+
+                    <h1
+                            class="font-semibold tracking-tight text-slate-900
+                                   text-[clamp(1.5rem,5vw,2.25rem)]
+                                   leading-tight break-normal text-center">
+                        Magic<wbr>Library
+                    </h1>
+
+                    <p class="text-slate-600 text-sm break-words">
+                        Application interne – accès réservé
+                    </p>
+                </div>
+
+                <h2 class="mt-6 text-center font-semibold text-slate-900 break-words leading-tight text-[clamp(1.125rem,4vw,1.25rem)]">
+                    Connexion
+                </h2>
+
+                <div
+                        th:if="${param.error}"
+                        class="mt-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 leading-snug"
+                        role="alert"
+                        aria-live="assertive">
+                    <span class="sr-only">Erreur :</span>
+                    <p class="font-medium">Identifiants invalides.</p>
+                    <p class="mt-1">Vérifiez votre email et votre mot de passe.</p>
+                </div>
+
+                <div
+                        th:if="${param.logout}"
+                        class="mt-6 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 leading-snug"
+                        role="status"
+                        aria-live="polite">
+                    <span class="sr-only">Succès :</span>
+                    Déconnexion effectuée.
+                </div>
+
+                <form
+                        id="loginForm"
+                        class="mt-6 space-y-5"
+                        th:action="@{/login}"
+                        method="post">
+
+                    <input
+                            type="hidden"
+                            th:if="${_csrf}"
+                            th:name="${_csrf.parameterName}"
+                            th:value="${_csrf.token}"
+                    />
+
+                    <div class="space-y-2">
+                        <label for="email" class="block text-sm font-medium text-slate-900 break-words">
+                            Email
+                        </label>
+
+                        <p id="email-help" class="sr-only">
+                            Utilisez votre adresse email pour vous connecter.
+                        </p>
+
+                        <div
+                                class="rounded-lg border border-slate-300 bg-white shadow-sm
+                                       hover:border-slate-400
+                                       focus-within:border-blue-600
+                                       focus-within:ring-2 focus-within:ring-blue-600
+                                       focus-within:ring-offset-2 focus-within:ring-offset-white">
+
+                            <input
+                                    id="email"
+                                    name="username"
+                                    type="email"
+                                    autocomplete="username"
+                                    autocapitalize="none"
+                                    enterkeyhint="next"
+                                    inputmode="email"
+                                    spellcheck="false"
+                                    required
+                                    pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
+                                    aria-describedby="email-help"
+                                    autofocus
+                                    class="block w-full bg-transparent px-3 py-2 text-slate-900
+                                           focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="password" class="block text-sm font-medium text-slate-900 break-words">
+                            Mot de passe
+                        </label>
+
+                        <p id="password-help" class="sr-only">
+                            Saisissez votre mot de passe pour vous connecter.
+                        </p>
+
+                        <div
+                                class="group flex items-stretch rounded-lg border border-slate-300 bg-white shadow-sm
+                                       overflow-hidden
+                                       hover:border-slate-400
+                                       focus-within:border-blue-600
+                                       focus-within:ring-2 focus-within:ring-blue-600
+                                       focus-within:ring-offset-2 focus-within:ring-offset-white">
+
+                            <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    enterkeyhint="done"
+                                    required
+                                    aria-describedby="password-help"
+                                    class="min-w-0 flex-1 bg-transparent px-3 py-2 text-slate-900
+                                           focus:outline-none focus:ring-0"
+                            />
+
+                            <button
+                                    type="button"
+                                    id="togglePassword"
+                                    class="shrink-0 self-stretch inline-flex items-center justify-center
+                                           w-11 px-3 py-2 bg-white border-l border-slate-300
+                                           group-focus-within:border-blue-600
+                                           text-slate-500 hover:text-slate-700 hover:bg-slate-50
+                                           focus:outline-none
+                                           focus-visible:bg-slate-50
+                                           focus-visible:ring-2 focus-visible:ring-blue-600
+                                           focus-visible:ring-inset"
+                                    aria-controls="password"
+                                    aria-describedby="password-help"
+                                    aria-pressed="false"
+                                    aria-label="Afficher le mot de passe"
+                                    title="Afficher le mot de passe">
+
+                                <svg
+                                        id="iconEyeOff"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        class="h-5 w-5"
+                                        aria-hidden="true">
+                                    <path d="M3 3l18 18"></path>
+                                    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58"></path>
+                                    <path d="M9.88 5.09A10.94 10.94 0 0 1 12 5c6.5 0 10 7 10 7a18.9 18.9 0 0 1-4.2 5.1"></path>
+                                    <path d="M6.11 6.11C3.37 8.06 2 12 2 12s3.5 7 10 7a10.94 10.94 0 0 0 2.12-.21"></path>
+                                </svg>
+
+                                <svg
+                                        id="iconEyeOpen"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        class="h-5 w-5 hidden"
+                                        aria-hidden="true">
+                                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+
+                            </button>
+                        </div>
+                    </div>
+
+                    <button
+                            id="loginSubmit"
+                            type="submit"
+                            disabled
+                            aria-disabled="true"
+                            style="margin-top: 2rem;"
+                            class="w-full rounded-lg border px-4 py-2.5 font-semibold text-sm sm:text-base
+                                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600
+                                   focus-visible:ring-offset-2 focus-visible:ring-offset-white">
+                        Se connecter
+                    </button>
+
+                    <div class="flex items-center justify-center">
+                        <label for="rememberMe" class="inline-flex items-start gap-2 text-sm text-slate-700 leading-snug">
+                            <input
+                                    id="rememberMe"
+                                    name="remember-me"
+                                    type="checkbox"
+                                    class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600
+                                           focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600
+                                           focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                            />
+                            <span class="break-words">Se souvenir de moi</span>
+                        </label>
+                    </div>
+
+                    <nav aria-label="Liens légaux" class="pt-4">
+                        <ul class="flex flex-col items-center gap-2 text-sm text-slate-700 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-2">
+                            <li>
+                                <a th:href="@{/mentions-legales}"
+                                   class="hover:underline underline-offset-2
+                                          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600
+                                          focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-sm">
+                                    Mentions légales
+                                </a>
+                            </li>
+
+                            <li>
+                                <a th:href="@{/confidentialite}"
+                                   class="hover:underline underline-offset-2
+                                          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600
+                                          focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-sm">
+                                    Confidentialité
+                                </a>
+                            </li>
+
+                            <li>
+                                <a th:href="@{/cgu}"
+                                   class="hover:underline underline-offset-2
+                                          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600
+                                          focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-sm">
+                                    CGU
+                                </a>
+                            </li>
+
+                            <li>
+                                <a th:href="@{/accessibilite}"
+                                   class="hover:underline underline-offset-2
+                                          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600
+                                          focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-sm">
+                                    Accessibilité
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+
+                </form>
+
+            </div>
+        </section>
+
+        <script>
+            (function () {
+                const form = document.getElementById('loginForm');
+                const emailInput = document.getElementById('email');
+                const passwordInput = document.getElementById('password');
+                const submitButton = document.getElementById('loginSubmit');
+                const toggleButton = document.getElementById('togglePassword');
+                const iconEyeOff = document.getElementById('iconEyeOff');
+                const iconEyeOpen = document.getElementById('iconEyeOpen');
+                const strictEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+                if (!form || !emailInput || !passwordInput || !submitButton || !toggleButton || !iconEyeOff || !iconEyeOpen) {
+                    return;
+                }
+
+                function applyDisabledButtonStyle() {
+                    submitButton.style.backgroundColor = '#e5e7eb';
+                    submitButton.style.borderColor = '#d1d5db';
+                    submitButton.style.color = '#6b7280';
+                    submitButton.style.boxShadow = 'none';
+                    submitButton.style.cursor = 'not-allowed';
+                    submitButton.style.opacity = '1';
+                }
+
+                function applyEnabledButtonStyle() {
+                    submitButton.style.backgroundColor = '#2563eb';
+                    submitButton.style.borderColor = '#2563eb';
+                    submitButton.style.color = '#ffffff';
+                    submitButton.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    submitButton.style.cursor = 'pointer';
+                }
+
+                function isStrictEmailValid(value) {
+                    return strictEmailRegex.test(value.trim());
+                }
+
+                function updateEmailValidityMessage() {
+                    const value = emailInput.value.trim();
+
+                    if (value === '') {
+                        emailInput.setCustomValidity('');
+                        return false;
+                    }
+
+                    if (!isStrictEmailValid(value)) {
+                        emailInput.setCustomValidity('Veuillez saisir une adresse email valide.');
+                        return false;
+                    }
+
+                    emailInput.setCustomValidity('');
+                    return true;
+                }
+
+                function updateSubmitState() {
+                    const isEmailFilled = emailInput.value.trim() !== '';
+                    const isPasswordFilled = passwordInput.value.trim() !== '';
+                    const isEmailStrictlyValid = updateEmailValidityMessage();
+                    const isFormValid = isEmailFilled && isPasswordFilled && isEmailStrictlyValid;
+
+                    submitButton.disabled = !isFormValid;
+                    submitButton.setAttribute('aria-disabled', String(!isFormValid));
+
+                    if (isFormValid) {
+                        applyEnabledButtonStyle();
+                    } else {
+                        applyDisabledButtonStyle();
+                    }
+                }
+
+                toggleButton.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+
+                toggleButton.addEventListener('click', function () {
+                    const nowVisible = passwordInput.type === 'password';
+
+                    passwordInput.type = nowVisible ? 'text' : 'password';
+
+                    toggleButton.setAttribute('aria-pressed', String(nowVisible));
+                    toggleButton.setAttribute('aria-label', nowVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+                    toggleButton.title = nowVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+
+                    iconEyeOff.classList.toggle('hidden', nowVisible);
+                    iconEyeOpen.classList.toggle('hidden', !nowVisible);
+                });
+
+                submitButton.addEventListener('mouseenter', function () {
+                    if (!submitButton.disabled) {
+                        submitButton.style.backgroundColor = '#1d4ed8';
+                        submitButton.style.borderColor = '#1d4ed8';
+                    }
+                });
+
+                submitButton.addEventListener('mouseleave', function () {
+                    if (!submitButton.disabled) {
+                        applyEnabledButtonStyle();
+                    }
+                });
+
+                emailInput.addEventListener('input', updateSubmitState);
+                passwordInput.addEventListener('input', updateSubmitState);
+                emailInput.addEventListener('blur', function () {
+                    updateSubmitState();
+                    if (emailInput.value.trim() !== '' && !emailInput.checkValidity()) {
+                        emailInput.reportValidity();
+                    }
+                });
+                passwordInput.addEventListener('blur', updateSubmitState);
+
+                form.addEventListener('submit', function (event) {
+                    updateSubmitState();
+
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        form.reportValidity();
+                    }
+                });
+
+                window.addEventListener('pageshow', function (event) {
+                    const navigationEntries = window.performance && typeof window.performance.getEntriesByType === 'function'
+                            ? window.performance.getEntriesByType('navigation')
+                            : [];
+
+                    const isBackForwardNavigation = navigationEntries.length > 0
+                            && navigationEntries[0].type === 'back_forward';
+
+                    if (event.persisted || isBackForwardNavigation) {
+                        window.location.reload();
+                    }
+                });
+
+                updateSubmitState();
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

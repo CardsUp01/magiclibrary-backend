@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sandbox – MagicLibrary Bibliothèque numérique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 px-4 py-4 sm:px-6">
+<section class="mx-auto max-w-6xl rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-5">
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
+
+        <div class="min-w-0 lg:col-span-4">
+            <h1 class="text-base font-semibold text-gray-900 break-words">Bibliothèque numérique</h1>
+            <p class="mt-1 text-sm text-gray-600 break-words">Consultation des objets disponibles.</p>
+        </div>
+
+        <div class="min-w-0 lg:col-span-8">
+            <div class="flex flex-col gap-3">
+
+                <div class="relative w-full">
+                    <label for="search" class="sr-only">Rechercher un objet</label>
+
+                    <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
+                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <button id="searchClearInline"
+                            type="button"
+                            class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                            aria-label="Effacer la recherche">
+                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <input id="search"
+                           type="text"
+                           inputmode="search"
+                           autocomplete="off"
+                           placeholder="Rechercher par titre, auteur, catégorie, éditeur, ISBN…"
+                           class="h-11 w-full rounded-md bg-white pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                           aria-describedby="searchHint resultsCount resultsLabel triActive"
+                           aria-controls="suggestPanel"
+                           aria-expanded="false"
+                           aria-activedescendant="" />
+
+                    <div id="suggestPanel"
+                         class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                         role="listbox"
+                         aria-label="Suggestions">
+                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+                    </div>
+
+                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                </div>
+
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+                            <div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                                <label for="sortSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                    Trier par
+                                </label>
+                                <select id="sortSelect"
+                                        class="h-10 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72"
+                                        aria-label="Trier les résultats (sandbox)">
+                                    <option selected>Disponibilité puis titre</option>
+                                    <option>Ajout récent</option>
+                                    <option>Titre (A → Z)</option>
+                                    <option>Titre (Z → A)</option>
+                                    <option>Auteur puis titre</option>
+                                    <option>Catégorie puis titre</option>
+                                    <option>Éditeur puis titre</option>
+                                    <option>Statut puis titre</option>
+                                    <option>Condition puis titre</option>
+                                </select>
+                            </div>
+
+                            <p id="triActive" class="text-xs font-medium text-gray-600 sm:text-sm">
+                                Tri actif : Disponibilité puis titre
+                            </p>
+
+                            <div id="sortAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                        </div>
+
+                        <p id="searchHint" class="mt-2 text-sm text-gray-700">
+                            Astuce : plusieurs mots améliorent la précision (ex. “cours magie”).
+                        </p>
+                    </div>
+
+                    <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
+                        <span id="resultsCount">0</span>
+                        <span id="resultsLabel">résultats</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mt-3 text-sm text-gray-700">
+
+        <h2 class="text-base font-semibold text-gray-900">Objets</h2>
+
+        <ul class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+
+            <li data-item-card
+                data-id="19"
+                data-title="Cours de magie fondamentale"
+                data-category="Magie"
+                data-extra="Auteur Merlin"
+                data-search="Cours de magie fondamentale auteur Merlin categorie Magie editeur Arcanes isbn 9782000000019 annee 2021 edition 2 format Livre langue Français languageLabel Français tags initiation bases statusLabel Disponible statusItem AVAILABLE conditionLabel Bon état conditionItem GOOD disponible dispo available id 19"
+                class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900 break-words">Cours de magie fondamentale</div>
+                        <p class="mt-2 break-words text-sm text-gray-700">
+                            <span>Magie</span><span class="text-gray-400"> • </span><span class="text-gray-500">ID</span>
+                            <span class="font-medium text-gray-900">19</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 sm:items-end">
+                        <span class="inline-flex min-w-[7.5rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">Disponible</span>
+                        <a href="#"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li data-item-card
+                data-id="7"
+                data-title="Grimoire des potions"
+                data-category="Alchimie"
+                data-extra="Auteur Morgane"
+                data-search="Grimoire des potions auteur Morgane categorie Alchimie editeur Atelier isbn 9782000000007 annee 2018 edition 1 format Livre langue FR languageLabel Français tags recettes potions avancees statusLabel Indisponible statusItem UNAVAILABLE conditionLabel Moyen conditionItem FAIR indisponible indispo unavailable id 7"
+                class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900 break-words">Grimoire des potions</div>
+                        <p class="mt-2 break-words text-sm text-gray-700">
+                            <span>Alchimie</span><span class="text-gray-400"> • </span><span class="text-gray-500">ID</span>
+                            <span class="font-medium text-gray-900">7</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 sm:items-end">
+                        <span class="inline-flex min-w-[7.5rem] justify-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 ring-1 ring-gray-200">Indisponible</span>
+                        <a href="#"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li data-item-card
+                data-id="102"
+                data-title="Édition spéciale Sortilèges"
+                data-category="Sorts"
+                data-extra="Auteur Eldric"
+                data-search="Edition speciale Sortileges auteur Eldric categorie Sorts editeur Bibliotheque isbn 9782000000102 annee 2024 edition Édition spéciale format Livre langue Français languageLabel Français tags rare accents statusLabel Disponible statusItem AVAILABLE conditionLabel Excellent conditionItem EXCELLENT disponible dispo available id 102"
+                class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900 break-words">Édition spéciale Sortilèges</div>
+                        <p class="mt-2 break-words text-sm text-gray-700">
+                            <span>Sorts</span><span class="text-gray-400"> • </span><span class="text-gray-500">ID</span>
+                            <span class="font-medium text-gray-900">102</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 sm:items-end">
+                        <span class="inline-flex min-w-[7.5rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">Disponible</span>
+                        <a href="#"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li data-item-card
+                data-id="55"
+                data-title="Guide du dragon"
+                data-category="Bestiaire"
+                data-extra="Auteur Ana"
+                data-search="Guide du dragon auteur Ana categorie Bestiaire editeur Faune isbn 9782000000055 annee 2020 edition 1 format Livre langue Français languageLabel Français tags creatures dragon rouge statusLabel Indisponible statusItem UNAVAILABLE conditionLabel Bon état conditionItem GOOD indisponible indispo unavailable id 55"
+                class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900 break-words">Guide du dragon</div>
+                        <p class="mt-2 break-words text-sm text-gray-700">
+                            <span>Bestiaire</span><span class="text-gray-400"> • </span><span class="text-gray-500">ID</span>
+                            <span class="font-medium text-gray-900">55</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 sm:items-end">
+                        <span class="inline-flex min-w-[7.5rem] justify-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 ring-1 ring-gray-200">Indisponible</span>
+                        <a href="#"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li data-item-card
+                data-id="3"
+                data-title="Cours magie avancée"
+                data-category="Magie"
+                data-extra="Auteur Merlin"
+                data-search="Cours magie avancee auteur Merlin categorie Magie editeur Arcanes isbn 9782000000003 annee 2022 edition 3 format Livre langue Français languageLabel Français tags cours avancee statusLabel Disponible statusItem AVAILABLE conditionLabel Bon état conditionItem GOOD disponible dispo available id 3"
+                class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900 break-words">Cours magie avancée</div>
+                        <p class="mt-2 break-words text-sm text-gray-700">
+                            <span>Magie</span><span class="text-gray-400"> • </span><span class="text-gray-500">ID</span>
+                            <span class="font-medium text-gray-900">3</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 sm:items-end">
+                        <span class="inline-flex min-w-[7.5rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">Disponible</span>
+                        <a href="#"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li data-item-card
+                data-id="88"
+                data-title="Manuel de soin"
+                data-category="Médecine"
+                data-extra="Auteur Lyra"
+                data-search="Manuel de soin auteur Lyra categorie Medecine editeur Clinique isbn 9782000000088 annee 2019 edition 1 format Livre langue Français languageLabel Français tags soin soins rapides statusLabel Disponible statusItem AVAILABLE conditionLabel Moyen conditionItem FAIR disponible dispo available id 88"
+                class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900 break-words">Manuel de soin</div>
+                        <p class="mt-2 break-words text-sm text-gray-700">
+                            <span>Médecine</span><span class="text-gray-400"> • </span><span class="text-gray-500">ID</span>
+                            <span class="font-medium text-gray-900">88</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 sm:items-end">
+                        <span class="inline-flex min-w-[7.5rem] justify-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100">Disponible</span>
+                        <a href="#"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+        </ul>
+
+        <div id="noResults" class="hidden mt-6" role="status" aria-live="polite" aria-atomic="true">
+            <section class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                <h2 class="text-base font-semibold text-gray-900">Aucun résultat</h2>
+                <div class="mt-2 space-y-2">
+                    <p>Essaie un autre mot-clé ou efface la recherche.</p>
+                    <button id="clearSearch"
+                            type="button"
+                            class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        Effacer la recherche
+                    </button>
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+</section>
+
+<script>
+    (function () {
+        const search = document.getElementById('search');
+        const hint = document.getElementById('searchHint');
+        const panel = document.getElementById('suggestPanel');
+        const inner = document.getElementById('suggestInner');
+        const suggestAnnounce = document.getElementById('suggestAnnounce');
+        const cards = Array.from(document.querySelectorAll('[data-item-card]'));
+        const noResults = document.getElementById('noResults');
+        const clearBtn = document.getElementById('clearSearch');
+        const clearInline = document.getElementById('searchClearInline');
+        const resultsCount = document.getElementById('resultsCount');
+        const resultsLabel = document.getElementById('resultsLabel');
+        const sortSelect = document.getElementById('sortSelect');
+        const sortAnnounce = document.getElementById('sortAnnounce');
+        const triActive = document.getElementById('triActive');
+
+        if (!search) return;
+
+        const baseTotal = cards.length;
+
+        function safeNormalize(text) {
+            let out = String(text ?? '').toLowerCase();
+
+            try {
+                out = out.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+            } catch (e) {
+                out = out.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            }
+
+            out = out
+                .replace(/['’`´]/g, ' ')
+                .replace(/[-_,;:/\\(){}\[\].!?]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            return out;
+        }
+
+        const STOP_WORDS = new Set([
+            'de', 'du', 'des', 'la', 'le', 'les', 'un', 'une', 'et', 'ou', 'a', 'au', 'aux', 'en',
+            'dans', 'sur', 'pour', 'par', 'avec', 'sans', 'd', 'l'
+        ]);
+
+        function tokenize(text) {
+            const normalized = safeNormalize(text);
+            if (!normalized) return [];
+            return normalized.split(' ').filter(Boolean);
+        }
+
+        function tokenizeQuery(q) {
+            return tokenize(q)
+                .filter(t => t.length >= 2 || /^[0-9]+$/.test(t))
+                .filter(t => !STOP_WORDS.has(t));
+        }
+
+        function tokenizeFilterQuery(q) {
+            const tokens = tokenizeQuery(q);
+            const normalized = safeNormalize(q);
+
+            if (tokens.length === 1 && normalized.length < 3 && !/^[0-9]+$/.test(normalized)) {
+                return [];
+            }
+
+            return tokens;
+        }
+
+        function updateInlineClear(q) {
+            const has = Boolean((q || '').trim());
+            clearInline.classList.toggle('hidden', !has);
+        }
+
+        function updateHint(q) {
+            const trimmed = (q || '').trim();
+            if (!trimmed) {
+                hint.textContent = 'Astuce : plusieurs mots améliorent la précision (ex. “cours magie”).';
+                return;
+            }
+            hint.textContent = 'Astuce : plusieurs mots améliorent la précision (ex. “cours magie”).';
+        }
+
+        function updateTriActive() {
+            const opt = sortSelect.options && sortSelect.selectedIndex >= 0 ? sortSelect.options[sortSelect.selectedIndex] : null;
+            const label = opt && opt.text ? opt.text : 'Disponibilité puis titre';
+            triActive.textContent = 'Tri actif : ' + label;
+            if (sortAnnounce) {
+                sortAnnounce.textContent = 'Tri appliqué : ' + label;
+            }
+        }
+
+        function stripGenericLabels(raw) {
+            const s = String(raw ?? '');
+            if (!s) return '';
+            return s.replace(/\b(?:categorie|editeur|auteur|tags)\b/gi, ' ');
+        }
+
+        function tokenPrefixMatch(queryToken, hayToken) {
+            if (!queryToken || !hayToken) return false;
+
+            if (/^[0-9]+$/.test(queryToken)) {
+                return hayToken.includes(queryToken);
+            }
+
+            return hayToken.startsWith(queryToken);
+        }
+
+        function matchesAllTokens(queryTokens, hayTokens) {
+            if (queryTokens.length === 0) return true;
+            return queryTokens.every(qt => hayTokens.some(ht => tokenPrefixMatch(qt, ht)));
+        }
+
+        const index = cards.map(card => {
+            const title = card.getAttribute('data-title') || '';
+            const category = card.getAttribute('data-category') || '';
+            const extra = card.getAttribute('data-extra') || '';
+            const rawSearch = card.getAttribute('data-search') || '';
+            const composite = [title, category, extra, stripGenericLabels(rawSearch)].join(' ');
+            return {
+                card,
+                hayTokens: tokenize(composite),
+                title,
+                category,
+                extra,
+                id: card.getAttribute('data-id') || ''
+            };
+        });
+
+        function applyFilterNow() {
+            const q = search.value || '';
+            const tokens = tokenizeFilterQuery(q);
+
+            let visibleCount = 0;
+
+            for (const row of index) {
+                const match = matchesAllTokens(tokens, row.hayTokens);
+                row.card.classList.toggle('hidden', !match);
+                if (match) visibleCount++;
+            }
+
+            noResults.classList.toggle('hidden', visibleCount !== 0 || baseTotal === 0);
+            resultsCount.textContent = String(visibleCount);
+            resultsLabel.textContent = visibleCount === 1 ? 'résultat' : 'résultats';
+        }
+
+        function clearAll() {
+            search.value = '';
+            updateInlineClear('');
+            updateHint('');
+            closePanel();
+            applyFilterNow();
+            search.focus();
+        }
+
+        let filterTimer = null;
+        function scheduleFilter() {
+            if (filterTimer) window.clearTimeout(filterTimer);
+            filterTimer = window.setTimeout(applyFilterNow, 60);
+        }
+
+        let activeIndex = -1;
+        let currentOptions = [];
+
+        function escapeHtml(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function setPanel(open) {
+            panel.classList.toggle('hidden', !open);
+            panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+            search.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+            if (!open) {
+                activeIndex = -1;
+                currentOptions = [];
+                search.setAttribute('aria-activedescendant', '');
+            }
+        }
+
+        function closePanel() {
+            setPanel(false);
+            inner.innerHTML = '';
+        }
+
+        function openPanel() {
+            setPanel(true);
+        }
+
+        function thresholdReached(q) {
+            const tokens = tokenizeQuery(q);
+            if (tokens.length === 0) return false;
+
+            const raw = String(q ?? '').trim();
+            const isNumeric = /^[0-9]+$/.test(raw);
+            return isNumeric ? raw.length >= 1 : raw.length >= 2;
+        }
+
+        function renderOptions(list) {
+            if (list.length === 0) {
+                inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucune suggestion.</div>';
+                openPanel();
+                suggestAnnounce.textContent = 'Aucune suggestion.';
+                return;
+            }
+
+            let html = '';
+
+            for (let i = 0; i < list.length; i++) {
+                const it = list[i];
+                const optId = 'suggest-opt-' + escapeHtml(it.id) + '-' + i;
+                const ariaLabel = (it.title ? it.title : 'Suggestion') + (it.category ? (', ' + it.category) : '') + (it.id ? (', ID ' + it.id) : '');
+
+                html +=
+                    '<div ' +
+                    'id="' + optId + '" ' +
+                    'role="option" ' +
+                    'aria-selected="false" ' +
+                    'aria-label="' + escapeHtml(ariaLabel) + '" ' +
+                    'tabindex="-1" ' +
+                    'data-suggest-index="' + i + '" ' +
+                    'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
+                    '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(it.title) + '</div>' +
+                    '<div class="mt-1 break-words text-xs text-gray-600">' +
+                    escapeHtml(it.category) + ' • ID ' + escapeHtml(it.id) +
+                    (it.extra ? (' • ' + escapeHtml(it.extra)) : '') +
+                    '</div>' +
+                    '</div>';
+            }
+
+            inner.innerHTML = html;
+            openPanel();
+            suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+        }
+
+        function setActive(newIndex) {
+            const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
+            if (options.length === 0) return;
+
+            if (newIndex < 0) newIndex = options.length - 1;
+            if (newIndex >= options.length) newIndex = 0;
+
+            activeIndex = newIndex;
+
+            options.forEach((el, i) => {
+                const isActive = i === activeIndex;
+                el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                el.classList.toggle('bg-gray-50', isActive);
+            });
+
+            const activeEl = options[activeIndex];
+            if (activeEl && activeEl.id) {
+                search.setAttribute('aria-activedescendant', activeEl.id);
+                try {
+                    activeEl.scrollIntoView({ block: 'nearest' });
+                } catch (e) {}
+            }
+        }
+
+        function applySuggestionAt(idx) {
+            const it = currentOptions[idx];
+            if (!it) return;
+
+            search.value = it.title || search.value || '';
+            updateInlineClear(search.value);
+            updateHint(search.value);
+            closePanel();
+            applyFilterNow();
+            search.focus();
+        }
+
+        let suggestTimer = null;
+        function scheduleSuggest() {
+            const q = search.value || '';
+            if (suggestTimer) window.clearTimeout(suggestTimer);
+
+            suggestTimer = window.setTimeout(function () {
+                const trimmed = String(q ?? '').trim();
+
+                if (!thresholdReached(trimmed)) {
+                    inner.innerHTML = '';
+                    closePanel();
+                    return;
+                }
+
+                const tokens = tokenizeQuery(trimmed);
+                const filtered = index
+                    .filter(it => matchesAllTokens(tokens, it.hayTokens))
+                    .slice(0, 8)
+                    .map(it => ({
+                        id: it.id,
+                        title: it.title,
+                        category: it.category,
+                        extra: it.extra
+                    }));
+
+                currentOptions = filtered;
+                renderOptions(filtered);
+
+                if (filtered.length > 0) {
+                    setActive(0);
+                }
+            }, 120);
+        }
+
+        function handleEscape(e) {
+            const isOpen = !panel.classList.contains('hidden');
+            if (!isOpen) return false;
+
+            const key = e && e.key ? e.key : '';
+            if (key === 'Escape' || key === 'Esc') {
+                e.preventDefault();
+                closePanel();
+                return true;
+            }
+
+            return false;
+        }
+
+        document.addEventListener('click', function (e) {
+            if (panel.classList.contains('hidden')) return;
+            const target = e.target;
+            if (target === search || panel.contains(target)) return;
+            closePanel();
+        });
+
+        window.addEventListener('resize', closePanel);
+        window.addEventListener('scroll', function () {
+            if (!panel.classList.contains('hidden')) {
+                closePanel();
+            }
+        }, true);
+
+        document.addEventListener('keydown', function (e) {
+            handleEscape(e);
+        }, true);
+
+        inner.addEventListener('mousedown', function (e) {
+            const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+            if (!opt) return;
+            e.preventDefault();
+        });
+
+        inner.addEventListener('click', function (e) {
+            const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+            if (!opt) return;
+            const idx = Number(opt.getAttribute('data-suggest-index'));
+            if (!Number.isFinite(idx)) return;
+            applySuggestionAt(idx);
+        });
+
+        clearBtn.addEventListener('click', clearAll);
+        clearInline.addEventListener('click', clearAll);
+
+        sortSelect.addEventListener('change', updateTriActive);
+
+        search.addEventListener('keydown', function (e) {
+            if (handleEscape(e)) return;
+
+            const isOpen = !panel.classList.contains('hidden');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!isOpen) {
+                    scheduleSuggest();
+                    window.setTimeout(function () {
+                        if (!panel.classList.contains('hidden')) {
+                            setActive(0);
+                        }
+                    }, 140);
+                } else {
+                    setActive(activeIndex + 1);
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                if (isOpen) {
+                    e.preventDefault();
+                    setActive(activeIndex - 1);
+                }
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                if (isOpen && activeIndex >= 0) {
+                    e.preventDefault();
+                    applySuggestionAt(activeIndex);
+                }
+                return;
+            }
+
+            if (e.key === 'Tab' && isOpen) {
+                closePanel();
+            }
+        });
+
+        search.addEventListener('input', function () {
+            updateInlineClear(search.value);
+            updateHint(search.value);
+            scheduleFilter();
+            scheduleSuggest();
+        });
+
+        search.addEventListener('focus', function () {
+            const q = (search.value || '').trim();
+            if (q) scheduleSuggest();
+        });
+
+        updateTriActive();
+        applyFilterNow();
+        updateHint('');
+        updateInlineClear('');
+        closePanel();
+    })();
+</script>
+
+</body>
+</html>

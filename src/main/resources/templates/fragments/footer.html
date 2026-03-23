@@ -1,0 +1,85 @@
+<!-- src/main/resources/templates/fragments/footer.html -->
+<footer th:fragment="footer" class="bg-white ring-1 ring-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 p-3 min-w-0 overflow-x-hidden">
+
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between min-w-0">
+            <p class="text-sm text-gray-600 min-w-0 break-words hyphens-auto">
+                <span class="font-semibold text-gray-900">Usage interne</span>
+                <span class="text-gray-500">— accès réservé et sécurisé</span>
+            </p>
+
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0 max-w-full">
+                <a href="https://www.facebook.com/Lesmagiciensdabord/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="Facebook – Les Magiciens d'Abord (nouvelle fenêtre)"
+                   class="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900
+                          focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    <svg aria-hidden="true" class="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                        <path fill="#1877F2"
+                              d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.413c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.236 2.686.236v2.953h-1.512c-1.49 0-1.953.93-1.953 1.887v2.253h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073Z"/>
+                    </svg>
+                    <span class="min-w-0 break-words hyphens-auto">Facebook</span>
+                </a>
+
+                <span class="text-gray-300" aria-hidden="true">•</span>
+
+                <a href="https://lesmagiciensdabord.wordpress.com/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="Site web – Les Magiciens d'Abord (nouvelle fenêtre)"
+                   class="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900
+                          focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    <img th:src="@{/img/Logo_MagiciensDabord_Amiens.png}"
+                         alt=""
+                         aria-hidden="true"
+                         class="h-5 w-5 shrink-0 object-contain object-center" />
+                    <span class="min-w-0 break-words hyphens-auto">Site web de l’association</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between min-w-0">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0 max-w-full">
+
+                <a th:href="@{/contact}"
+                   class="text-sm text-gray-600 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    Contact &amp; support
+                </a>
+
+                <a th:href="@{/confidentialite}"
+                   class="text-sm text-gray-600 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    Confidentialité &amp; protection des données
+                </a>
+
+                <a th:href="@{/accessibilite}"
+                   class="text-sm text-gray-600 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    Accessibilité
+                </a>
+
+                <a th:href="@{/mentions-legales}"
+                   class="text-sm text-gray-600 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    Mentions légales
+                </a>
+
+                <a th:href="@{/cgu}"
+                   class="text-sm text-gray-600 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 rounded-md break-words hyphens-auto">
+                    Conditions générales d’utilisation
+                </a>
+
+                <span class="text-sm text-gray-400" aria-label="Langue">FR</span>
+            </div>
+
+            <p class="text-sm text-gray-500 min-w-0 break-words">
+                © <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2026</span> MagicLibrary
+            </p>
+        </div>
+
+        <p class="mt-2 text-xs text-gray-500 min-w-0 break-words hyphens-auto">
+            Données personnelles : traitées exclusivement pour le fonctionnement interne de l’association.
+            Toute demande d’accès, de rectification ou de suppression peut être effectuée via le formulaire
+            <a th:href="@{/contact}" class="underline hover:text-gray-900 break-words hyphens-auto">Contact</a>.
+        </p>
+
+    </div>
+</footer>

@@ -1,0 +1,154 @@
+<!-- src/main/resources/templates/contact.html -->
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Contact – MagicLibrary'">
+
+    <th:block th:fragment="content">
+
+        <section class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div class="min-w-0">
+                    <h1 class="text-lg font-semibold text-gray-900">Contact</h1>
+                    <p class="mt-2 text-sm text-gray-600">
+                        Envoie un message à l’équipe.
+                    </p>
+                    <p class="mt-2 text-xs text-gray-500">
+                        Les champs marqués d’un astérisque (*) sont obligatoires.
+                    </p>
+                </div>
+
+                <div class="shrink-0 sm:self-center">
+                    <a th:href="@{/accueil}"
+                       aria-label="Retour à l’accueil"
+                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        Retour à l'acceuil
+                    </a>
+                </div>
+            </header>
+
+            <div class="mt-6 text-sm text-gray-700">
+
+                <section th:if="${successMessage != null}"
+                         class="mt-6 first:mt-0"
+                         aria-label="Message de succès">
+                    <div role="status"
+                         aria-live="polite"
+                         class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                        <span class="font-semibold">Succès : </span>
+                        <span th:text="${successMessage}">Message envoyé.</span>
+                    </div>
+                </section>
+
+                <section th:if="${errorMessage != null}"
+                         class="mt-6 first:mt-0"
+                         aria-label="Message d’erreur">
+                    <div role="alert"
+                         aria-live="assertive"
+                         class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                        <span class="font-semibold">Erreur : </span>
+                        <span th:text="${errorMessage}">Erreur.</span>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="contact-form-title">
+                    <h2 id="contact-form-title" class="text-base font-semibold text-gray-900">Formulaire</h2>
+
+                    <div class="mt-2 space-y-2">
+                        <p class="text-sm text-gray-600">
+                            Ton email est pré-rempli depuis ton compte connecté.
+                        </p>
+
+                        <form th:action="@{/contact}" method="post" class="space-y-4" autocomplete="on" novalidate>
+
+                            <input type="hidden"
+                                   th:name="${_csrf.parameterName}"
+                                   th:value="${_csrf.token}"/>
+
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <div class="min-w-0">
+                                    <label for="name" class="block text-sm font-medium text-gray-700">
+                                        Nom (optionnel)
+                                    </label>
+                                    <input id="name"
+                                           name="name"
+                                           type="text"
+                                           maxlength="100"
+                                           placeholder="Ton nom"
+                                           autocomplete="name"
+                                           class="mt-1 w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                </div>
+
+                                <div class="min-w-0">
+                                    <label for="email" class="block text-sm font-medium text-gray-700">
+                                        Email
+                                    </label>
+                                    <input id="email"
+                                           name="email"
+                                           type="email"
+                                           th:value="${prefillEmail}"
+                                           readonly
+                                           aria-readonly="true"
+                                           autocomplete="email"
+                                           class="mt-1 w-full cursor-not-allowed rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-700 ring-1 ring-gray-200">
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Email récupéré depuis ton compte connecté.
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <div class="min-w-0">
+                                <label for="subject" class="block text-sm font-medium text-gray-700">
+                                    Sujet <span class="text-gray-500" aria-hidden="true">*</span>
+                                    <span class="sr-only">obligatoire</span>
+                                </label>
+                                <input id="subject"
+                                       name="subject"
+                                       type="text"
+                                       required
+                                       aria-required="true"
+                                       maxlength="150"
+                                       placeholder="Sujet de ta demande"
+                                       autocomplete="off"
+                                       class="mt-1 w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            </div>
+
+                            <div class="min-w-0">
+                                <label for="message" class="block text-sm font-medium text-gray-700">
+                                    Message <span class="text-gray-500" aria-hidden="true">*</span>
+                                    <span class="sr-only">obligatoire</span>
+                                </label>
+                                <textarea id="message"
+                                          name="message"
+                                          required
+                                          aria-required="true"
+                                          maxlength="2000"
+                                          rows="6"
+                                          placeholder="Décris ta demande…"
+                                          autocomplete="off"
+                                          class="mt-1 w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"></textarea>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    2000 caractères max.
+                                </p>
+                            </div>
+
+                            <div class="flex items-center justify-end">
+                                <button type="submit"
+                                        class="inline-flex min-h-10 items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Envoyer
+                                </button>
+                            </div>
+
+                        </form>
+                    </div>
+                </section>
+
+            </div>
+
+        </section>
+
+    </th:block>
+
+</th:block>

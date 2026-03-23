@@ -1,0 +1,97 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Accessibilité'">
+
+    <th:block th:fragment="content">
+        <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+            <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <h1 class="text-lg font-semibold text-gray-900">Accessibilité</h1>
+
+                    <p class="mt-2 text-xs text-gray-500">Dernière mise à jour : Janvier 2026</p>
+
+                    <p class="mt-2 text-sm text-gray-600">
+                        La présente déclaration d’accessibilité s’applique à l’application
+                        <strong class="font-semibold">MagicLibrary</strong>.
+                    </p>
+                </div>
+
+                <div th:if="${#authorization.expression('isAuthenticated()')}"
+                     class="shrink-0 sm:self-start">
+                    <a th:href="@{/accueil}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">
+                        Retour à l’accueil
+                    </a>
+                </div>
+            </header>
+
+            <div class="mt-6 break-words text-sm text-gray-700">
+                <section class="mt-6 first:mt-0" aria-labelledby="acc-engagement">
+                    <h2 id="acc-engagement" class="text-base font-semibold text-gray-900">Engagement</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’association s’engage à rendre l’application MagicLibrary accessible au plus grand nombre,
+                            quelles que soient les capacités des utilisateurs ou leurs contraintes techniques.
+                        </p>
+                        <p>
+                            L’application s’efforce de respecter les principes généraux d’accessibilité numérique,
+                            en s’appuyant sur le Référentiel général d’amélioration de l’accessibilité (RGAA)
+                            et les Web Content Accessibility Guidelines (WCAG 2.1), soit les lignes directrices pour l’accessibilité des contenus web,
+                            dans la mesure compatible avec son contexte d’usage interne.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="acc-mesures">
+                    <h2 id="acc-mesures" class="text-base font-semibold text-gray-900">Mesures mises en place</h2>
+                    <div class="mt-2 space-y-2">
+                        <ul class="list-disc space-y-1 pl-4">
+                            <li>Navigation entièrement utilisable au clavier</li>
+                            <li>Indication visuelle explicite du focus clavier</li>
+                            <li>Contrastes de couleurs renforcés</li>
+                            <li>Aucune information transmise uniquement par la couleur</li>
+                            <li>Interface responsive adaptée aux écrans mobiles et tablettes</li>
+                            <li>Compatibilité avec les technologies d’assistance, notamment les lecteurs d’écran</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="acc-compatibilite">
+                    <h2 id="acc-compatibilite" class="text-base font-semibold text-gray-900">Compatibilité</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’application est testée sur les navigateurs modernes régulièrement mis à jour,
+                            notamment Google Chrome et Mozilla Firefox.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="acc-amelioration">
+                    <h2 id="acc-amelioration" class="text-base font-semibold text-gray-900">Amélioration continue</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            L’accessibilité s’inscrit dans une démarche d’amélioration continue.
+                            Des ajustements peuvent être réalisés progressivement afin d’optimiser l’expérience utilisateur.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="mt-6 first:mt-0" aria-labelledby="acc-signalement">
+                    <h2 id="acc-signalement" class="text-base font-semibold text-gray-900">Signaler un problème</h2>
+                    <div class="mt-2 space-y-2">
+                        <p>
+                            Si vous rencontrez une difficulté d’accès ou un défaut d’accessibilité,
+                            vous pouvez le signaler via la page
+                            <a th:href="@{/contact}"
+                               class="font-medium text-indigo-700 hover:underline">
+                                Contact
+                            </a>
+                            afin que nous puissions analyser la situation et apporter une correction si nécessaire.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </th:block>
+
+</th:block>
