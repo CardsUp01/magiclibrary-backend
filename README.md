@@ -1,173 +1,137 @@
-# 📚 MagicLibrary
+# MagicLibrary Backend
 
-![MagicLibrary](docs/images/home.png)
-
-> Application web de gestion d'une bibliothèque associative — version V1 publique
+> Backend Spring Boot application for managing a thematic library (MagicLibrary)
 
 ---
 
-## 🚀 Présentation du projet
+## 🚀 Overview
 
-MagicLibrary est une application web complète permettant la gestion d’une bibliothèque associative.
+MagicLibrary is a web application designed to manage a digital library system, including items, loans, users, notifications, and contact messages.
 
-Elle couvre l’ensemble des besoins métier :
-- Gestion du catalogue numérique
-- Gestion des emprunts et retours
-- Gestion des membres
-- Gestion des notifications
-- Formulaire de contact
-- Interface d’administration
-
-Le projet est développé dans un contexte réel associatif avec une architecture moderne full-stack.
+It is built as a REST backend with Spring Boot and follows a layered architecture.
 
 ---
 
-## 🎯 Objectif
+## 🧱 Tech Stack
 
-Fournir une plateforme interne sécurisée et ergonomique permettant :
-- La gestion des ressources de la bibliothèque
-- Le suivi des emprunts
-- La communication entre membres et administrateurs
-- L’administration centralisée des utilisateurs et contenus
-
----
-
-## 🧰 Stack technique
-
-- Java 21
-- Spring Boot 3
-- Spring Security
-- JWT
-- Thymeleaf (SSR)
+- Java 17+
+- Spring Boot
+- Spring Security (JWT authentication)
 - Maven
-- MariaDB
-- MongoDB
-- API REST
+- MySQL / MariaDB (relational data)
+- MongoDB (Contact module)
+- REST API architecture
+
+---
+
+## 🔐 Authentication
+
+- JWT-based authentication
+- Roles:
+  - ADMIN
+  - MEMBER
+  - GUEST
+
+---
+
+## 📦 Main Features
+
+### 👤 User management
+- Register / login
+- Role-based access control
+
+### 📚 Library items
+- Manage library catalog
+- View available items
+
+### 📦 Loan system
+- Create loans
+- Track borrowed items
+- Loan status management
+
+### 🔔 Notifications
+- System notifications for users
+- Admin alerts
+
+### 💬 Contact module (MongoDB)
+- Send messages
+- Admin responses
 
 ---
 
 ## 🏗️ Architecture
 
-Navigateur
-→ Thymeleaf SSR
-→ Spring Boot (Controllers / Services)
-→ Spring Security + JWT
-→ MariaDB (données relationnelles)
-→ MongoDB (module contact)
+```
+Controller → Service → Repository → Database
+```
+
+- Clean layered architecture
+- Separation of concerns
+- RESTful endpoints
 
 ---
 
-## 🔐 Sécurité
+## ⚙️ Configuration
 
-- Authentification JWT
-- Gestion des rôles (ADMIN / MEMBRE)
-- Protection des endpoints
-- Chiffrement des mots de passe avec BCrypt
-- Accès contrôlé par session sécurisée
+Profiles available:
 
----
+- `application-dev.properties`
+- `application-prod.properties`
 
-## 📸 Aperçu de l’application
-
-### 🔐 Connexion
-![Login](docs/images/login.png)
-
-### 🏠 Accueil
-![Accueil](docs/images/home.png)
-
-### 📚 Catalogue
-![Catalogue](docs/images/catalogue.png)
-
-### 📄 Détail d’un objet
-![Item](docs/images/item-details.png)
-
-### 📦 Emprunts
-![Emprunts](docs/images/loans.png)
-
-### 🔔 Notifications
-![Notifications](docs/images/notifications.png)
-
-### ✉️ Contact
-![Contact](docs/images/contact.png)
-
-### 🛠 Administration
-![Administration](docs/images/admin-dashboard.png)
-
-### 👥 Gestion des membres
-![Membres](docs/images/admin-members.png)
+Default profile:
+```
+dev
+```
 
 ---
 
-## ⚙️ Installation locale
+## ▶️ Run project
 
 ```bash
-git clone https://github.com/CardsUp01/magiclibrary-backend.git
-cd magiclibrary-backend
 mvn clean install
 mvn spring-boot:run
 ```
 
 ---
 
-## ▶️ Lancement
+## 📁 Project Structure
 
-http://localhost:8080
-
----
-
-## 👤 Comptes de démonstration
-
-### Administrateur
-- Email : admin@example.com
-- Mot de passe : Admin123!
-
-### Membre
-- Email : lucas.demo@magiclibrary.fr
-- Mot de passe : Demo123!
-
----
-
-## 📦 Fonctionnalités principales
-
-- Authentification sécurisée avec JWT
-- Catalogue dynamique avec recherche et tri
-- Gestion des emprunts multi-objets
-- Espace d’administration complet
-- Gestion des membres
-- Notifications internes
-- Formulaire de contact connecté au système
-- Interface responsive (SSR)
+```
+src/
+ ├── main/java
+ │    └── com.magiclibrary
+ │         ├── controller
+ │         ├── service
+ │         ├── repository
+ │         ├── security
+ │         └── dto
+ ├── main/resources
+ │    ├── application.properties
+ │    ├── application-dev.properties
+ │    └── application-prod.properties
+```
 
 ---
 
-## 🧠 Organisation du code
+## 🌐 Deployment
 
-- Controllers (REST + SSR)
-- Services (logique métier)
-- Repositories (accès aux données)
-- DTO (transfert de données)
-- Security (JWT + Spring Security)
+Compatible with:
 
----
-
-## 📈 Perspectives d’évolution
-
-- Tableau de bord analytique
-- Réservations d’ouvrages
-- Notifications en temps réel (WebSocket)
-- Amélioration de l’interface mobile
-- Export PDF des emprunts
-- Système de cotisation avancé
+- Railway
+- Render
+- Any cloud hosting supporting Java Spring Boot
 
 ---
 
-## 👨‍💻 Auteur
+## 📌 Status
 
-Hugo VERON  
-Développeur Java / Spring Boot
+✔ Backend functional  
+✔ Authentication implemented  
+✔ Database integration ready  
+✔ Demo-ready version
 
 ---
 
-## 📄 Licence
+## 📄 License
 
-Projet de démonstration — usage libre pour évaluation technique.
+Educational / Portfolio project
