@@ -6,9 +6,19 @@ import com.magiclibrary.dto.item.ItemResponseDTO;
 import com.magiclibrary.entities.Item;
 import com.magiclibrary.enums.LanguageCode;
 
+/**
+ * Mapper chargé de convertir une entité Item
+ * en DTO de réponse destiné aux API et aux interfaces.
+ *
+ * La conversion inclut les libellés d'affichage
+ * associés aux codes et énumérations métier.
+ */
 @Component
 public class ItemMapper {
 
+    /*
+     * Transforme une entité Item en ItemResponseDTO.
+     */
     public ItemResponseDTO toResponse(Item entity) {
 
         if (entity == null) {

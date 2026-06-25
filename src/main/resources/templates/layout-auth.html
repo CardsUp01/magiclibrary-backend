@@ -7,6 +7,7 @@
 
 <body class="min-h-screen bg-slate-100 overflow-x-hidden">
 
+<!-- Lien d’évitement destiné aux utilisateurs naviguant au clavier -->
 <a href="#main"
    class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50
           rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow
@@ -14,8 +15,15 @@
     Aller au contenu principal
 </a>
 
+<!--
+    Layout dédié aux pages d’authentification.
+    Centre le contenu principal sans afficher
+    la navigation ni le pied de page de l’application.
+-->
 <main id="main" role="main" tabindex="-1"
       class="min-h-screen flex items-start sm:items-center justify-center px-2 py-4 sm:py-10">
+
+    <!-- Zone recevant le contenu spécifique de la page d’authentification -->
     <th:block th:replace="${content}">
         <section class="w-full max-w-md">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-8">
@@ -24,6 +32,7 @@
             </div>
         </section>
     </th:block>
+
 </main>
 
 </body>

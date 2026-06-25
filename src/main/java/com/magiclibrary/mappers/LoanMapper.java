@@ -9,11 +9,21 @@ import com.magiclibrary.entities.Loan;
 import com.magiclibrary.entities.User;
 import com.magiclibrary.enums.LoanOrigin;
 
+/**
+ * Mapper utilitaire chargé de convertir les entités Loan
+ * en DTO de réponse.
+ *
+ * Cette classe centralise également la mise en forme des informations
+ * utilisateur et des libellés d'origine destinés à l'affichage.
+ */
 public final class LoanMapper {
 
     private LoanMapper() {
     }
 
+    /*
+     * Transforme une entité Loan en LoanResponseDTO.
+     */
     public static LoanResponseDTO toResponseDTO(Loan loan) {
         if (loan == null) {
             return null;
@@ -51,6 +61,10 @@ public final class LoanMapper {
         return dto;
     }
 
+    /*
+     * Transforme une liste d'entités Loan en liste de DTO.
+     * Les valeurs nulles sont ignorées afin de retourner une liste exploitable.
+     */
     public static List<LoanResponseDTO> toResponseDTOList(List<Loan> loans) {
         List<LoanResponseDTO> list = new ArrayList<>();
 
@@ -68,6 +82,9 @@ public final class LoanMapper {
         return list;
     }
 
+    /*
+     * Normalise l'affichage du prénom avec une majuscule initiale.
+     */
     private static String formatFirstName(String firstName) {
         if (firstName == null) {
             return null;
@@ -82,6 +99,9 @@ public final class LoanMapper {
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
+    /*
+     * Normalise l'affichage du nom en majuscules.
+     */
     private static String formatLastName(String lastName) {
         if (lastName == null) {
             return null;

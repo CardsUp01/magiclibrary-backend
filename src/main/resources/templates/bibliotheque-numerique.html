@@ -8,6 +8,11 @@
                        hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
                        resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : itemsCount}">
 
+        <!--
+            Page de consultation de la bibliothèque numérique.
+            Permet la recherche, le tri, la consultation des objets
+            et la navigation paginée dans le catalogue numérique.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -37,6 +42,7 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
+                            <!-- Recherche dynamique des objets du catalogue numérique -->
                             <form id="searchForm" th:action="@{/bibliotheque-numerique}" method="get" class="max-w-full">
                                 <input type="hidden" name="page" value="0" />
                                 <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -88,6 +94,8 @@
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0 max-w-full flex-1">
+
+                                    <!-- Tri serveur appliqué aux résultats de la bibliothèque numérique -->
                                     <form th:action="@{/bibliotheque-numerique}" method="get" class="max-w-full">
                                         <input type="hidden" name="page" value="0" />
                                         <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -143,6 +151,7 @@
                                     </p>
                                 </div>
 
+                                <!-- Indicateur du nombre de résultats affichés -->
                                 <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
                                     <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
                                     <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
@@ -161,6 +170,7 @@
                 <section class="mt-6 max-w-full first:mt-0">
                     <h2 class="text-base font-semibold text-gray-900">Objets</h2>
 
+                    <!-- Résumé de l'état courant : résultats, recherche active et pagination -->
                     <div class="mt-2 max-w-full space-y-2">
                         <p th:if="${itemsCount > 0 and hasQuery}">
                             <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
@@ -191,6 +201,7 @@
                         </p>
                     </div>
 
+                    <!-- État vide de la bibliothèque numérique ou de la recherche -->
                     <div class="mt-6 max-w-full" th:if="${itemsCount == 0}">
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                             <h2 class="text-base font-semibold text-gray-900" th:text="${hasQuery ? 'Aucun résultat' : 'Aucun objet disponible'}">Aucun objet disponible</h2>
@@ -209,8 +220,10 @@
                         </section>
                     </div>
 
+                    <!-- Affichage des objets de la bibliothèque numérique -->
                     <div class="mt-6 max-w-full" th:if="${itemsCount > 0}">
 
+                        <!-- Variante pleine largeur utilisée lorsqu'un seul objet est affiché -->
                         <ul th:if="${isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4"
                             role="list">
@@ -333,6 +346,7 @@
                             </li>
                         </ul>
 
+                        <!-- Variante en grille utilisée lorsque plusieurs objets sont affichés -->
                         <ul th:if="${!isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
                             role="list">
@@ -424,6 +438,7 @@
 
                         </ul>
 
+                        <!-- Navigation entre les différentes pages de la bibliothèque numérique -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des objets">
@@ -485,6 +500,10 @@
 
         </section>
 
+        <!--
+            Gestion de la recherche dynamique, des suggestions,
+            du tri automatique et de la navigation clavier.
+        -->
         <script>
             (function () {
                 const search = document.getElementById('search');

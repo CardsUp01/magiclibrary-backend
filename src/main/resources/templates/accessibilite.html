@@ -1,9 +1,18 @@
 <th:block xmlns:th="http://www.thymeleaf.org"
+          xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
           th:replace="~{layout :: layout(~{::content})}"
           th:with="pageTitle='Accessibilité'">
 
     <th:block th:fragment="content">
+
+        <!--
+            Page d'information dédiée à l'accessibilité.
+            Présente les engagements, les mesures mises en place
+            et le moyen de signaler une difficulté d'accès.
+        -->
         <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <!-- En-tête de la page avec date de mise à jour et retour conditionnel à l'accueil -->
             <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                     <h1 class="text-lg font-semibold text-gray-900">Accessibilité</h1>
@@ -25,6 +34,7 @@
                 </div>
             </header>
 
+            <!-- Contenu principal de la déclaration d'accessibilité -->
             <div class="mt-6 break-words text-sm text-gray-700">
                 <section class="mt-6 first:mt-0" aria-labelledby="acc-engagement">
                     <h2 id="acc-engagement" class="text-base font-semibold text-gray-900">Engagement</h2>
@@ -79,7 +89,7 @@
                 <section class="mt-6 first:mt-0" aria-labelledby="acc-signalement">
                     <h2 id="acc-signalement" class="text-base font-semibold text-gray-900">Signaler un problème</h2>
                     <div class="mt-2 space-y-2">
-                        <p>
+                        <p sec:authorize="!hasRole('ADMIN')">
                             Si vous rencontrez une difficulté d’accès ou un défaut d’accessibilité,
                             vous pouvez le signaler via la page
                             <a th:href="@{/contact}"
@@ -87,6 +97,12 @@
                                 Contact
                             </a>
                             afin que nous puissions analyser la situation et apporter une correction si nécessaire.
+                        </p>
+
+                        <p sec:authorize="hasRole('ADMIN')">
+                            Si vous rencontrez une difficulté d’accès ou un défaut d’accessibilité,
+                            le signalement est traité via les outils internes d’administration afin que la situation puisse être analysée
+                            et corrigée si nécessaire.
                         </p>
                     </div>
                 </section>

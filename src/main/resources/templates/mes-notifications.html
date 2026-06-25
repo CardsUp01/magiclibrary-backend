@@ -8,10 +8,16 @@
                        hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
                        unreadCount=${notifications != null ? #aggregates.sum(notifications.![readNotification == null || !readNotification ? 1 : 0]) : 0}">
 
+        <!--
+            Page de consultation des notifications personnelles.
+            Permet au membre de rechercher, consulter et marquer comme lues
+            les notifications associées à son espace MagicLibrary.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
 
+                <!-- En-tête de la page avec retour vers l'accueil -->
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 max-w-full sm:flex-1">
                         <h1 class="break-words text-base font-semibold text-gray-900">Mes notifications</h1>
@@ -31,6 +37,7 @@
                     </div>
                 </div>
 
+                <!-- Message de confirmation après action utilisateur -->
                 <div th:if="${successMessage != null}"
                      class="max-w-full overflow-hidden rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm"
                      role="status"
@@ -45,6 +52,7 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
+                            <!-- Recherche dynamique dans les notifications visibles -->
                             <form id="searchForm" th:action="@{/mes-notifications}" method="get" class="max-w-full">
                                 <input type="hidden" name="page" value="0" />
                                 <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -102,6 +110,7 @@
                                     </p>
                                 </div>
 
+                                <!-- Compteur des notifications actuellement visibles -->
                                 <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
                                     <span id="resultsCount" th:text="${notificationsCount}">0</span>
                                     <span id="resultsLabel" th:text="${notificationsCount == 1 ? 'résultat visible' : 'résultats visibles'}">résultats visibles</span>
@@ -120,6 +129,7 @@
                 <section class="mt-6 max-w-full first:mt-0">
                     <h2 class="text-base font-semibold text-gray-900">Notifications</h2>
 
+                    <!-- Résumé de l'état courant des notifications et de la pagination -->
                     <div class="mt-2 max-w-full space-y-2">
                         <p th:if="${notificationsCount > 0}">
                             <span class="font-medium text-gray-900" th:text="${notificationsCount}">0</span>
@@ -146,6 +156,7 @@
                         </p>
                     </div>
 
+                    <!-- État vide lorsqu'aucune notification n'est disponible -->
                     <div class="mt-6 max-w-full" th:if="${notificationsCount == 0}">
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                             <h2 class="text-base font-semibold text-gray-900">Aucune notification disponible</h2>
@@ -157,8 +168,10 @@
                         </section>
                     </div>
 
+                    <!-- Affichage des notifications personnelles -->
                     <div class="mt-6 max-w-full" th:if="${notificationsCount > 0}">
 
+                        <!-- Variante pleine largeur utilisée lorsqu'une seule notification est affichée -->
                         <ul th:if="${isSingle}"
                             id="notificationListSingle"
                             class="grid max-w-full grid-cols-1 gap-4"
@@ -288,6 +301,7 @@
                             </li>
                         </ul>
 
+                        <!-- Variante en grille utilisée lorsque plusieurs notifications sont affichées -->
                         <ul th:if="${!isSingle}"
                             id="notificationListGrid"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
@@ -388,6 +402,7 @@
 
                         </ul>
 
+                        <!-- État vide affiché lorsqu'une recherche locale ne retourne aucun résultat -->
                         <div id="emptySearchState" class="mt-6 hidden max-w-full">
                             <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                                 <h2 class="text-base font-semibold text-gray-900">Aucun résultat</h2>
@@ -406,6 +421,7 @@
                             </section>
                         </div>
 
+                        <!-- Navigation entre les différentes pages de notifications -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des notifications">
@@ -467,6 +483,11 @@
 
         </section>
 
+        <!--
+            Gestion de la recherche locale, des suggestions serveur,
+            du compteur de résultats visibles, de l'état vide de recherche
+            et de la navigation clavier dans les suggestions.
+        -->
         <script>
             (function () {
                 const search = document.getElementById('search');

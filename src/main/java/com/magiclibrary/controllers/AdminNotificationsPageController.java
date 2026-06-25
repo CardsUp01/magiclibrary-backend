@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.magiclibrary.dto.notification.NotificationResponseDTO;
 import com.magiclibrary.entities.User;
@@ -30,12 +31,29 @@ import com.magiclibrary.exceptions.custom.UserNotFoundException;
 import com.magiclibrary.repositories.interfaces.UserRepository;
 import com.magiclibrary.services.NotificationService;
 
+/**
+ * Contrôleur SSR réservé à l'administration des notifications.
+ *
+ * Cette classe gère l'affichage paginé des notifications,
+ * la recherche, l'autocomplétion, la consultation du contenu ciblé
+ * ainsi que le marquage des notifications comme lues.
+ */
 @Controller
 public class AdminNotificationsPageController {
 
+    /*
+     * Paramètres utilisés par l'interface SSR des notifications :
+     * pagination, chargement complet pour la recherche et limite
+     * des suggestions affichées dans l'autocomplétion.
+     */
     private static final int NOTIFICATIONS_PAGE_SIZE = 9;
     private static final int NOTIFICATIONS_FETCH_BATCH_SIZE = 200;
     private static final int NOTIFICATIONS_SUGGEST_LIMIT = 8;
+
+    /*
+     * Format d'affichage des dates utilisé dans l'interface
+     * et les suggestions de notifications.
+     */
     private static final DateTimeFormatter NOTIFICATION_DATE_DISPLAY_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -50,6 +68,13 @@ public class AdminNotificationsPageController {
         this.userRepository = userRepository;
     }
 
+    /*
+     * Affiche la page d'administration des notifications.
+     *
+     * La méthode gère l'affichage paginé, la recherche, la sélection
+     * d'une notification particulière et les indicateurs nécessaires
+     * au rendu de la page Thymeleaf.
+     */
     @GetMapping("/admin/notifications")
     @PreAuthorize("hasRole('ADMIN')")
     public String showNotificationsPage(
@@ -130,6 +155,72 @@ public class AdminNotificationsPageController {
         return "admin/notifications";
     }
 
+    /*
+     * Ouvre la ressource ciblée par une notification.
+     *
+     * La notification est marquée comme lue avant la redirection
+     * afin de refléter immédiatement sa consultation.
+     */
+    @GetMapping("/admin/notifications/{id}/open")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String openNotificationTarget(
+            @PathVariable("id") Integer idNotification,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "9") int size,
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "selectedNotificationId", required = false) Integer selectedNotificationId,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size > 0 ? size : NOTIFICATIONS_PAGE_SIZE;
+        String resolvedQuery = q == null ? "" : q.trim();
+
+        User currentUser = resolveCurrentUser(authentication);
+
+        NotificationResponseDTO notification = fetchAllNotifications().stream()
+                .filter(item -> Objects.equals(item.getIdNotification(), idNotification))
+                .findFirst()
+                .orElseThrow(() -> new NotificationNotFoundException(
+                        "Notification introuvable avec l'id : " + idNotification
+                ));
+
+        notificationService.markAsRead(idNotification, currentUser.getIdUser());
+
+        String targetLink = notification.getTargetLinkNotification() != null
+                ? notification.getTargetLinkNotification().trim()
+                : "";
+
+        if (targetLink.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Aucun détail disponible pour cette notification.");
+            redirectAttributes.addAttribute("page", safePage);
+            redirectAttributes.addAttribute("size", safeSize);
+
+            if (!resolvedQuery.isEmpty()) {
+                redirectAttributes.addAttribute("q", resolvedQuery);
+            }
+
+            if (selectedNotificationId != null) {
+                redirectAttributes.addAttribute("selectedNotificationId", selectedNotificationId);
+            }
+
+            return "redirect:/admin/notifications";
+        }
+
+        return buildNotificationOpenRedirect(
+                notification,
+                targetLink,
+                safePage,
+                safeSize,
+                resolvedQuery,
+                selectedNotificationId
+        );
+    }
+
+    /*
+     * Fournit les suggestions de notifications utilisées
+     * par l'autocomplétion de la page d'administration.
+     */
     @GetMapping(value = "/admin/notifications/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
@@ -151,6 +242,10 @@ public class AdminNotificationsPageController {
         return ResponseEntity.ok(suggestions);
     }
 
+    /*
+     * Marque explicitement une notification comme lue depuis l'interface.
+     * Les paramètres de navigation sont conservés après redirection.
+     */
     @PostMapping("/admin/notifications/{id}/read")
     @PreAuthorize("hasRole('ADMIN')")
     public String markNotificationAsRead(
@@ -182,6 +277,81 @@ public class AdminNotificationsPageController {
         return "redirect:/admin/notifications";
     }
 
+    /*
+     * Construit la redirection adaptée au type de notification.
+     *
+     * Les notifications CONTACT conservent le contexte de navigation
+     * entre les écrans notifications et messages.
+     */
+    private String buildNotificationOpenRedirect(
+            NotificationResponseDTO notification,
+            String targetLink,
+            int notifPage,
+            int notifSize,
+            String notifQuery,
+            Integer notifSelectedNotificationId
+    ) {
+        boolean isContactNotification = notification.getTypeNotification() != null
+                && "CONTACT".equalsIgnoreCase(notification.getTypeNotification().name());
+
+        if (isContactNotification) {
+            String selectedContactId = extractQueryParameter(targetLink, "selectedContactId");
+
+            UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/admin/messages")
+                    .queryParam("from", "notifications")
+                    .queryParam("notifPage", notifPage)
+                    .queryParam("notifSize", notifSize);
+
+            if (!notifQuery.isEmpty()) {
+                builder.queryParam("notifQ", notifQuery);
+            }
+
+            if (notifSelectedNotificationId != null) {
+                builder.queryParam("notifSelectedNotificationId", notifSelectedNotificationId);
+            }
+
+            if (selectedContactId != null && !selectedContactId.isBlank()) {
+                builder.queryParam("selectedContactId", selectedContactId.trim());
+            }
+
+            return "redirect:" + builder.toUriString();
+        }
+
+        return "redirect:" + targetLink;
+    }
+
+    /*
+     * Extrait la valeur d'un paramètre présent dans une URL.
+     */
+    private String extractQueryParameter(String url, String parameterName) {
+        if (url == null || url.isBlank() || parameterName == null || parameterName.isBlank()) {
+            return null;
+        }
+
+        String token = parameterName + "=";
+        int startIndex = url.indexOf(token);
+
+        if (startIndex < 0) {
+            return null;
+        }
+
+        int valueStart = startIndex + token.length();
+        int valueEnd = url.indexOf('&', valueStart);
+
+        if (valueEnd < 0) {
+            valueEnd = url.length();
+        }
+
+        if (valueStart >= valueEnd) {
+            return null;
+        }
+
+        return url.substring(valueStart, valueEnd);
+    }
+
+    /*
+     * Résout l'utilisateur authentifié courant à partir du contexte Spring Security.
+     */
     private User resolveCurrentUser(Authentication authentication) {
         String email = authentication != null ? authentication.getName() : null;
 
@@ -193,6 +363,10 @@ public class AdminNotificationsPageController {
                 .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
     }
 
+    /*
+     * Charge l'ensemble des notifications en plusieurs lots afin de permettre
+     * les recherches et suggestions sur la totalité des données disponibles.
+     */
     private List<NotificationResponseDTO> fetchAllNotifications() {
         List<NotificationResponseDTO> allNotifications = new ArrayList<>();
 
@@ -232,6 +406,10 @@ public class AdminNotificationsPageController {
         return !normalizedQuery.isEmpty() && haystack.contains(normalizedQuery);
     }
 
+    /*
+     * Construit la chaîne utilisée par le moteur de recherche interne
+     * afin de permettre une recherche sur plusieurs attributs simultanément.
+     */
     private String buildNotificationSearchHaystack(NotificationResponseDTO notification) {
         LocalDateTime dateNotification = notification.getDateNotification();
 
@@ -254,6 +432,9 @@ public class AdminNotificationsPageController {
         );
     }
 
+    /*
+     * Normalise une valeur textuelle avant comparaison dans les recherches.
+     */
     private String normalizeSearchValue(String value) {
         if (value == null) {
             return "";
@@ -266,6 +447,10 @@ public class AdminNotificationsPageController {
         return value == null ? "" : String.valueOf(value);
     }
 
+    /*
+     * DTO interne utilisé uniquement pour exposer les suggestions
+     * de notifications au format JSON.
+     */
     public static final class NotificationSuggestResponse {
 
         private Integer idNotification;

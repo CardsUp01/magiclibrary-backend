@@ -7,6 +7,13 @@ import com.magiclibrary.enums.LoanStatus;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * DTO de réponse représentant un emprunt complet.
+ *
+ * Cette classe est utilisée pour exposer les informations métier
+ * d'un emprunt ainsi que les libellés destinés à l'affichage
+ * dans les interfaces utilisateur.
+ */
 @Schema(description = "Représentation complète d’un emprunt renvoyé par l’API.")
 public class LoanResponseDTO {
 

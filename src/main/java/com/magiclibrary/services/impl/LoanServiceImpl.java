@@ -20,21 +20,40 @@ import org.springframework.transaction.annotation.Transactional;
 import com.magiclibrary.dto.loan.LoanRequestDTO;
 import com.magiclibrary.dto.loan.LoanResponseDTO;
 import com.magiclibrary.entities.Loan;
+import com.magiclibrary.entities.LoanLine;
 import com.magiclibrary.entities.User;
+import com.magiclibrary.enums.ItemStatus;
+import com.magiclibrary.enums.LoanLineStatus;
 import com.magiclibrary.enums.LoanOrigin;
 import com.magiclibrary.enums.LoanStatus;
 import com.magiclibrary.exceptions.custom.LoanAlreadyReturnedException;
 import com.magiclibrary.exceptions.custom.LoanNotFoundException;
 import com.magiclibrary.exceptions.custom.UserNotFoundException;
 import com.magiclibrary.mappers.LoanMapper;
+import com.magiclibrary.repositories.interfaces.ItemRepository;
+import com.magiclibrary.repositories.interfaces.LoanLineRepository;
 import com.magiclibrary.repositories.interfaces.LoanRepository;
 import com.magiclibrary.repositories.interfaces.UserRepository;
 import com.magiclibrary.services.LoanService;
 
+/**
+ * Implémentation principale du service de gestion des emprunts.
+ *
+ * Cette classe centralise les opérations métier liées aux emprunts :
+ * création, restitution, consultation, recherche, suggestions, tri et pagination.
+ *
+ * Elle applique également les règles de filtrage des emprunts actifs
+ * ainsi que les mécanismes de recherche utilisés par l'interface SSR.
+ */
 @Service
 @Transactional
 public class LoanServiceImpl implements LoanService {
 
+    /*
+     * Valeurs de tri autorisées par les écrans SSR.
+     * Ces constantes garantissent la cohérence entre l'interface,
+     * le service et les mécanismes de tri dynamiques.
+     */
     private static final String SORT_RECENT = "recent";
     private static final String SORT_OLDEST = "oldest";
     private static final String SORT_DUE_SOON = "dueSoon";
@@ -42,10 +61,28 @@ public class LoanServiceImpl implements LoanService {
     private static final String SORT_MEMBER = "member";
     private static final String SORT_ORIGIN = "origin";
 
+    /*
+     * Paramètres du moteur de recherche et de suggestion.
+     *
+     * SUGGEST_LIMIT :
+     * nombre maximal de résultats retournés par l'autocomplétion.
+     *
+     * MAX_QUERY_LENGTH :
+     * longueur maximale acceptée pour une recherche utilisateur.
+     *
+     * MIN_TOKEN_LENGTH :
+     * longueur minimale d'un terme significatif après normalisation.
+     */
     private static final int SUGGEST_LIMIT = 8;
     private static final int MAX_QUERY_LENGTH = 80;
     private static final int MIN_TOKEN_LENGTH = 2;
 
+    /*
+     * Liste des mots fonctionnels ignorés lors de la recherche.
+     *
+     * Leur suppression améliore la pertinence des résultats et évite
+     * que des termes très fréquents influencent le moteur de recherche.
+     */
     private static final java.util.Set<String> STOP_WORDS = java.util.Set.of(
             "de", "du", "des", "d",
             "la", "le", "les", "l",
@@ -56,13 +93,19 @@ public class LoanServiceImpl implements LoanService {
     );
 
     private final LoanRepository loanRepository;
+    private final LoanLineRepository loanLineRepository;
+    private final ItemRepository itemRepository;
     private final UserRepository userRepository;
 
     public LoanServiceImpl(
             LoanRepository loanRepository,
+            LoanLineRepository loanLineRepository,
+            ItemRepository itemRepository,
             UserRepository userRepository
     ) {
         this.loanRepository = loanRepository;
+        this.loanLineRepository = loanLineRepository;
+        this.itemRepository = itemRepository;
         this.userRepository = userRepository;
     }
 
@@ -118,6 +161,20 @@ public class LoanServiceImpl implements LoanService {
                     "L'emprunt est déjà restitué."
             );
         }
+
+        List<LoanLine> loanLines = loanLineRepository.findByLoan_IdLoan(idLoan);
+
+        for (LoanLine loanLine : loanLines) {
+            loanLine.setStatusLoanLine(LoanLineStatus.RETURNED);
+
+            if (loanLine.getItem() != null) {
+                loanLine.getItem().setAvailableItem(Boolean.TRUE);
+                loanLine.getItem().setStatusItem(ItemStatus.AVAILABLE);
+                itemRepository.save(loanLine.getItem());
+            }
+        }
+
+        loanLineRepository.saveAll(loanLines);
 
         loan.setReturnedLoan(Boolean.TRUE);
         loan.setReturnDateLoan(LocalDateTime.now());
@@ -338,6 +395,12 @@ public class LoanServiceImpl implements LoanService {
         return suggestFromLoans(loans, tokens);
     }
 
+    /*
+     * Construit les suggestions affichées dans l'autocomplétion.
+     *
+     * Tous les termes recherchés doivent être présents dans les données
+     * normalisées de l'emprunt pour qu'il soit retenu.
+     */
     private List<LoanResponseDTO> suggestFromLoans(List<Loan> loans, List<String> tokens) {
         Map<Integer, LoanResponseDTO> out = new LinkedHashMap<>(SUGGEST_LIMIT * 2);
 
@@ -435,6 +498,10 @@ public class LoanServiceImpl implements LoanService {
         );
     }
 
+    /*
+     * Convertit la valeur de tri reçue depuis l'interface
+     * en objet Sort exploitable par Spring Data JPA.
+     */
     private Sort buildLoanSort(String sort) {
         String normalizedSort = normalizeSort(sort);
 
@@ -474,6 +541,10 @@ public class LoanServiceImpl implements LoanService {
         };
     }
 
+    /*
+     * Reproduit côté mémoire les mêmes règles de tri que celles utilisées
+     * par Spring Data lorsque les données sont déjà chargées.
+     */
     private Comparator<Loan> buildLoanComparator(String sort) {
         String normalizedSort = normalizeSort(sort);
 
@@ -567,6 +638,11 @@ public class LoanServiceImpl implements LoanService {
         ).trim();
     }
 
+    /*
+     * Normalise un texte pour les opérations de recherche :
+     * suppression des accents, passage en minuscules,
+     * uniformisation des séparateurs et espaces.
+     */
     private static String normalizeText(String value) {
         if (value == null || value.isBlank()) {
             return "";

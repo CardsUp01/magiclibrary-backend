@@ -4,9 +4,15 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'erreur 401.
+            Informe l'utilisateur qu'une authentification est nécessaire
+            pour accéder à la ressource demandée.
+        -->
         <section class="mx-auto max-w-5xl">
             <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
+                <!-- En-tête de l'erreur avec accès direct à la page de connexion -->
                 <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                     <div class="self-start">
@@ -25,6 +31,7 @@
 
                 </header>
 
+                <!-- Message principal expliquant l'obligation de s'authentifier -->
                 <div class="mt-4 rounded-xl bg-white p-4 ring-1 ring-gray-200 sm:p-6">
                     <div class="min-w-0 space-y-4 break-words hyphens-auto">
                         <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">
@@ -41,6 +48,7 @@
                     </div>
                 </div>
 
+                <!-- Information complémentaire concernant l'expiration éventuelle de la session -->
                 <div class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:p-6">
                     <p class="text-sm leading-6 text-gray-700 sm:text-base">
                         Si votre session a expiré, reconnectez-vous pour reprendre votre navigation.

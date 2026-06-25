@@ -10,6 +10,14 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Filtre chargé de normaliser les URL contenant des séparateurs
+ * de chemin dupliqués avant leur traitement par l'application.
+ *
+ * Lorsqu'une URL contient plusieurs caractères '/' consécutifs,
+ * une redirection est effectuée vers la version normalisée afin
+ * de garantir une URL unique et cohérente.
+ */
 public class UrlNormalizationFilter implements Filter {
 
     @Override
@@ -49,6 +57,10 @@ public class UrlNormalizationFilter implements Filter {
         res.setHeader("Location", target);
     }
 
+    /*
+     * Supprime les séparateurs de chemin dupliqués
+     * et garantit la présence du caractère '/' initial.
+     */
     private static String normalizePath(String path) {
         String out = path;
         while (out.contains("//")) {

@@ -4,9 +4,15 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'erreur 422.
+            Informe l'utilisateur que les données transmises
+            sont syntaxiquement correctes mais ne peuvent pas être traitées.
+        -->
         <section class="mx-auto max-w-5xl">
             <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
+                <!-- En-tête de l'erreur avec retour rapide vers l'accueil -->
                 <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                     <div class="self-start">
@@ -25,6 +31,7 @@
 
                 </header>
 
+                <!-- Message principal expliquant l'invalidité des données transmises -->
                 <div class="mt-4 rounded-xl bg-white p-4 ring-1 ring-gray-200 sm:p-6">
                     <div class="min-w-0 space-y-4 break-words hyphens-auto">
                         <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">
@@ -41,6 +48,7 @@
                     </div>
                 </div>
 
+                <!-- Information complémentaire destinée à l'assistance utilisateur -->
                 <div class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:p-6">
                     <p class="text-sm leading-6 text-gray-700 sm:text-base">
                         Si le problème persiste malgré une saisie correcte, contactez un administrateur.

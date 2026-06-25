@@ -13,6 +13,13 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import com.magiclibrary.entities.User;
 import com.magiclibrary.repositories.interfaces.UserRepository;
 
+/**
+ * Advice global chargé d'ajouter les informations de l'utilisateur courant
+ * dans le modèle Thymeleaf.
+ *
+ * Cette classe permet aux vues SSR d'accéder à un objet currentUser homogène,
+ * que l'utilisateur soit authentifié ou non.
+ */
 @ControllerAdvice
 public class GlobalCurrentUserModelAdvice {
 
@@ -22,6 +29,12 @@ public class GlobalCurrentUserModelAdvice {
         this.userRepository = userRepository;
     }
 
+    /*
+     * Alimente le modèle avec les informations d'affichage de l'utilisateur courant.
+     *
+     * Une structure par défaut est toujours fournie afin de simplifier
+     * l'utilisation côté templates et d'éviter les contrôles null répétitifs.
+     */
     @ModelAttribute("currentUser")
     public Map<String, Object> populateCurrentUser(Authentication authentication) {
         Map<String, Object> currentUser = new LinkedHashMap<>();
@@ -83,6 +96,9 @@ public class GlobalCurrentUserModelAdvice {
         return currentUser;
     }
 
+    /*
+     * Nettoie une valeur textuelle et transforme les chaînes vides en null.
+     */
     private String normalize(String value) {
         if (value == null) {
             return null;
@@ -92,6 +108,10 @@ public class GlobalCurrentUserModelAdvice {
         return trimmedValue.isEmpty() ? null : trimmedValue;
     }
 
+    /*
+     * Normalise un prénom ou un nom destiné à l'affichage.
+     * Les valeurs entièrement en majuscules sont converties en casse titre.
+     */
     private String normalizeName(String value) {
         String normalizedValue = normalize(value);
         if (normalizedValue == null) {
@@ -105,6 +125,9 @@ public class GlobalCurrentUserModelAdvice {
         return normalizedValue;
     }
 
+    /*
+     * Harmonise l'affichage de la civilité dans l'interface.
+     */
     private String normalizeCivility(String value) {
         String normalizedValue = normalize(value);
         if (normalizedValue == null) {
@@ -135,6 +158,10 @@ public class GlobalCurrentUserModelAdvice {
         return hasLetter;
     }
 
+    /*
+     * Convertit une chaîne en casse titre en respectant les séparateurs
+     * courants des noms composés.
+     */
     private String toTitleCase(String value) {
         String lowerCasedValue = value.toLowerCase(Locale.FRENCH);
         StringBuilder result = new StringBuilder(lowerCasedValue.length());
@@ -164,6 +191,11 @@ public class GlobalCurrentUserModelAdvice {
         return fullName.isEmpty() ? null : fullName;
     }
 
+    /*
+     * Construit les initiales affichées dans la navigation.
+     * L'email sert de solution de repli lorsque le prénom ou le nom
+     * ne sont pas disponibles.
+     */
     private String buildInitials(String firstName, String lastName, String email) {
         StringBuilder initials = new StringBuilder();
 
@@ -190,6 +222,9 @@ public class GlobalCurrentUserModelAdvice {
         return initials.length() == 0 ? "ML" : initials.toString();
     }
 
+    /*
+     * Traduit le rôle technique en libellé lisible pour l'interface.
+     */
     private String translateRole(String role) {
         String normalizedRole = normalize(role);
         if (normalizedRole == null) {

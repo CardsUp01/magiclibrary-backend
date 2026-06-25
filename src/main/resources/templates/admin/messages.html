@@ -6,8 +6,14 @@
               th:with="contactsCount=${contacts != null ? #lists.size(contacts) : 0},
                        showDetail=${selectedContact != null},
                        hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
+                       isFromNotifications=${from != null && #strings.equals(#strings.trim(from), 'notifications')},
                        resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : contactsCount}">
 
+        <!--
+            Page d'administration des messages de contact.
+            Permet la consultation, la recherche, la lecture détaillée
+            et la réponse aux demandes envoyées via le formulaire de contact.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -31,6 +37,7 @@
                     </div>
                 </div>
 
+                <!-- Messages de retour affichés après une action sur une demande de contact -->
                 <div th:if="${successMessage != null}"
                      class="max-w-full overflow-hidden rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm"
                      role="status"
@@ -54,6 +61,7 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
+                            <!-- Recherche dynamique des messages de contact avec suggestions -->
                             <form id="searchForm" th:action="@{/admin/messages}" method="get" class="max-w-full">
                                 <input type="hidden" name="page" value="0" />
                                 <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -110,6 +118,7 @@
                                     </p>
                                 </div>
 
+                                <!-- Indicateurs du nombre de messages correspondant à la recherche active -->
                                 <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
                                     <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
                                     <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
@@ -128,6 +137,7 @@
                 <section class="mt-6 max-w-full first:mt-0">
                     <h2 class="text-base font-semibold text-gray-900">Demandes reçues</h2>
 
+                    <!-- Résumé de l'état courant : liste, recherche, pagination ou détail sélectionné -->
                     <div class="mt-2 max-w-full space-y-2">
                         <p th:if="${!showDetail and contactsCount > 0 and hasQuery}">
                             <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
@@ -185,6 +195,7 @@
                         </section>
                     </div>
 
+                    <!-- Détail du message sélectionné et formulaire de réponse administrateur -->
                     <div class="mt-6 max-w-full" th:if="${showDetail}">
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
@@ -303,6 +314,11 @@
                                                 <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                                                 <input type="hidden" name="id" th:value="${selectedContact.id}" />
                                                 <input type="hidden" name="q" th:value="${q}" />
+                                                <input type="hidden" name="from" th:value="${from}" />
+                                                <input type="hidden" name="notifPage" th:value="${notifPage}" />
+                                                <input type="hidden" name="notifSize" th:value="${notifSize}" />
+                                                <input type="hidden" name="notifQ" th:value="${notifQ}" />
+                                                <input type="hidden" name="notifSelectedNotificationId" th:value="${notifSelectedNotificationId}" />
                                                 <input type="hidden" name="page" th:value="${currentPage}" />
                                                 <input type="hidden" name="size" th:value="${pageSize}" />
 
@@ -323,7 +339,6 @@
                                                         2000 caractères max.
                                                     </p>
                                                 </div>
-
                                                 <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
                                                     <button type="button"
                                                             id="openResponseConfirmModal"
@@ -331,7 +346,19 @@
                                                         Envoyer la réponse
                                                     </button>
 
-                                                    <a th:href="@{/admin/messages(size=${pageSize}, page=${currentPage}, q=${q})}"
+                                                    <a th:if="${isFromNotifications}"
+                                                       th:href="@{/admin/notifications(
+                                                           page=${notifPage},
+                                                           size=${notifSize},
+                                                           q=${notifQ},
+                                                           selectedNotificationId=${notifSelectedNotificationId}
+                                                       )}"
+                                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                        Retour aux notifications
+                                                    </a>
+
+                                                    <a th:if="${!isFromNotifications}"
+                                                       th:href="@{/admin/messages(size=${pageSize}, page=${currentPage}, q=${q})}"
                                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                         Revenir à la liste
                                                     </a>
@@ -341,7 +368,19 @@
                                     </div>
 
                                     <div class="mt-6" th:if="${selectedContact.answered}">
-                                        <a th:href="@{/admin/messages(size=${pageSize}, page=${currentPage}, q=${q})}"
+                                        <a th:if="${isFromNotifications}"
+                                           th:href="@{/admin/notifications(
+                                               page=${notifPage},
+                                               size=${notifSize},
+                                               q=${notifQ},
+                                               selectedNotificationId=${notifSelectedNotificationId}
+                                           )}"
+                                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            Retour aux notifications
+                                        </a>
+
+                                        <a th:if="${!isFromNotifications}"
+                                           th:href="@{/admin/messages(size=${pageSize}, page=${currentPage}, q=${q})}"
                                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                             Revenir à la liste
                                         </a>
@@ -353,6 +392,7 @@
                         </section>
                     </div>
 
+                    <!-- Liste des messages de contact en mode consultation globale -->
                     <div class="mt-6 max-w-full" th:if="${!showDetail and contactsCount > 0}">
 
                         <ul class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
@@ -436,6 +476,7 @@
 
                         </ul>
 
+                        <!-- Navigation entre les différentes pages de messages de contact -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des messages de contact">
@@ -497,6 +538,7 @@
 
         </section>
 
+        <!-- Modale de confirmation avant l'envoi d'une réponse administrateur -->
         <div id="responseConfirmModal"
              class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/50 px-4"
              role="dialog"
@@ -528,6 +570,10 @@
             </div>
         </div>
 
+        <!--
+            Gestion de la recherche dynamique, des suggestions,
+            de la sélection clavier et de la confirmation d'envoi de réponse.
+        -->
         <script>
             (function () {
                 const search = document.getElementById('search');
@@ -1057,3 +1103,4 @@
     </th:block>
 
 </th:block>
+

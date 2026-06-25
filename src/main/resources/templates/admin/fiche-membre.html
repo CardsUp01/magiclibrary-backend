@@ -4,6 +4,11 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page de détail d'un membre.
+            Présente l'identité du compte, ses statuts,
+            ses informations d'adhésion et ses éventuelles notes complémentaires.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -27,6 +32,7 @@
                     </div>
                 </div>
 
+                <!-- Synthèse du compte membre et accès à la modification -->
                 <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                     <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
 
@@ -94,6 +100,7 @@
                     </div>
                 </section>
 
+                <!-- Informations administratives, statut du compte et suivi d'activité -->
                 <div class="grid max-w-full grid-cols-1 gap-4 lg:grid-cols-3">
 
                     <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
@@ -276,6 +283,7 @@
 
                 </div>
 
+                <!-- Sections complémentaires affichées uniquement lorsqu'un contenu existe -->
                 <div class="grid max-w-full grid-cols-1 gap-4"
                      th:if="${(user.bio != null and !#strings.isEmpty(user.bio)) or (user.notes != null and !#strings.isEmpty(user.notes))}">
 

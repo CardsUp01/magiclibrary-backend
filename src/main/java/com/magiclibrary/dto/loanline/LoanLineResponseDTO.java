@@ -7,6 +7,13 @@ import com.magiclibrary.enums.LoanLineStatus;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * DTO de réponse représentant une ligne d'emprunt.
+ *
+ * Cette classe expose les informations d'un objet associé à un emprunt,
+ * ainsi que les données utiles à son affichage dans les interfaces
+ * d'administration et de consultation.
+ */
 @Schema(description = "Données renvoyées après l’ajout ou la consultation d’une ligne d’emprunt (US-05).")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoanLineResponseDTO {

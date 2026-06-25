@@ -11,22 +11,52 @@ import org.springframework.data.repository.query.Param;
 
 import com.magiclibrary.entities.Item;
 
+/**
+ * Repository JPA dédié à la gestion des objets du catalogue numérique.
+ *
+ * Cette interface centralise les opérations de recherche, de filtrage,
+ * de pagination et de tri utilisées par les services de l'application.
+ */
 public interface ItemRepository extends JpaRepository<Item, Integer> {
 
+    /*
+     * Suggestions de recherche par titre.
+     */
     List<Item> findTop8ByDeletedDateItemIsNullAndTitleItemContainingIgnoreCaseOrderByTitleItemAsc(String titlePart);
 
+    /*
+     * Suggestions de recherche par auteur.
+     */
     List<Item> findTop8ByDeletedDateItemIsNullAndAuthorItemContainingIgnoreCaseOrderByAuthorItemAsc(String authorPart);
 
+    /*
+     * Suggestions de recherche par éditeur.
+     */
     List<Item> findTop8ByDeletedDateItemIsNullAndPublisherItemContainingIgnoreCaseOrderByPublisherItemAsc(String publisherPart);
 
+    /*
+     * Suggestions de recherche par catégorie.
+     */
     List<Item> findTop8ByDeletedDateItemIsNullAndCategoryItemContainingIgnoreCaseOrderByCategoryItemAsc(String categoryPart);
 
+    /*
+     * Suggestions de recherche par ISBN.
+     */
     List<Item> findTop8ByDeletedDateItemIsNullAndIsbnItemContainingIgnoreCaseOrderByIsbnItemAsc(String isbnPart);
 
+    /*
+     * Retourne tous les objets actifs avec un tri fourni dynamiquement.
+     */
     List<Item> findByDeletedDateItemIsNull(Sort sort);
 
+    /*
+     * Retourne les objets actifs sous forme paginée.
+     */
     Page<Item> findByDeletedDateItemIsNull(Pageable pageable);
 
+    /*
+     * Recherche multicritère dans les objets actifs du catalogue.
+     */
     @Query(
             value = """
                     SELECT i
@@ -61,6 +91,10 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> searchActiveItems(@Param("q") String q, Pageable pageable);
 
+    /*
+     * Recherche multicritère avec classement par disponibilité,
+     * puis par titre et identifiant.
+     */
     @Query(
             value = """
                     SELECT i
@@ -105,6 +139,10 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> searchActiveItemsOrderByStatusRankThenTitleThenId(@Param("q") String q, Pageable pageable);
 
+    /*
+     * Recherche multicritère avec classement par état,
+     * puis par titre et identifiant.
+     */
     @Query(
             value = """
                     SELECT i
@@ -149,6 +187,9 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> searchActiveItemsOrderByConditionRankThenTitleThenId(@Param("q") String q, Pageable pageable);
 
+    /*
+     * Retourne les objets actifs triés selon le rang de disponibilité.
+     */
     @Query(
             value = """
                     SELECT i
@@ -173,6 +214,9 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> findByDeletedDateItemIsNullOrderByStatusRankThenTitleThenId(Pageable pageable);
 
+    /*
+     * Retourne la liste complète des objets actifs triés selon le rang de disponibilité.
+     */
     @Query("""
             SELECT i
             FROM Item i
@@ -190,6 +234,9 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
             """)
     List<Item> findByDeletedDateItemIsNullOrderByStatusRankThenTitleThenId();
 
+    /*
+     * Retourne les objets actifs triés selon le rang d'état.
+     */
     @Query(
             value = """
                     SELECT i
@@ -214,6 +261,9 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> findByDeletedDateItemIsNullOrderByConditionRankThenTitleThenId(Pageable pageable);
 
+    /*
+     * Retourne la liste complète des objets actifs triés selon le rang d'état.
+     */
     @Query("""
             SELECT i
             FROM Item i

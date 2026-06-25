@@ -35,19 +35,36 @@ import com.magiclibrary.dto.notification.NotificationResponseDTO;
 import com.magiclibrary.entities.User;
 import com.magiclibrary.exceptions.custom.UserNotFoundException;
 import com.magiclibrary.mongo.dto.ContactRequestDTO;
+import com.magiclibrary.mongo.dto.ContactResponseDTO;
 import com.magiclibrary.mongo.services.ContactService;
 import com.magiclibrary.repositories.interfaces.UserRepository;
 import com.magiclibrary.services.LoanLineService;
 import com.magiclibrary.services.LoanService;
 import com.magiclibrary.services.NotificationService;
 
+/**
+ * Contrôleur SSR principal de l'application.
+ *
+ * Cette classe centralise les pages publiques, les pages membres,
+ * les messages de contact, les emprunts personnels, les notifications
+ * et les fiches détaillées accessibles depuis l'interface Thymeleaf.
+ */
 @Controller
 public class PageController {
 
+    /*
+     * Paramètres de pagination et de suggestion utilisés par les pages membres.
+     */
     private static final int LOANS_PAGE_SIZE = 9;
     private static final int NOTIFICATIONS_PAGE_SIZE = 9;
     private static final int NOTIFICATIONS_SUGGEST_LIMIT = 8;
+    private static final int CONTACT_MESSAGES_PAGE_SIZE = 9;
+    private static final int CONTACT_MESSAGES_SUGGEST_LIMIT = 8;
 
+    /*
+     * Formats d'affichage des dates utilisés dans les pages SSR
+     * et les réponses d'autocomplétion.
+     */
     private static final DateTimeFormatter NOTIFICATION_DATE_DISPLAY_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -56,6 +73,9 @@ public class PageController {
 
     private static final DateTimeFormatter LOAN_DATE_DISPLAY_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private static final DateTimeFormatter CONTACT_DATE_DISPLAY_FORMATTER =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final UserRepository userRepository;
     private final ContactService contactService;
@@ -77,6 +97,10 @@ public class PageController {
         this.notificationService = notificationService;
     }
 
+    /*
+     * Affiche la page de connexion ou redirige l'utilisateur déjà authentifié
+     * vers l'accueil de l'application.
+     */
     @GetMapping({"/", "/login"})
     public String loginPage(Authentication authentication, HttpServletResponse response) {
         if (authentication != null
@@ -124,8 +148,20 @@ public class PageController {
         return "cgu";
     }
 
+    /*
+     * Affiche le formulaire de contact et préremplit l'email
+     * lorsque l'utilisateur est authentifié.
+     *
+     * Les administrateurs sont redirigés vers la gestion des messages,
+     * car le formulaire de contact est destiné aux membres qui souhaitent
+     * contacter l'équipe d'administration.
+     */
     @GetMapping("/contact")
     public String contactPage(Authentication authentication, Model model) {
+        if (isAdmin(authentication)) {
+            return "redirect:/admin/messages";
+        }
+
         model.addAttribute("activePage", "contact");
 
         String email = authentication != null ? authentication.getName() : null;
@@ -134,6 +170,13 @@ public class PageController {
         return "contact";
     }
 
+    /*
+     * Traite l'envoi d'un message de contact par un utilisateur connecté.
+     * Le message est stocké dans le module CONTACT MongoDB.
+     *
+     * Les administrateurs ne peuvent pas soumettre ce formulaire,
+     * même en cas d'appel direct à l'URL de traitement.
+     */
     @PostMapping("/contact")
     public String submitContactForm(
             @RequestParam(name = "name", required = false) String name,
@@ -143,6 +186,10 @@ public class PageController {
             Authentication authentication,
             RedirectAttributes redirectAttributes
     ) {
+        if (isAdmin(authentication)) {
+            return "redirect:/admin/messages";
+        }
+
         String authEmail = authentication.getName();
 
         User user = userRepository.findByEmailUser(authEmail)
@@ -166,6 +213,119 @@ public class PageController {
         return "redirect:/contact";
     }
 
+    /*
+     * Affiche les messages de contact du membre connecté.
+     *
+     * La méthode gère la recherche, la pagination et la sélection
+     * du message actif dans l'interface.
+     */
+    @GetMapping("/mes-messages-de-contact")
+    public String myContactMessagesPage(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "selectedContactId", required = false) String selectedContactId,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "9") int size,
+            Authentication authentication,
+            Model model
+    ) {
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmailUser(email)
+                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+
+        int safePage = Math.max(page, 0);
+        int safeSize = size > 0 ? size : CONTACT_MESSAGES_PAGE_SIZE;
+        String resolvedQuery = q == null ? "" : q.trim();
+
+        List<ContactResponseDTO> memberContacts = contactService.getContactsForUser(user.getIdUser());
+
+        List<ContactResponseDTO> filteredContacts = resolvedQuery.isEmpty()
+                ? memberContacts
+                : memberContacts.stream()
+                .filter(contact -> matchesMyContactMessageSearch(contact, resolvedQuery))
+                .toList();
+
+        ContactResponseDTO selectedContact = null;
+
+        if (selectedContactId != null && !selectedContactId.isBlank()) {
+            selectedContact = contactService.getContactByIdForUser(selectedContactId.trim(), user.getIdUser());
+
+            if (selectedContact != null) {
+                final String selectedId = selectedContact.getId();
+                boolean existsInFilteredList = filteredContacts.stream()
+                        .anyMatch(contact -> Objects.equals(contact.getId(), selectedId));
+
+                if (!existsInFilteredList) {
+                    selectedContact = null;
+                }
+            }
+        }
+
+        int resolvedPage = resolveContactPageIndex(filteredContacts, selectedContact, safePage, safeSize);
+        Page<ContactResponseDTO> contactsPage = toContactsPage(filteredContacts, resolvedPage, safeSize);
+
+        if (selectedContact == null && !contactsPage.getContent().isEmpty()) {
+            selectedContact = contactsPage.getContent().get(0);
+        }
+
+        String resolvedSelectedContactId = selectedContact != null ? selectedContact.getId() : null;
+
+        model.addAttribute("contacts", contactsPage.getContent());
+        model.addAttribute("selectedContact", selectedContact);
+        model.addAttribute("selectedContactId", resolvedSelectedContactId);
+        model.addAttribute("q", resolvedQuery);
+        model.addAttribute("pageTitle", "Mes messages de contact");
+        model.addAttribute("activePage", "mes-messages-de-contact");
+
+        model.addAttribute("currentPage", contactsPage.getNumber());
+        model.addAttribute("pageSize", contactsPage.getSize());
+        model.addAttribute("totalPages", contactsPage.getTotalPages());
+        model.addAttribute("totalElements", contactsPage.getTotalElements());
+        model.addAttribute("hasPrevious", contactsPage.hasPrevious());
+        model.addAttribute("hasNext", contactsPage.hasNext());
+        model.addAttribute("isFirst", contactsPage.isFirst());
+        model.addAttribute("isLast", contactsPage.isLast());
+        model.addAttribute("paginationEnabled", contactsPage.getTotalElements() > safeSize);
+
+        return "mes-messages-de-contact";
+    }
+
+    /*
+     * Fournit les suggestions pour l'autocomplétion des messages
+     * de contact du membre connecté.
+     */
+    @GetMapping(value = "/mes-messages-de-contact/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<MyContactMessageSuggestResponse>> suggestMyContactMessages(
+            @RequestParam(name = "q", required = false) String q,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmailUser(email)
+                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+
+        String normalizedQuery = normalizeSearchValue(q);
+
+        if (normalizedQuery.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        List<MyContactMessageSuggestResponse> suggestions = contactService.getContactsForUser(user.getIdUser()).stream()
+                .filter(contact -> matchesMyContactMessageSearch(contact, normalizedQuery))
+                .limit(CONTACT_MESSAGES_SUGGEST_LIMIT)
+                .map(this::toMyContactMessageSuggestResponse)
+                .toList();
+
+        return ResponseEntity.ok(suggestions);
+    }
+
+    /*
+     * Affiche les emprunts du membre connecté.
+     *
+     * La méthode gère la recherche, le tri, la pagination
+     * et le résumé des objets associés à chaque emprunt.
+     */
     @GetMapping("/mes-emprunts")
     public String myLoansPage(
             @RequestParam(name = "q", required = false) String q,
@@ -253,6 +413,9 @@ public class PageController {
         return "mes-emprunts";
     }
 
+    /*
+     * Affiche les notifications du membre connecté.
+     */
     @GetMapping("/mes-notifications")
     public String myNotificationsPage(
             @RequestParam(name = "q", required = false) String q,
@@ -293,6 +456,10 @@ public class PageController {
         return "mes-notifications";
     }
 
+    /*
+     * Fournit les suggestions pour l'autocomplétion des notifications
+     * du membre connecté.
+     */
     @GetMapping(value = "/mes-notifications/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<MyNotificationSuggestResponse>> suggestMyNotifications(
@@ -320,6 +487,10 @@ public class PageController {
         return ResponseEntity.ok(suggestions);
     }
 
+    /*
+     * Marque une notification comme lue depuis la page membre
+     * puis redirige vers la liste des notifications.
+     */
     @PostMapping("/mes-notifications/{id}/read")
     public String markNotificationAsReadFromPage(
             @PathVariable("id") Integer idNotification,
@@ -351,6 +522,10 @@ public class PageController {
         return redirectUrl.toString();
     }
 
+    /*
+     * Fournit les suggestions pour l'autocomplétion des emprunts
+     * du membre connecté.
+     */
     @GetMapping(value = "/mes-emprunts/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<MyLoanSuggestResponse>> suggestMyLoans(
@@ -366,6 +541,9 @@ public class PageController {
         return ResponseEntity.ok(suggestions);
     }
 
+    /*
+     * Affiche la fiche détaillée d'un emprunt accessible au membre.
+     */
     @GetMapping("/emprunts/{id}")
     public String myLoanDetailPage(
             @PathVariable("id") Integer idLoan,
@@ -373,10 +551,7 @@ public class PageController {
             Model model
     ) {
         String email = authentication.getName();
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .map(a -> a.getAuthority())
-                .filter(Objects::nonNull)
-                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ADMIN"));
+        boolean isAdmin = isAdmin(authentication);
 
         LoanResponseDTO loan = loanService.getLoanByIdForUser(idLoan, email, isAdmin);
         List<LoanLineResponseDTO> loanLines = loanLineService.getLoanLinesByLoanId(idLoan);
@@ -416,6 +591,24 @@ public class PageController {
         );
     }
 
+    private MyContactMessageSuggestResponse toMyContactMessageSuggestResponse(ContactResponseDTO contact) {
+        String dateLabel = contact.getDate() != null
+                ? contact.getDate().format(CONTACT_DATE_DISPLAY_FORMATTER)
+                : null;
+
+        return new MyContactMessageSuggestResponse(
+                contact.getId(),
+                contact.getSubject(),
+                contact.getStatusLabel(),
+                contact.isResponseSent(),
+                dateLabel
+        );
+    }
+
+    /*
+     * Vérifie si une notification correspond à la recherche normalisée
+     * utilisée par l'autocomplétion.
+     */
     private boolean matchesNotificationSuggestion(NotificationResponseDTO notification, String normalizedQuery) {
         String haystack = normalizeSearchValue(
                 String.join(" ",
@@ -436,6 +629,42 @@ public class PageController {
         return haystack.contains(normalizedQuery);
     }
 
+    private boolean matchesMyContactMessageSearch(ContactResponseDTO contact, String query) {
+        String normalizedQuery = normalizeSearchValue(query);
+
+        if (normalizedQuery.isEmpty()) {
+            return true;
+        }
+
+        String searchableText = buildMyContactMessageSearchableText(contact);
+
+        return searchableText.contains(normalizedQuery);
+    }
+
+    /*
+     * Construit le texte de recherche des messages de contact du membre.
+     */
+    private String buildMyContactMessageSearchableText(ContactResponseDTO contact) {
+        return normalizeSearchValue(
+                String.join(" ",
+                        "message",
+                        "contact",
+                        safeValue(contact.getId()),
+                        safeValue(contact.getSubject()),
+                        safeValue(contact.getContent()),
+                        safeValue(contact.getStatus()),
+                        safeValue(contact.getStatusLabel()),
+                        safeValue(contact.getResponseContent()),
+                        safeValue(contact.getAnsweredByAdminLabel()),
+                        contact.getDate() != null ? contact.getDate().format(CONTACT_DATE_DISPLAY_FORMATTER) : "",
+                        contact.getDate() != null ? contact.getDate().toLocalDate().toString() : "",
+                        contact.isResponseSent()
+                                ? "repondu répondu answered traite traité"
+                                : "nouveau new en attente non repondu non répondu"
+                )
+        );
+    }
+
     private boolean matchesMyLoanSearch(LoanResponseDTO loan, String query) {
         String normalizedQuery = normalizeSearchValue(query);
 
@@ -448,6 +677,11 @@ public class PageController {
         return searchableText.contains(normalizedQuery);
     }
 
+    /*
+     * Construit le texte de recherche des emprunts du membre.
+     * Les titres des objets associés sont inclus pour permettre
+     * une recherche plus naturelle depuis l'interface.
+     */
     private String buildMyLoanSearchableText(LoanResponseDTO loan) {
         List<LoanLineResponseDTO> lines = loanLineService.getLoanLinesByLoanId(loan.getIdLoan());
 
@@ -486,6 +720,10 @@ public class PageController {
         );
     }
 
+    /*
+     * Trie les emprunts du membre lorsque la recherche est effectuée
+     * côté mémoire.
+     */
     private void sortMyLoans(List<LoanResponseDTO> loans, String sort) {
         Comparator<LoanResponseDTO> comparator;
 
@@ -528,6 +766,9 @@ public class PageController {
         loans.sort(comparator);
     }
 
+    /*
+     * Transforme une liste d'emprunts en page Spring.
+     */
     private Page<LoanResponseDTO> toPage(List<LoanResponseDTO> loans, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : LOANS_PAGE_SIZE;
@@ -543,6 +784,76 @@ public class PageController {
         return new PageImpl<>(content, PageRequest.of(safePage, safeSize), loans.size());
     }
 
+    /*
+     * Transforme une liste de messages de contact en page Spring.
+     */
+    private Page<ContactResponseDTO> toContactsPage(List<ContactResponseDTO> contacts, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size > 0 ? size : CONTACT_MESSAGES_PAGE_SIZE;
+        int start = safePage * safeSize;
+
+        if (start >= contacts.size()) {
+            return new PageImpl<>(List.of(), PageRequest.of(safePage, safeSize), contacts.size());
+        }
+
+        int end = Math.min(start + safeSize, contacts.size());
+        List<ContactResponseDTO> content = contacts.subList(start, end);
+
+        return new PageImpl<>(content, PageRequest.of(safePage, safeSize), contacts.size());
+    }
+
+    /*
+     * Résout la page à afficher pour garder visible le message sélectionné.
+     */
+    private int resolveContactPageIndex(
+            List<ContactResponseDTO> contacts,
+            ContactResponseDTO selectedContact,
+            int requestedPage,
+            int pageSize
+    ) {
+        int safeRequestedPage = Math.max(requestedPage, 0);
+        int safePageSize = pageSize > 0 ? pageSize : CONTACT_MESSAGES_PAGE_SIZE;
+
+        if (selectedContact != null) {
+            for (int i = 0; i < contacts.size(); i++) {
+                ContactResponseDTO contact = contacts.get(i);
+
+                if (Objects.equals(contact.getId(), selectedContact.getId())) {
+                    return i / safePageSize;
+                }
+            }
+        }
+
+        if (contacts.isEmpty()) {
+            return 0;
+        }
+
+        int lastPage = (contacts.size() - 1) / safePageSize;
+        return Math.min(safeRequestedPage, lastPage);
+    }
+
+    /*
+     * Vérifie si l'utilisateur authentifié possède le rôle administrateur.
+     * Cette vérification centralise la règle d'accès utilisée par les pages SSR.
+     */
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        if (authentication instanceof AnonymousAuthenticationToken) {
+            return false;
+        }
+
+        return authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .filter(Objects::nonNull)
+                .anyMatch(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ADMIN"));
+    }
+
+    /*
+     * Normalise les textes utilisés dans les recherches internes.
+     */
     private String normalizeSearchValue(String value) {
         if (value == null) {
             return "";
@@ -598,6 +909,9 @@ public class PageController {
         return loan != null ? loan.getIdLoan() : null;
     }
 
+    /*
+     * Construit le résumé des objets associés à un emprunt.
+     */
     private String buildLoanItemSummary(String firstTitle, int totalItems) {
         if (totalItems <= 0) {
             return "Aucun objet associé";
@@ -614,6 +928,9 @@ public class PageController {
         return safeFirstTitle + " + " + (totalItems - 1) + " autre" + (totalItems - 1 > 1 ? "s" : "");
     }
 
+    /*
+     * DTO interne utilisé pour les suggestions d'emprunts du membre.
+     */
     public static final class MyLoanSuggestResponse {
 
         private Integer idLoan;
@@ -654,6 +971,9 @@ public class PageController {
         }
     }
 
+    /*
+     * DTO interne utilisé pour les suggestions de notifications du membre.
+     */
     public static final class MyNotificationSuggestResponse {
 
         private Integer idNotification;
@@ -731,6 +1051,75 @@ public class PageController {
 
         public void setReadStatus(String readStatus) {
             this.readStatus = readStatus;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
+    }
+
+    /*
+     * DTO interne utilisé pour les suggestions de messages de contact du membre.
+     */
+    public static final class MyContactMessageSuggestResponse {
+
+        private String id;
+        private String subject;
+        private String status;
+        private Boolean responseSent;
+        private String date;
+
+        public MyContactMessageSuggestResponse() {
+        }
+
+        public MyContactMessageSuggestResponse(
+                String id,
+                String subject,
+                String status,
+                Boolean responseSent,
+                String date
+        ) {
+            this.id = id;
+            this.subject = subject;
+            this.status = status;
+            this.responseSent = responseSent;
+            this.date = date;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getSubject() {
+            return subject;
+        }
+
+        public void setSubject(String subject) {
+            this.subject = subject;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public Boolean getResponseSent() {
+            return responseSent;
+        }
+
+        public void setResponseSent(Boolean responseSent) {
+            this.responseSent = responseSent;
         }
 
         public String getDate() {

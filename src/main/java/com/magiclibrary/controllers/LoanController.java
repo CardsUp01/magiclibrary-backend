@@ -33,6 +33,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * Contrôleur REST dédié aux emprunts.
+ *
+ * Cette classe expose les endpoints permettant de consulter les emprunts,
+ * créer un emprunt, restituer un emprunt et fournir les suggestions
+ * utilisées par l'administration.
+ *
+ * Les règles d'accès sont appliquées par Spring Security et complétées
+ * par le service métier lorsque l'accès dépend du propriétaire de l'emprunt.
+ */
 @RestController
 @RequestMapping("/loans")
 @Validated
@@ -74,6 +84,10 @@ public class LoanController {
         );
     }
 
+    /*
+     * Fournit les suggestions d'emprunts utilisées par l'administration.
+     * Le DTO interne limite la réponse aux informations utiles à l'autocomplétion.
+     */
     @Operation(
             summary = "Suggérer des emprunts pour l’administration",
             description = "Retourne une liste légère d’emprunts pour l’autocomplétion de la page d’administration des emprunts. Accès réservé à l’administrateur."
@@ -107,6 +121,11 @@ public class LoanController {
         return ResponseEntity.ok(suggestions);
     }
 
+    /*
+     * Retourne le détail d'un emprunt en tenant compte du rôle courant.
+     * Un administrateur peut consulter tous les emprunts, tandis qu'un membre
+     * ne peut consulter que ses propres emprunts.
+     */
     @Operation(
             summary = "Consulter le détail d’un emprunt",
             description = "Retourne le détail d’un emprunt. ADMIN : accès libre. MEMBRE : accès uniquement si l’emprunt lui appartient."
@@ -151,6 +170,9 @@ public class LoanController {
         return ResponseEntity.ok(response);
     }
 
+    /*
+     * Crée un nouvel emprunt depuis l'API REST.
+     */
     @PostMapping
     public ResponseEntity<LoanResponseDTO> createLoan(@Valid @RequestBody LoanRequestDTO request) {
         LoanResponseDTO response = loanService.createLoan(request);
@@ -160,6 +182,9 @@ public class LoanController {
                 .body(response);
     }
 
+    /*
+     * Marque un emprunt comme restitué depuis l'API REST.
+     */
     @PutMapping("/{id}/return")
     public ResponseEntity<LoanResponseDTO> returnLoan(
             @PathVariable("id") Integer idLoan
@@ -180,6 +205,10 @@ public class LoanController {
         );
     }
 
+    /*
+     * DTO interne utilisé uniquement pour exposer les suggestions
+     * d'emprunts au format JSON.
+     */
     public static final class LoanSuggestResponse {
 
         private Integer idLoan;

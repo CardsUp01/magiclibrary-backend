@@ -1,0 +1,896 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Mes messages de contact', activePage='mes-messages-de-contact'">
+
+    <th:block th:fragment="content"
+              th:with="contactsCount=${contacts != null ? #lists.size(contacts) : 0},
+                       hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
+                       resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : contactsCount}">
+
+        <!--
+            Page de consultation des messages de contact personnels.
+            Permet au membre de rechercher, sélectionner et consulter
+            ses demandes ainsi que les réponses administrateur associées.
+        -->
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <!-- En-tête de la page avec retour vers les notifications -->
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">Mes messages de contact</h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consulte tes messages de contact personnels et les réponses administrateur enregistrés dans l’application MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/mes-notifications}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour aux notifications
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0 max-w-full flex-1">
+                        <div class="flex max-w-full flex-col gap-3">
+
+                            <!-- Recherche dynamique dans les messages de contact du membre connecté -->
+                            <form id="searchForm" th:action="@{/mes-messages-de-contact}" method="get" class="max-w-full">
+                                <input type="hidden" name="page" value="0" />
+                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                                <input type="hidden" name="selectedContactId" th:value="${selectedContactId}" />
+
+                                <div class="relative w-full max-w-full">
+                                    <label for="search" class="sr-only">Rechercher dans mes messages de contact</label>
+
+                                    <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
+                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </div>
+
+                                    <input id="search"
+                                           name="q"
+                                           type="text"
+                                           inputmode="search"
+                                           autocomplete="off"
+                                           th:value="${q}"
+                                           placeholder="Rechercher par ID message, sujet, contenu, statut, réponse…"
+                                           class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           aria-describedby="searchHint resultsCount resultsLabel"
+                                           aria-controls="suggestPanel"
+                                           aria-expanded="false" />
+
+                                    <button id="searchClearInline"
+                                            type="button"
+                                            class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                            aria-label="Effacer la recherche">
+                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+
+                                    <button type="submit" class="sr-only">Rechercher</button>
+
+                                    <div id="suggestPanel"
+                                         class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                                         role="listbox"
+                                         aria-label="Suggestions">
+                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+                                    </div>
+
+                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                </div>
+                            </form>
+
+                            <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 max-w-full flex-1">
+                                    <p id="searchHint" class="text-sm text-gray-600">
+                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
+                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
+                                    </p>
+                                </div>
+
+                                <!-- Indicateur du nombre de résultats affichés -->
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
+                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
+                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-6 max-w-full text-sm text-gray-700">
+
+                <section class="mt-6 max-w-full first:mt-0">
+                    <h2 class="text-base font-semibold text-gray-900">Mes messages</h2>
+
+                    <!-- Résumé de l'état courant : résultats, recherche active et pagination -->
+                    <div class="mt-2 max-w-full space-y-2">
+                        <p th:if="${contactsCount > 0 and hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? 'message trouvé' : 'messages trouvés'}">messages trouvés</span>
+                        </p>
+
+                        <p th:if="${contactsCount > 0 and !hasQuery}">
+                            <span class="font-medium text-gray-900" th:text="${contactsCount}">0</span>
+                            <span th:text="${contactsCount == 1 ? 'message chargé' : 'messages chargés'}">messages chargés</span>
+                        </p>
+
+                        <p th:if="${contactsCount == 0 and hasQuery}">
+                            Aucun message de contact ne correspond à cette recherche.
+                        </p>
+
+                        <p th:if="${contactsCount == 0 and !hasQuery}">
+                            Aucun message de contact disponible pour le moment.
+                        </p>
+
+                        <p th:if="${paginationEnabled}" class="text-sm text-gray-600">
+                            <span>Page </span>
+                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+                            <span> sur </span>
+                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+                            <span> · </span>
+                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
+                            <span th:text="${totalElements == 1 ? ' message au total' : ' messages au total'}"> messages au total</span>
+                        </p>
+                    </div>
+
+                    <!-- État vide des messages de contact ou de la recherche -->
+                    <div class="mt-6 max-w-full" th:if="${contactsCount == 0}">
+                        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+                            <h2 class="text-base font-semibold text-gray-900"
+                                th:text="${hasQuery ? 'Aucun résultat' : 'Aucun message disponible'}">
+                                Aucun message disponible
+                            </h2>
+                            <div class="mt-2 space-y-2">
+                                <p class="break-words hyphens-auto"
+                                   th:text="${hasQuery ? 'Essaie un autre mot-clé ou efface la recherche.' : 'Aucun message de contact n’est enregistré pour le moment.'}">
+                                    Aucun message de contact n’est enregistré pour le moment.
+                                </p>
+                                <div class="flex flex-wrap gap-3">
+                                    <a th:if="${hasQuery}"
+                                       th:href="@{/mes-messages-de-contact(size=${pageSize})}"
+                                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Effacer la recherche
+                                    </a>
+
+                                    <a th:href="@{/contact}"
+                                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Accéder au formulaire de contact
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Affichage en deux colonnes : liste des messages et panneau de détail -->
+                    <div class="mt-6 grid max-w-full grid-cols-1 gap-6 xl:grid-cols-5" th:if="${contactsCount > 0}">
+
+                        <!-- Liste des messages de contact du membre connecté -->
+                        <section class="xl:col-span-2">
+                            <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-200">
+                                <div class="border-b border-gray-100 px-4 py-4 sm:px-6">
+                                    <h3 class="text-base font-semibold text-gray-900">Liste des messages</h3>
+                                    <p class="mt-1 text-sm text-gray-600">
+                                        Sélectionne un message pour consulter son détail complet.
+                                    </p>
+                                </div>
+
+                                <ul class="grid max-w-full grid-cols-1 gap-0" role="list">
+                                    <li th:each="contact : ${contacts}"
+                                        data-contact-card
+                                        th:attr="data-id-contact=${contact.id},
+                                                 data-response-sent=${contact.responseSent}"
+                                        class="border-b border-gray-100 last:border-b-0">
+                                        <a th:href="@{/mes-messages-de-contact(selectedContactId=${contact.id}, q=${q}, page=${currentPage}, size=${pageSize})}"
+                                           class="block border-l-4 border-transparent px-4 py-4 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:px-6"
+                                           th:classappend="${selectedContact != null and selectedContact.id == contact.id ? ' bg-blue-50 border-blue-700 ring-2 ring-inset ring-blue-700 shadow-sm' : ''}">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="break-words text-sm font-semibold text-gray-900"
+                                                       th:text="${contact.subject != null && !#strings.isEmpty(#strings.trim(contact.subject)) ? contact.subject : 'Message sans sujet'}">
+                                                        Message sans sujet
+                                                    </p>
+
+                                                    <p class="mt-1 line-clamp-2 break-words text-sm text-gray-600"
+                                                       th:text="${contact.content != null && !#strings.isEmpty(#strings.trim(contact.content)) ? contact.content : 'Aucun message disponible.'}">
+                                                        Aucun message disponible.
+                                                    </p>
+
+                                                    <p class="mt-2 text-xs text-gray-500"
+                                                       th:text="${contact.date != null ? #temporals.format(contact.date, 'dd/MM/yyyy HH:mm') : 'Date non définie'}">
+                                                        Date non définie
+                                                    </p>
+                                                </div>
+
+                                                <span class="inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                                      th:text="${contact.responseSent ? 'Répondu' : 'En attente'}"
+                                                      th:classappend="${contact.statusBadgeClass}">
+                                                    En attente
+                                                </span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Pagination des messages de contact personnels -->
+                            <nav th:if="${paginationEnabled}"
+                                 class="mt-6 border-t border-gray-100 pt-6"
+                                 aria-label="Pagination de mes messages de contact">
+                                <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <p class="text-sm text-gray-600">
+                                        Navigation entre les pages de tes messages de contact.
+                                    </p>
+
+                                    <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+                                        <span th:if="${!hasPrevious}"
+                                              aria-disabled="true"
+                                              class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                            Précédent
+                                        </span>
+
+                                        <a th:if="${hasPrevious}"
+                                           th:href="@{/mes-messages-de-contact(page=${currentPage - 1}, size=${pageSize}, q=${q}, selectedContactId=${selectedContactId})}"
+                                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            Précédent
+                                        </a>
+
+                                        <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+                                            <span th:if="${pageNumber == currentPage}"
+                                                  aria-current="page"
+                                                  th:text="${pageNumber + 1}"
+                                                  class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm">
+                                                1
+                                            </span>
+
+                                            <a th:if="${pageNumber != currentPage}"
+                                               th:href="@{/mes-messages-de-contact(page=${pageNumber}, size=${pageSize}, q=${q}, selectedContactId=${selectedContactId})}"
+                                               th:text="${pageNumber + 1}"
+                                               th:aria-label="|Aller à la page ${pageNumber + 1}|"
+                                               class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                1
+                                            </a>
+                                        </th:block>
+
+                                        <span th:if="${!hasNext}"
+                                              aria-disabled="true"
+                                              class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                            Suivant
+                                        </span>
+
+                                        <a th:if="${hasNext}"
+                                           th:href="@{/mes-messages-de-contact(page=${currentPage + 1}, size=${pageSize}, q=${q}, selectedContactId=${selectedContactId})}"
+                                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            Suivant
+                                        </a>
+                                    </div>
+                                </div>
+                            </nav>
+                        </section>
+
+                        <!-- Panneau de détail du message sélectionné -->
+                        <section class="xl:col-span-3">
+                            <div id="contact-detail-panel" class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-200">
+
+                                <div th:if="${selectedContact == null}" class="px-4 py-6 sm:px-6">
+                                    <h3 class="text-base font-semibold text-gray-900">Détail du message</h3>
+                                    <p class="mt-2 text-sm text-gray-700">
+                                        Aucun message sélectionné. Choisis un message dans la liste pour consulter son contenu complet.
+                                    </p>
+                                </div>
+
+                                <div th:if="${selectedContact != null}" class="px-4 py-6 sm:px-6">
+
+                                    <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+                                        <h3 class="break-words text-base font-semibold text-gray-900">Détail du message</h3>
+
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
+                                              th:text="${selectedContact.responseSent ? 'Répondu' : 'En attente'}"
+                                              th:classappend="${selectedContact.statusBadgeClass}">
+                                            Répondu
+                                        </span>
+                                    </div>
+
+                                    <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div class="rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Identifiant</p>
+                                            <p class="mt-2 break-all text-sm text-gray-700" th:text="${selectedContact.id}">—</p>
+                                        </div>
+
+                                        <div class="rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Date d’envoi</p>
+                                            <p class="mt-2 text-sm text-gray-700"
+                                               th:text="${selectedContact.date != null ? #temporals.format(selectedContact.date, 'dd/MM/yyyy HH:mm') : '—'}">
+                                                —
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Statut</p>
+                                            <p class="mt-2 text-sm text-gray-700"
+                                               th:text="${selectedContact.statusLabel != null && !#strings.isEmpty(#strings.trim(selectedContact.statusLabel)) ? selectedContact.statusLabel : '—'}">
+                                                —
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Administrateur</p>
+                                            <p class="mt-2 break-words text-sm text-gray-700"
+                                               th:text="${selectedContact.answeredByAdminLabel != null && !#strings.isEmpty(#strings.trim(selectedContact.answeredByAdminLabel)) ? selectedContact.answeredByAdminLabel : '—'}">
+                                                —
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-6">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Sujet</p>
+                                        <p class="mt-2 break-words text-sm font-semibold text-gray-900"
+                                           th:text="${selectedContact.subject != null && !#strings.isEmpty(#strings.trim(selectedContact.subject)) ? selectedContact.subject : 'Message sans sujet'}">
+                                            Message sans sujet
+                                        </p>
+                                    </div>
+
+                                    <div class="mt-6">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Message initial</p>
+                                        <div class="mt-2 rounded-lg bg-gray-50 p-4 ring-1 ring-gray-200">
+                                            <p class="whitespace-pre-line break-words text-sm text-gray-800"
+                                               th:text="${selectedContact.content != null && !#strings.isEmpty(#strings.trim(selectedContact.content)) ? selectedContact.content : 'Aucun message disponible.'}">
+                                                Aucun message disponible.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-6">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Réponse administrateur</p>
+
+                                        <div th:if="${selectedContact.responseSent && selectedContact.responseContent != null && !#strings.isEmpty(#strings.trim(selectedContact.responseContent))}"
+                                             class="mt-2 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+                                            <p class="whitespace-pre-line break-words text-sm text-gray-800"
+                                               th:text="${selectedContact.responseContent}">
+                                                Réponse administrateur
+                                            </p>
+                                        </div>
+
+                                        <div th:if="${!selectedContact.responseSent || selectedContact.responseContent == null || #strings.isEmpty(#strings.trim(selectedContact.responseContent))}"
+                                             class="mt-2 rounded-lg bg-white p-4 ring-1 ring-gray-200">
+                                            <p class="text-sm text-gray-700">
+                                                Aucune réponse administrateur pour le moment.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <!--
+            Gestion de la recherche dynamique, des suggestions,
+            de la sélection d'un message et de la synchronisation
+            des liens de pagination.
+        -->
+        <script>
+            (function () {
+                const search = document.getElementById('search');
+                const searchForm = document.getElementById('searchForm');
+                const hint = document.getElementById('searchHint');
+                const panel = document.getElementById('suggestPanel');
+                const inner = document.getElementById('suggestInner');
+                const suggestAnnounce = document.getElementById('suggestAnnounce');
+                const clearInline = document.getElementById('searchClearInline');
+                const contactCards = Array.from(document.querySelectorAll('[data-contact-card]'));
+
+                if (!search || !searchForm) return;
+
+                let activeIndex = -1;
+                let currentOptions = [];
+                let suggestTimer = null;
+                let submitTimer = null;
+                let fetchController = null;
+                let fetchSequence = 0;
+                let lastSubmittedValue = String(search.value || '').trim();
+
+                function isIdentifierQuery(value) {
+                    return /^[0-9a-zA-Z\-]+$/.test(String(value ?? '').trim());
+                }
+
+                function thresholdReached(q) {
+                    const raw = String(q ?? '').trim();
+                    if (!raw) return false;
+
+                    if (isIdentifierQuery(raw) && raw.length === 1) {
+                        return true;
+                    }
+
+                    return raw.length >= 2;
+                }
+
+                function updateInlineClear(q) {
+                    if (!clearInline) return;
+                    const has = Boolean((q || '').trim());
+                    clearInline.classList.toggle('hidden', !has);
+                }
+
+                function updateHint(q) {
+                    if (!hint) return;
+                    const trimmed = (q || '').trim();
+
+                    if (!trimmed) {
+                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        return;
+                    }
+
+                    if (isIdentifierQuery(trimmed) && trimmed.length === 1) {
+                        hint.textContent = 'Suggestions disponibles dès 1 caractère pour un identifiant.';
+                        return;
+                    }
+
+                    hint.textContent = 'La page se met à jour automatiquement pendant la saisie.';
+                }
+
+                function escapeHtml(s) {
+                    return String(s ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function getCurrentSearchParams() {
+                    return new URLSearchParams(window.location.search);
+                }
+
+                function getCurrentSelectedContactId() {
+                    return getCurrentSearchParams().get('selectedContactId') || '';
+                }
+
+                function getSearchFormSizeValue() {
+                    const input = searchForm.querySelector('input[name="size"]');
+                    return input && input.value ? input.value : '9';
+                }
+
+                function buildMesMessagesContactUrl(options) {
+                    const opts = options || {};
+                    const url = new URL(window.location.pathname, window.location.origin);
+                    const params = new URLSearchParams();
+
+                    params.set('page', opts.page != null ? String(opts.page) : '0');
+                    params.set('size', opts.size != null ? String(opts.size) : getSearchFormSizeValue());
+
+                    if (opts.q != null && String(opts.q).trim() !== '') {
+                        params.set('q', String(opts.q).trim());
+                    }
+
+                    if (opts.selectedContactId != null && String(opts.selectedContactId).trim() !== '') {
+                        params.set('selectedContactId', String(opts.selectedContactId).trim());
+                    }
+
+                    url.search = params.toString();
+                    return url.toString();
+                }
+
+                function syncSelectedContactState() {
+                    const selectedContactId = getCurrentSelectedContactId();
+
+                    contactCards.forEach(function (card) {
+                        const cardContactId = String(card.getAttribute('data-id-contact') || '');
+                        const isSelected = Boolean(selectedContactId) && cardContactId === String(selectedContactId);
+
+                        card.classList.toggle('ring-2', isSelected);
+                        card.classList.toggle('ring-blue-700', isSelected);
+                        card.classList.toggle('shadow-sm', isSelected);
+                        card.setAttribute('data-selected-result', isSelected ? 'true' : 'false');
+                    });
+                }
+
+                function syncSelectedContactIdInPaginationLinks() {
+                    const selectedContactId = getCurrentSelectedContactId();
+                    const paginationLinks = Array.from(document.querySelectorAll('nav[aria-label="Pagination de mes messages de contact"] a[href]'));
+
+                    paginationLinks.forEach(function (link) {
+                        try {
+                            const url = new URL(link.href, window.location.origin);
+
+                            if (selectedContactId) {
+                                url.searchParams.set('selectedContactId', selectedContactId);
+                            } else {
+                                url.searchParams.delete('selectedContactId');
+                            }
+
+                            link.href = url.toString();
+                        } catch (e) {
+                        }
+                    });
+                }
+
+                function setPanel(open) {
+                    if (!panel) return;
+
+                    panel.classList.toggle('hidden', !open);
+                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                    if (!open) {
+                        activeIndex = -1;
+                        currentOptions = [];
+                        search.setAttribute('aria-activedescendant', '');
+                    }
+                }
+
+                function closePanel() {
+                    setPanel(false);
+                    if (inner) inner.innerHTML = '';
+                }
+
+                function openPanel() {
+                    setPanel(true);
+                }
+
+                function renderOptions(list) {
+                    if (!inner) return;
+
+                    if (list.length === 0) {
+                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+                        openPanel();
+                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+                        return;
+                    }
+
+                    let html = '';
+
+                    for (let i = 0; i < list.length; i++) {
+                        const it = list[i];
+                        const optId = 'suggest-opt-contact-' + escapeHtml(it.id) + '-' + i;
+                        const primary = it.subject ? ('Message ' + (it.id || '') + ' • ' + it.subject) : ('Message ' + (it.id || ''));
+                        const secondaryParts = [
+                            it.status || '',
+                            it.responseSent ? 'Répondu' : 'En attente',
+                            it.date || ''
+                        ].filter(Boolean);
+                        const secondary = secondaryParts.join(' • ');
+                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
+
+                        html +=
+                            '<div ' +
+                            'id="' + optId + '" ' +
+                            'role="option" ' +
+                            'aria-selected="false" ' +
+                            'aria-label="' + escapeHtml(ariaLabel) + '" ' +
+                            'tabindex="-1" ' +
+                            'data-suggest-index="' + i + '" ' +
+                            'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
+                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
+                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
+                            '</div>';
+                    }
+
+                    inner.innerHTML = html;
+                    openPanel();
+
+                    if (suggestAnnounce) {
+                        suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+                    }
+                }
+
+                function setActive(newIndex) {
+                    if (!inner) return;
+
+                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
+                    if (options.length === 0) return;
+
+                    if (newIndex < 0) newIndex = options.length - 1;
+                    if (newIndex >= options.length) newIndex = 0;
+
+                    activeIndex = newIndex;
+
+                    options.forEach(function (el, i) {
+                        const isActive = i === activeIndex;
+                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        el.classList.toggle('bg-gray-50', isActive);
+                    });
+
+                    const activeEl = options[activeIndex];
+                    if (activeEl && activeEl.id) {
+                        search.setAttribute('aria-activedescendant', activeEl.id);
+                        try {
+                            activeEl.scrollIntoView({ block: 'nearest' });
+                        } catch (e) {
+                        }
+                    }
+                }
+
+                function goToSuggestionAt(idx) {
+                    const it = currentOptions[idx];
+                    if (!it || !it.id) return;
+
+                    window.location.href = buildMesMessagesContactUrl({
+                        page: 0,
+                        size: getSearchFormSizeValue(),
+                        q: String(search.value || '').trim(),
+                        selectedContactId: it.id
+                    });
+                }
+
+                function submitSearchNow() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (trimmed === lastSubmittedValue) {
+                        return;
+                    }
+
+                    lastSubmittedValue = trimmed;
+                    closePanel();
+                    searchForm.requestSubmit();
+                }
+
+                function scheduleSearchSubmit() {
+                    const trimmed = String(search.value || '').trim();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    if (!trimmed) {
+                        submitTimer = window.setTimeout(function () {
+                            submitSearchNow();
+                        }, 150);
+                        return;
+                    }
+
+                    if (!thresholdReached(trimmed)) {
+                        return;
+                    }
+
+                    submitTimer = window.setTimeout(function () {
+                        submitSearchNow();
+                    }, 450);
+                }
+
+                async function fetchSuggest(q) {
+                    const trimmed = String(q ?? '').trim();
+
+                    if (!thresholdReached(trimmed)) {
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                        return;
+                    }
+
+                    if (!inner) return;
+
+                    if (fetchController) {
+                        fetchController.abort();
+                    }
+
+                    fetchController = new AbortController();
+                    const currentFetch = ++fetchSequence;
+
+                    try {
+                        const url = '/mes-messages-de-contact/suggest?q=' + encodeURIComponent(trimmed);
+                        const res = await fetch(url, {
+                            headers: { 'Accept': 'application/json' },
+                            signal: fetchController.signal
+                        });
+
+                        if (!res.ok || currentFetch !== fetchSequence) {
+                            return;
+                        }
+
+                        const data = await res.json();
+                        if (currentFetch !== fetchSequence) return;
+
+                        const list = Array.isArray(data) ? data : [];
+                        currentOptions = list.slice(0, 8).map(function (it) {
+                            return {
+                                id: it && it.id != null ? it.id : '',
+                                subject: it && it.subject != null ? it.subject : '',
+                                status: it && it.status != null ? it.status : '',
+                                responseSent: Boolean(it && it.responseSent),
+                                date: it && it.date != null ? it.date : ''
+                            };
+                        });
+
+                        renderOptions(currentOptions);
+
+                        if (currentOptions.length > 0) {
+                            setActive(0);
+                        }
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        if (inner) inner.innerHTML = '';
+                        closePanel();
+                    }
+                }
+
+                function scheduleSuggest() {
+                    const q = search.value || '';
+                    updateHint(q);
+
+                    if (suggestTimer) window.clearTimeout(suggestTimer);
+                    suggestTimer = window.setTimeout(function () {
+                        fetchSuggest(q);
+                    }, 180);
+                }
+
+                function clearSearchAndSubmit() {
+                    search.value = '';
+                    updateInlineClear('');
+                    updateHint('');
+                    closePanel();
+
+                    if (submitTimer) {
+                        window.clearTimeout(submitTimer);
+                    }
+
+                    submitSearchNow();
+                }
+
+                function handleEscape(e) {
+                    const key = e && e.key ? e.key : '';
+
+                    if (key !== 'Escape' && key !== 'Esc') {
+                        return false;
+                    }
+
+                    e.preventDefault();
+
+                    const currentValue = String(search.value || '').trim();
+
+                    if (currentValue) {
+                        clearSearchAndSubmit();
+                        return true;
+                    }
+
+                    closePanel();
+                    return true;
+                }
+
+                document.addEventListener('click', function (e) {
+                    if (!panel || panel.classList.contains('hidden')) return;
+                    const target = e.target;
+                    if (target === search || panel.contains(target)) return;
+                    closePanel();
+                });
+
+                window.addEventListener('resize', function () {
+                    closePanel();
+                });
+
+                window.addEventListener('scroll', function () {
+                    if (panel && !panel.classList.contains('hidden')) {
+                        closePanel();
+                    }
+                }, true);
+
+                document.addEventListener('keydown', function (e) {
+                    handleEscape(e);
+                }, true);
+
+                if (inner) {
+                    inner.addEventListener('mousedown', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        e.preventDefault();
+                    });
+
+                    inner.addEventListener('click', function (e) {
+                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
+                        if (!opt) return;
+                        const idx = Number(opt.getAttribute('data-suggest-index'));
+                        if (!Number.isFinite(idx)) return;
+                        goToSuggestionAt(idx);
+                    });
+                }
+
+                if (clearInline) {
+                    clearInline.addEventListener('click', function () {
+                        clearSearchAndSubmit();
+                    });
+                }
+
+                search.addEventListener('keydown', function (e) {
+                    if (handleEscape(e)) return;
+
+                    const isOpen = panel && !panel.classList.contains('hidden');
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (!isOpen) {
+                            scheduleSuggest();
+                            window.setTimeout(function () {
+                                if (panel && !panel.classList.contains('hidden')) {
+                                    setActive(0);
+                                }
+                            }, 200);
+                        } else {
+                            setActive(activeIndex + 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'ArrowUp') {
+                        if (isOpen) {
+                            e.preventDefault();
+                            setActive(activeIndex - 1);
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'Enter') {
+                        if (isOpen && activeIndex >= 0) {
+                            e.preventDefault();
+                            goToSuggestionAt(activeIndex);
+                            return;
+                        }
+
+                        if (submitTimer) {
+                            window.clearTimeout(submitTimer);
+                        }
+
+                        submitSearchNow();
+                        return;
+                    }
+
+                    if (e.key === 'Tab' && isOpen) {
+                        closePanel();
+                    }
+                });
+
+                search.addEventListener('input', function () {
+                    updateInlineClear(search.value);
+                    scheduleSuggest();
+                    scheduleSearchSubmit();
+                });
+
+                search.addEventListener('focus', function () {
+                    const q = (search.value || '').trim();
+                    if (q) scheduleSuggest();
+                });
+
+                updateHint(search.value || '');
+                updateInlineClear(search.value || '');
+                closePanel();
+                syncSelectedContactState();
+                syncSelectedContactIdInPaginationLinks();
+
+                const initialQuery = String(search.value || '').trim();
+
+                if (initialQuery) {
+                    window.setTimeout(function () {
+                        search.focus();
+                        const length = search.value.length;
+                        search.setSelectionRange(length, length);
+                    }, 80);
+                }
+
+                if (thresholdReached(initialQuery)) {
+                    window.setTimeout(function () {
+                        fetchSuggest(initialQuery);
+                    }, 120);
+                }
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

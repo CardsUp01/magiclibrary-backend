@@ -1,5 +1,11 @@
 package com.magiclibrary.enums;
 
+/**
+ * Référentiel des origines possibles d'un emprunt.
+ *
+ * Chaque valeur associe un code technique stocké dans les données
+ * à un libellé destiné à l'affichage dans l'interface utilisateur.
+ */
 public enum LoanOrigin {
 
     USER("USER", "Membre"),
@@ -22,6 +28,10 @@ public enum LoanOrigin {
         return label;
     }
 
+    /*
+     * Retourne le libellé correspondant à une origine d'emprunt.
+     * Si le code n'est pas reconnu, la valeur reçue est renvoyée telle quelle.
+     */
     public static String labelOf(String code) {
         if (code == null) {
             return null;

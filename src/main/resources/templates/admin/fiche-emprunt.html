@@ -7,6 +7,11 @@
                        memberFullName=${((loan.firstNameUser ?: '') + ' ' + (loan.lastNameUser ?: '')).trim()},
                        isAdminContext=${loanDetailContext == 'admin'}">
 
+        <!--
+            Page de détail d'un emprunt.
+            Affiche les informations principales du prêt, son statut,
+            ses dates de suivi et les objets associés.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -30,6 +35,7 @@
                     </div>
                 </div>
 
+                <!-- Synthèse de l'emprunt et action de restitution en contexte administrateur -->
                 <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                     <div class="flex max-w-full flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 
@@ -92,6 +98,7 @@
                                     Restituer
                                 </button>
 
+                                <!-- Fenêtre de confirmation avant restitution de l'emprunt -->
                                 <div data-return-modal
                                      class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
                                      aria-hidden="true">
@@ -129,6 +136,7 @@
                     </div>
                 </section>
 
+                <!-- Informations détaillées de suivi de l'emprunt -->
                 <div class="grid max-w-full grid-cols-1 gap-4 lg:grid-cols-2">
 
                     <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
@@ -228,6 +236,7 @@
 
                 </div>
 
+                <!-- Liste des objets rattachés à l'emprunt -->
                 <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                     <h2 class="text-base font-semibold text-gray-900">Objets empruntés</h2>
 
@@ -314,6 +323,7 @@
 
         </section>
 
+        <!-- Gestion de la fenêtre de confirmation de restitution en contexte administrateur -->
         <script th:if="${isAdminContext and (loan.returnedLoan == null or !loan.returnedLoan)}">
             document.addEventListener('DOMContentLoaded', function () {
                 const openButton = document.querySelector('[data-open-return-modal]');

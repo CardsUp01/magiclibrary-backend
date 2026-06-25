@@ -5,8 +5,14 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'accueil de l'application.
+            Présente les accès rapides disponibles selon le rôle
+            ainsi que les informations générales de conformité.
+        -->
         <section>
 
+            <!-- En-tête de bienvenue et accès rapides vers les informations de conformité -->
             <header class="mb-6">
                 <h1 class="text-2xl font-semibold text-gray-900">Accueil</h1>
                 <p class="mt-1 text-sm text-gray-600">Bienvenue sur l’application MagicLibrary.</p>
@@ -18,30 +24,138 @@
 
                     <div class="mt-3 flex flex-wrap gap-2">
                         <a href="#conformite"
-                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
-                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                             Usage interne
                         </a>
                         <a href="#conformite"
-                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
-                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                             Accès sécurisé
                         </a>
                         <a href="#conformite"
-                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
-                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                             Données personnelles
                         </a>
                         <a href="#conformite"
-                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700
-                                  hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                           class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                             RGPD
                         </a>
                     </div>
                 </div>
             </header>
 
-            <section aria-label="Accès rapides" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <!-- Espace réservé aux administrateurs -->
+            <section sec:authorize="hasRole('ADMIN')" aria-label="Espace administrateur" class="mt-8">
+                <div class="mb-4">
+                    <h2 class="text-xl font-semibold text-gray-900">Espace administrateur</h2>
+                    <p class="mt-1 text-sm text-gray-600">Accéder rapidement aux outils de gestion de l’application.</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+
+                    <a th:href="@{/admin/emprunts}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M7 4h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M6 8h12v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Emprunts</h3>
+                                <p class="mt-1 text-sm text-gray-600">Gérer les emprunts et suivre les retours.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a th:href="@{/admin/membres}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <circle cx="9.5" cy="7" r="3" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M20 8v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M17 11h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Membres</h3>
+                                <p class="mt-1 text-sm text-gray-600">Consulter et gérer les comptes membres.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a th:href="@{/admin/messages}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 7h16v10H4V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="m4 8 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Messages</h3>
+                                <p class="mt-1 text-sm text-gray-600">Traiter les messages de contact reçus.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a th:href="@{/admin/notifications}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M15 17h5l-1.5-1.5a2 2 0 0 1-.5-1.3V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.5 1.3L4 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M10 21a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Notifications</h3>
+                                <p class="mt-1 text-sm text-gray-600">Suivre les alertes et informations internes.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                </div>
+            </section>
+
+            <!-- Accès rapides communs disponibles selon les droits de l'utilisateur -->
+            <section aria-label="Accès rapides" class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 
                 <a sec:authorize="hasAnyRole('MEMBRE','ADMIN')"
                    th:href="@{/bibliotheque-numerique}"
@@ -60,8 +174,7 @@
                             <p class="mt-1 text-sm text-gray-600">Consulter les objets du catalogue numérique.</p>
 
                             <div class="mt-4 inline-flex items-center gap-2">
-                                <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm
-                                             hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                     Consulter
                                 </span>
                                 <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
@@ -70,7 +183,7 @@
                     </div>
                 </a>
 
-                <a sec:authorize="isAuthenticated()"
+                <a sec:authorize="isAuthenticated() and !hasRole('ADMIN')"
                    th:href="@{/contact}"
                    class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                     <div class="flex items-start gap-3">
@@ -86,8 +199,7 @@
                             <p class="mt-1 text-sm text-gray-600">Contacter l’équipe via le formulaire.</p>
 
                             <div class="mt-4 inline-flex items-center gap-2">
-                                <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm
-                                             hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                     Écrire
                                 </span>
                                 <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
@@ -96,8 +208,129 @@
                     </div>
                 </a>
 
+                <!--
+                    Carte Contact volontairement désactivée pour les administrateurs.
+                    Les administrateurs traitent les demandes depuis le module Messages
+                    et ne doivent donc pas s'envoyer eux-mêmes de message de contact.
+                -->
+                <div sec:authorize="hasRole('ADMIN')"
+                     class="rounded-lg border border-gray-300 bg-gray-100 p-6 shadow-none cursor-not-allowed"
+                     role="group"
+                     title="Réservé aux membres. Les administrateurs gèrent les demandes depuis le module Messages."
+                     aria-label="Contact indisponible pour les administrateurs. Réservé aux membres. Les administrateurs gèrent les demandes depuis le module Messages.">
+                    <div class="flex items-start gap-3">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 text-gray-500 ring-1 ring-gray-300" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                <path d="M4 7h16v10H4V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="m4 8 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+
+                        <div class="min-w-0">
+                            <h2 class="text-lg font-semibold text-gray-700">Contact</h2>
+                            <p class="mt-1 text-sm text-gray-600">Réservé aux membres qui souhaitent contacter l’équipe.</p>
+                            <p class="mt-2 text-sm font-medium text-gray-700">
+                                Les administrateurs gèrent les demandes depuis le module Messages.
+                            </p>
+
+                            <div class="mt-4 inline-flex items-center">
+                                <span class="inline-flex cursor-not-allowed select-none items-center rounded-md border border-gray-300 bg-gray-200 px-2.5 py-1 text-sm font-semibold text-gray-500 shadow-none"
+                                      title="Réservé aux membres. Les administrateurs gèrent les demandes depuis le module Messages."
+                                      aria-label="Écrire indisponible pour les administrateurs. Réservé aux membres. Les administrateurs gèrent les demandes depuis le module Messages.">
+                                    Écrire
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+            <!-- Espace personnel du membre connecté -->
+            <section sec:authorize="hasRole('MEMBRE')" aria-label="Mon espace" class="mt-8">
+                <div class="mb-4">
+                    <h2 class="text-xl font-semibold text-gray-900">Mon espace</h2>
+                    <p class="mt-1 text-sm text-gray-600">Retrouver rapidement les informations et actions utiles à votre compte.</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+                    <a th:href="@{/mes-emprunts}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M7 4h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M6 8h12v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Mes emprunts</h3>
+                                <p class="mt-1 text-sm text-gray-600">Consulter l’historique et le suivi de vos emprunts.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a th:href="@{/mes-notifications}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M15 17h5l-1.5-1.5a2 2 0 0 1-.5-1.3V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.5 1.3L4 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M10 21a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Mes notifications</h3>
+                                <p class="mt-1 text-sm text-gray-600">Consulter les alertes et informations liées à votre compte.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <a th:href="@{/mes-messages-de-contact}"
+                       class="group rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:ring-gray-300 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-gray-50 ring-1 ring-gray-200" aria-hidden="true">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 7h16v10H4V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="m4 8 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-semibold text-gray-900">Mes messages de contact</h3>
+                                <p class="mt-1 text-sm text-gray-600">Retrouver vos messages envoyés et les réponses reçues.</p>
+
+                                <div class="mt-4 inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Ouvrir
+                                    </span>
+                                    <span aria-hidden="true" class="text-sm font-semibold text-blue-700 transition group-hover:translate-x-0.5">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                </div>
             </section>
 
+            <!-- Informations de conformité, sécurité et protection des données -->
             <section id="conformite" aria-label="Conformité et informations" class="mt-8 rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200">
                 <h2 class="text-base font-semibold text-gray-900">Conformité &amp; informations</h2>
 
@@ -119,17 +352,24 @@
                     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
                         <h3 class="text-sm font-semibold text-gray-900">Données personnelles</h3>
                         <p class="mt-1 text-sm text-gray-600">
-                            Données limitées à la gestion interne (emprunts, comptes). Demandes RGPD via Contact.
+                            Données limitées à la gestion interne des emprunts, des comptes et des échanges de contact. Demandes RGPD via Contact.
                         </p>
                     </div>
                 </div>
 
                 <div class="mt-4">
-                    <a th:href="@{/contact}"
-                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm
-                              hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                    <a sec:authorize="isAuthenticated() and !hasRole('ADMIN')"
+                       th:href="@{/contact}"
+                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                         Contacter l’équipe
                     </a>
+
+                    <span sec:authorize="hasRole('ADMIN')"
+                          class="inline-flex cursor-not-allowed select-none items-center rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-400 opacity-70 shadow-none"
+                          title="Réservé aux membres. Les administrateurs gèrent les demandes depuis le module Messages."
+                          aria-label="Contacter l’équipe indisponible pour les administrateurs. Réservé aux membres. Les administrateurs gèrent les demandes depuis le module Messages.">
+                        Contacter l’équipe
+                    </span>
                 </div>
             </section>
 

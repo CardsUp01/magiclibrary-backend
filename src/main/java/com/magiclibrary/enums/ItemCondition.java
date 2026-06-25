@@ -1,5 +1,12 @@
 package com.magiclibrary.enums;
 
+/**
+ * Référentiel des états physiques possibles d'un objet
+ * du catalogue numérique.
+ *
+ * Chaque valeur est associée à un libellé destiné à l'affichage
+ * dans l'interface utilisateur.
+ */
 public enum ItemCondition {
 
     NEW("Neuf"),

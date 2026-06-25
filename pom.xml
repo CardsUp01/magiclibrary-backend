@@ -3,8 +3,7 @@
      FICHIER POM PRINCIPAL DU BACKEND MagicLibrary
      Objectif : configuration complète Maven du projet MVP
      Versions sécurisées et disponibles : JJWT 0.11.5, AssertJ 3.26.3
-     Commentaires : niveau CDA / jury 20/20
-============================================================================== -->
+     ============================================================================== -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">

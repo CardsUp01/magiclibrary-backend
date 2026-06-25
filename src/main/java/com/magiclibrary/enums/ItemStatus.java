@@ -1,5 +1,12 @@
 package com.magiclibrary.enums;
 
+/**
+ * Référentiel des statuts possibles d'un objet
+ * du catalogue numérique.
+ *
+ * Ces valeurs décrivent la disponibilité métier
+ * d'un objet au sein de la bibliothèque.
+ */
 public enum ItemStatus {
 
     AVAILABLE("Disponible"),

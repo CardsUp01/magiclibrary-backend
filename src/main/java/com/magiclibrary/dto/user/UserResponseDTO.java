@@ -4,6 +4,13 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * DTO de réponse représentant un utilisateur.
+ *
+ * Cette classe regroupe les informations nécessaires à l'affichage
+ * et à la consultation d'un membre dans les différentes interfaces
+ * de l'application.
+ */
 public class UserResponseDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;

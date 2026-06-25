@@ -1,10 +1,18 @@
 <th:block xmlns:th="http://www.thymeleaf.org"
+          xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
           th:replace="~{layout :: layout(~{::content})}"
           th:with="pageTitle='Mentions légales'">
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'information dédiée aux mentions légales.
+            Présente l'éditeur de l'application, l'hébergement,
+            les finalités, la propriété intellectuelle et les modalités de contact.
+        -->
         <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <!-- En-tête de la page avec date de mise à jour et retour conditionnel à l'accueil -->
             <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                     <h1 class="text-lg font-semibold text-gray-900">Mentions légales</h1>
@@ -25,6 +33,7 @@
                 </div>
             </header>
 
+            <!-- Contenu principal des mentions légales -->
             <div class="mt-6 break-words text-sm text-gray-700">
                 <section class="mt-6 first:mt-0">
                     <h2 class="text-base font-semibold text-gray-900">1. Éditeur de l’application</h2>
@@ -111,9 +120,12 @@
                 <section class="mt-6 first:mt-0">
                     <h2 class="text-base font-semibold text-gray-900">8. Contact</h2>
                     <div class="mt-2 space-y-2">
-                        <p>
+                        <p sec:authorize="!hasRole('ADMIN')">
                             Pour toute question relative aux mentions légales, vous pouvez utiliser la page
                             <a th:href="@{/contact}" class="font-medium text-blue-700 hover:underline">Contact</a>.
+                        </p>
+                        <p sec:authorize="hasRole('ADMIN')">
+                            Pour toute question relative aux mentions légales, les demandes sont traitées via les outils internes d’administration.
                         </p>
                     </div>
                 </section>

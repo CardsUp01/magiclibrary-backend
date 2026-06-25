@@ -42,6 +42,17 @@ import com.magiclibrary.security.auth.CustomUserDetailsService;
 import com.magiclibrary.security.filters.UrlNormalizationFilter;
 import com.magiclibrary.security.jwt.JwtAuthenticationFilter;
 
+/**
+ * Configuration centrale de la sécurité Spring Security.
+ *
+ * Cette classe sépare volontairement la sécurité REST basée sur JWT
+ * et la sécurité SSR basée sur session afin de conserver deux comportements
+ * adaptés aux usages de l'application.
+ *
+ * Elle configure également les règles CORS, les réponses d'erreur de sécurité,
+ * la normalisation des URL et la limitation progressive des tentatives
+ * de connexion SSR.
+ */
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
@@ -50,8 +61,17 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final PasswordEncoder passwordEncoder;
 
+    /*
+     * Durée de conservation des tentatives de connexion échouées.
+     * Au-delà de cette durée, le compteur associé à une clé est réinitialisé.
+     */
     private static final long LOGIN_ATTEMPTS_TTL_MILLIS = TimeUnit.MINUTES.toMillis(15);
 
+    /*
+     * Délais progressifs appliqués après les échecs de connexion SSR.
+     * Le délai augmente avec le nombre d'échecs afin de ralentir
+     * les tentatives répétées sans bloquer immédiatement l'utilisateur.
+     */
     private static final long[] LOGIN_THROTTLE_DELAYS_MILLIS = new long[]{
             0L,
             0L,
@@ -62,9 +82,18 @@ public class SecurityConfig {
             2000L
     };
 
+    /*
+     * Seuil de déclenchement du blocage temporaire HTTP 429
+     * et amplitude maximale du délai aléatoire ajouté au throttling.
+     */
     private static final int SSR_HARD_THROTTLE_MIN_ATTEMPTS = 6;
     private static final int THROTTLE_JITTER_MAX_MILLIS = 250;
 
+    /*
+     * Stockage mémoire des tentatives échouées.
+     * La clé combine l'identifiant saisi et l'adresse IP afin de limiter
+     * les attaques répétées sur un même compte ou depuis une même origine.
+     */
     private final Map<String, LoginAttemptEntry> loginAttemptsByKey = new ConcurrentHashMap<>();
     private final AtomicInteger loginAttemptsCleanupCounter = new AtomicInteger(0);
 
@@ -78,6 +107,11 @@ public class SecurityConfig {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /*
+     * Enregistre le filtre de normalisation des URL avant les filtres Spring.
+     * Cela permet de traiter les chemins entrants de manière homogène
+     * avant leur prise en charge par la chaîne de sécurité.
+     */
     @Bean
     public FilterRegistrationBean<UrlNormalizationFilter> urlNormalizationFilterRegistration() {
         FilterRegistrationBean<UrlNormalizationFilter> registration = new FilterRegistrationBean<>();
@@ -87,6 +121,10 @@ public class SecurityConfig {
         return registration;
     }
 
+    /*
+     * Fournisseur d'authentification basé sur les utilisateurs applicatifs
+     * et le PasswordEncoder configuré dans le projet.
+     */
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -101,6 +139,13 @@ public class SecurityConfig {
         return new ProviderManager(daoAuthenticationProvider());
     }
 
+    /*
+     * Chaîne de sécurité dédiée aux endpoints REST.
+     *
+     * Elle fonctionne sans session serveur, désactive le formulaire Spring,
+     * utilise le filtre JWT et retourne des réponses JSON pour les erreurs
+     * d'authentification ou d'autorisation.
+     */
     @Bean
     @Order(1)
     public SecurityFilterChain restJwtSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -155,6 +200,13 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /*
+     * Chaîne de sécurité dédiée aux pages SSR.
+     *
+     * Elle conserve le mécanisme de session Spring Security,
+     * active le formulaire de connexion personnalisé et applique
+     * une protection progressive contre les échecs répétés de connexion.
+     */
     @Bean
     @Order(2)
     public SecurityFilterChain ssrSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -250,6 +302,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /*
+     * Retourne une réponse HTTP 429 pour les tentatives de connexion SSR
+     * trop nombreuses et transmet le délai d'attente à la page d'erreur.
+     */
     private void sendTooManyRequests429(HttpServletRequest request, HttpServletResponse response, int retryAfterSeconds)
             throws IOException, ServletException {
 
@@ -269,6 +325,10 @@ public class SecurityConfig {
         dispatcher.forward(request, response);
     }
 
+    /*
+     * Gère les refus d'accès côté SSR en redirigeant vers la page 403
+     * sans exposer de détail technique à l'utilisateur.
+     */
     private void handleSsrForbidden(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -286,11 +346,19 @@ public class SecurityConfig {
         dispatcher.forward(request, response);
     }
 
+    /*
+     * Convertit le délai de throttling en valeur Retry-After.
+     * La valeur retournée reste bornée pour éviter un délai excessif côté client.
+     */
     private int computeRetryAfterSeconds(long delayMillis) {
         long ms = Math.max(1000L, delayMillis);
         return (int) Math.min(60L, TimeUnit.MILLISECONDS.toSeconds(ms));
     }
 
+    /*
+     * Ajoute une variation aléatoire au délai de throttling.
+     * Cette variation rend les tentatives automatisées moins prévisibles.
+     */
     private long withJitter(long baseDelayMillis) {
         if (baseDelayMillis <= 0L) {
             return 0L;
@@ -299,6 +367,9 @@ public class SecurityConfig {
         return baseDelayMillis + jitter;
     }
 
+    /*
+     * Gère les appels REST non authentifiés avec une réponse JSON 401.
+     */
     private void handleUnauthorized(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -322,6 +393,9 @@ public class SecurityConfig {
         response.getWriter().write(body);
     }
 
+    /*
+     * Gère les appels REST authentifiés mais non autorisés avec une réponse JSON 403.
+     */
     private void handleForbidden(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -345,6 +419,11 @@ public class SecurityConfig {
         response.getWriter().write(body);
     }
 
+    /*
+     * Configure les règles CORS appliquées aux endpoints REST.
+     * Cette configuration limite explicitement les origines, méthodes
+     * et en-têtes acceptés par l'application.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
@@ -360,6 +439,11 @@ public class SecurityConfig {
         return source;
     }
 
+    /*
+     * Construit une clé de suivi des tentatives de connexion.
+     * L'association utilisateur + IP permet de limiter les attaques ciblées
+     * tout en conservant un suivi global par adresse IP.
+     */
     private String buildLoginAttemptKey(String username, String ipAddress) {
 
         String safeUsername = (username == null) ? "" : username.trim().toLowerCase();
@@ -368,6 +452,11 @@ public class SecurityConfig {
         return safeUsername + "|" + safeIpAddress;
     }
 
+    /*
+     * Résout l'adresse IP du client.
+     * Les en-têtes de proxy sont pris en compte avant l'adresse distante
+     * fournie directement par la requête HTTP.
+     */
     private String resolveClientIpAddress(HttpServletRequest request) {
 
         String xff = request.getHeader("X-Forwarded-For");
@@ -386,6 +475,11 @@ public class SecurityConfig {
         return request.getRemoteAddr();
     }
 
+    /*
+     * Enregistre une tentative de connexion échouée.
+     * Le compteur est réinitialisé automatiquement lorsque la dernière
+     * tentative est plus ancienne que la durée de conservation prévue.
+     */
     private int registerFailedLoginAttempt(String key) {
 
         long now = System.currentTimeMillis();
@@ -412,6 +506,11 @@ public class SecurityConfig {
         loginAttemptsByKey.remove(key);
     }
 
+    /*
+     * Détermine le délai à appliquer selon le nombre d'échecs de connexion.
+     * Lorsque le nombre d'échecs dépasse le tableau configuré,
+     * le délai maximal défini est réutilisé.
+     */
     private long computeThrottleDelayMillis(int attempts) {
 
         int index = attempts - 1;
@@ -427,6 +526,10 @@ public class SecurityConfig {
         return LOGIN_THROTTLE_DELAYS_MILLIS[index];
     }
 
+    /*
+     * Applique le délai de ralentissement sur le traitement de la requête.
+     * En cas d'interruption, le statut du thread est restauré.
+     */
     private void applyThrottleDelay(long delayMillis) {
 
         if (delayMillis <= 0L) {
@@ -440,6 +543,11 @@ public class SecurityConfig {
         }
     }
 
+    /*
+     * Nettoie périodiquement les anciennes tentatives de connexion.
+     * Le nettoyage n'est pas lancé à chaque échec afin d'éviter un coût
+     * inutile sur les tentatives successives.
+     */
     private void cleanupExpiredLoginAttemptsIfNeeded(long now) {
 
         int count = loginAttemptsCleanupCounter.incrementAndGet();
@@ -453,6 +561,9 @@ public class SecurityConfig {
         );
     }
 
+    /*
+     * Représente l'état minimal conservé pour une clé de tentative de connexion.
+     */
     private static final class LoginAttemptEntry {
 
         private final int attempts;

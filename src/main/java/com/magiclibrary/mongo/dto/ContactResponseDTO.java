@@ -2,6 +2,12 @@ package com.magiclibrary.mongo.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO de réponse représentant un message de contact.
+ *
+ * Cette classe regroupe les informations nécessaires à la consultation,
+ * au suivi et à l'administration des messages stockés dans MongoDB.
+ */
 public class ContactResponseDTO {
 
     private String id;

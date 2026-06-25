@@ -5,6 +5,13 @@ import java.io.Serializable;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO utilisé pour la mise à jour partielle des informations
+ * de profil d'un utilisateur.
+ *
+ * Cette classe contient uniquement les champs modifiables
+ * depuis les fonctionnalités de mise à jour du profil.
+ */
 @Schema(description = "Données autorisées pour la mise à jour du profil utilisateur (PUT /users/me).")
 public class UserUpdateDTO implements Serializable {
 

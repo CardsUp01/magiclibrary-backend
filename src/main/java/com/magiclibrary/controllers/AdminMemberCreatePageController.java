@@ -14,6 +14,13 @@ import com.magiclibrary.services.UserService;
 
 import jakarta.validation.Valid;
 
+/**
+ * Contrôleur SSR réservé à la création d'un utilisateur par un administrateur.
+ *
+ * Cette classe gère l'affichage du formulaire d'ajout de membre,
+ * la validation des données saisies et la transmission de la demande
+ * de création au service utilisateur.
+ */
 @Controller
 public class AdminMemberCreatePageController {
 
@@ -23,6 +30,11 @@ public class AdminMemberCreatePageController {
         this.userService = userService;
     }
 
+    /*
+     * Affiche le formulaire de création d'utilisateur.
+     * Un DTO vide est ajouté au modèle uniquement lorsqu'aucun DTO
+     * n'est déjà présent après une redirection ou un retour d'erreur.
+     */
     @GetMapping("/admin/membres/ajouter")
     @PreAuthorize("hasRole('ADMIN')")
     public String showMemberCreatePage(Model model) {
@@ -34,6 +46,11 @@ public class AdminMemberCreatePageController {
         return "admin/ajout-membre";
     }
 
+    /*
+     * Traite la soumission du formulaire de création d'utilisateur.
+     * Les erreurs de validation ou de création sont renvoyées vers
+     * la même page afin de conserver le contexte du formulaire.
+     */
     @PostMapping("/admin/membres/ajouter")
     @PreAuthorize("hasRole('ADMIN')")
     public String createMember(
@@ -59,6 +76,9 @@ public class AdminMemberCreatePageController {
         }
     }
 
+    /*
+     * Centralise les attributs communs nécessaires à l'affichage de la page.
+     */
     private void populatePageModel(Model model) {
         model.addAttribute("pageTitle", "Ajouter un utilisateur");
     }

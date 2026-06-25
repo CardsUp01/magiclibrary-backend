@@ -25,9 +25,20 @@ import com.magiclibrary.dto.loanline.LoanLineResponseDTO;
 import com.magiclibrary.services.LoanLineService;
 import com.magiclibrary.services.LoanService;
 
+/**
+ * Contrôleur SSR réservé à l'administration des emprunts.
+ *
+ * Cette classe gère l'affichage paginé des emprunts, la recherche,
+ * le tri, l'autocomplétion, la consultation détaillée et la restitution
+ * des emprunts depuis l'espace d'administration.
+ */
 @Controller
 public class AdminLoansPageController {
 
+    /*
+     * Taille par défaut utilisée pour la pagination de la page SSR
+     * d'administration des emprunts.
+     */
     private static final int LOANS_PAGE_SIZE = 9;
 
     private final LoanService loanService;
@@ -41,6 +52,13 @@ public class AdminLoansPageController {
         this.loanLineService = loanLineService;
     }
 
+    /*
+     * Affiche la page d'administration des emprunts.
+     *
+     * La méthode prépare les données nécessaires à l'écran SSR :
+     * liste paginée, recherche, tri, sélection éventuelle d'un emprunt,
+     * résumé des objets associés et indicateurs de pagination.
+     */
     @GetMapping("/admin/emprunts")
     @PreAuthorize("hasRole('ADMIN')")
     public String showLoansPage(
@@ -152,6 +170,10 @@ public class AdminLoansPageController {
         return "admin/emprunts";
     }
 
+    /*
+     * Fournit les suggestions d'emprunts pour l'autocomplétion
+     * de la page d'administration.
+     */
     @GetMapping(value = "/admin/emprunts/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
@@ -165,6 +187,10 @@ public class AdminLoansPageController {
         return ResponseEntity.ok(suggestions);
     }
 
+    /*
+     * Affiche la fiche détaillée d'un emprunt pour l'administrateur.
+     * La page regroupe l'emprunt et les lignes d'emprunt associées.
+     */
     @GetMapping("/admin/emprunts/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public String showLoanDetailPage(
@@ -183,6 +209,9 @@ public class AdminLoansPageController {
         return "admin/fiche-emprunt";
     }
 
+    /*
+     * Marque un emprunt comme restitué depuis l'espace d'administration.
+     */
     @PostMapping("/admin/emprunts/{id}/return")
     @PreAuthorize("hasRole('ADMIN')")
     public String returnLoan(
@@ -203,6 +232,11 @@ public class AdminLoansPageController {
         );
     }
 
+    /*
+     * Construit le résumé affiché pour les objets associés à un emprunt.
+     * Le résumé privilégie le premier titre disponible et indique le nombre
+     * d'objets supplémentaires lorsque l'emprunt contient plusieurs objets.
+     */
     private String buildLoanItemSummary(String firstTitle, int totalItems) {
         if (totalItems <= 0) {
             return "Aucun objet associé";
@@ -219,6 +253,10 @@ public class AdminLoansPageController {
         return safeFirstTitle + " + " + (totalItems - 1) + " autre" + (totalItems - 1 > 1 ? "s" : "");
     }
 
+    /*
+     * DTO interne utilisé uniquement pour exposer les suggestions
+     * d'emprunts au format JSON.
+     */
     public static final class LoanSuggestResponse {
 
         private Integer idLoan;

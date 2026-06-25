@@ -8,6 +8,12 @@ import jakarta.validation.constraints.Size;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * DTO utilisé lors d'une demande d'authentification.
+ *
+ * Cette classe transporte les informations saisies par l'utilisateur
+ * au moment de la connexion ainsi que l'option de maintien de session.
+ */
 @Schema(description = "Données envoyées par un utilisateur lors de la tentative de connexion (US-01).")
 public class LoginRequestDTO {
 
@@ -63,6 +69,10 @@ public class LoginRequestDTO {
         this.rememberMe = rememberMe;
     }
 
+    /*
+     * Deux demandes de connexion sont considérées identiques
+     * lorsqu'elles portent sur la même adresse email.
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -76,6 +86,10 @@ public class LoginRequestDTO {
         return Objects.hash(email);
     }
 
+    /*
+     * Le mot de passe n'est volontairement jamais exposé
+     * dans la représentation textuelle de l'objet.
+     */
     @Override
     public String toString() {
         return "LoginRequestDTO{" +

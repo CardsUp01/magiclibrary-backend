@@ -11,10 +11,20 @@ import org.springframework.data.repository.query.Param;
 
 import com.magiclibrary.entities.User;
 
+/**
+ * Repository JPA dédié à la gestion des utilisateurs.
+ *
+ * Cette interface centralise les recherches par email, les chargements
+ * avec rôle associé ainsi que les filtres utilisés par l'administration
+ * des membres.
+ */
 public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByEmailUser(String emailUser);
 
+    /*
+     * Charge un utilisateur avec son rôle à partir de son identifiant.
+     */
     @Query("""
             SELECT u
             FROM User u
@@ -23,6 +33,9 @@ public interface UserRepository extends JpaRepository<User, Integer> {
            """)
     Optional<User> findByIdUserWithRole(@Param("idUser") Integer idUser);
 
+    /*
+     * Charge un utilisateur avec son rôle à partir de son email.
+     */
     @Query("""
             SELECT u
             FROM User u
@@ -33,6 +46,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     boolean existsByEmailUser(String emailUser);
 
+    /*
+     * Recherche les utilisateurs selon les filtres utilisés
+     * par l'administration des membres.
+     */
     @Query("""
             SELECT DISTINCT u
             FROM User u
@@ -63,6 +80,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
             @Param("status") Boolean status
     );
 
+    /*
+     * Recherche paginée des utilisateurs selon les filtres utilisés
+     * par l'administration des membres.
+     */
     @Query(
             value = """
                     SELECT u

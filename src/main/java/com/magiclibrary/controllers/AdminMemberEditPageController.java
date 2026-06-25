@@ -16,6 +16,13 @@ import com.magiclibrary.services.UserService;
 
 import jakarta.validation.Valid;
 
+/**
+ * Contrôleur SSR réservé à la modification d'un membre par un administrateur.
+ *
+ * Cette classe gère l'affichage du formulaire de modification,
+ * le préremplissage des données utilisateur et la soumission
+ * des changements depuis l'espace d'administration.
+ */
 @Controller
 public class AdminMemberEditPageController {
 
@@ -25,6 +32,12 @@ public class AdminMemberEditPageController {
         this.userService = userService;
     }
 
+    /*
+     * Affiche le formulaire de modification d'un membre.
+     *
+     * Le DTO de mise à jour est initialisé à partir des données existantes
+     * uniquement lorsqu'aucun DTO n'est déjà présent dans le modèle.
+     */
     @GetMapping("/admin/membres/{id}/modifier")
     @PreAuthorize("hasRole('ADMIN')")
     public String showMemberEditPage(
@@ -53,6 +66,12 @@ public class AdminMemberEditPageController {
         }
     }
 
+    /*
+     * Traite la soumission du formulaire de modification.
+     *
+     * En cas d'erreur de validation ou de règle métier, la page est réaffichée
+     * avec les données nécessaires afin de conserver le contexte utilisateur.
+     */
     @PostMapping("/admin/membres/{id}/modifier")
     @PreAuthorize("hasRole('ADMIN')")
     public String updateMember(

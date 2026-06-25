@@ -18,6 +18,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Contrôleur REST réservé à l'administration des messages de contact.
+ *
+ * Cette classe expose les endpoints permettant aux administrateurs
+ * de consulter les messages stockés dans MongoDB et d'y répondre.
+ */
 @RestController
 @RequestMapping("/contacts")
 @Tag(
@@ -34,6 +40,9 @@ public class AdminContactController {
         this.contactService = contactService;
     }
 
+    /*
+     * Retourne l'ensemble des messages de contact pour l'administration.
+     */
     @Operation(
             summary = "Lister tous les messages de contact (ADMIN)",
             description = "Retourne l’ensemble des messages de contact enregistrés en base MongoDB."
@@ -61,6 +70,9 @@ public class AdminContactController {
         return ResponseEntity.ok(messages);
     }
 
+    /*
+     * Retourne le détail d'un message de contact à partir de son identifiant MongoDB.
+     */
     @Operation(
             summary = "Consulter un message de contact (ADMIN)",
             description = "Retourne le détail d’un message de contact à partir de son identifiant MongoDB."
@@ -102,6 +114,9 @@ public class AdminContactController {
         return ResponseEntity.ok(message);
     }
 
+    /*
+     * Enregistre la réponse administrateur à un message de contact existant.
+     */
     @Operation(
             summary = "Répondre à un message de contact (ADMIN)",
             description = "Permet à un Administrateur de répondre à un message de contact existant."

@@ -8,6 +8,11 @@
                        hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
                        resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : loansCount}">
 
+        <!--
+            Page d'administration des emprunts.
+            Permet la consultation, la recherche, le tri,
+            la pagination et la restitution des prêts.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -37,6 +42,7 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
+                            <!-- Recherche dynamique avec suggestions d'emprunts -->
                             <form id="searchForm" th:action="@{/admin/emprunts}" method="get" class="max-w-full">
                                 <input type="hidden" name="page" value="0" />
                                 <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -89,6 +95,8 @@
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0 max-w-full flex-1">
+
+                                    <!-- Outils de tri des emprunts affichés -->
                                     <form th:action="@{/admin/emprunts}" method="get" class="max-w-full">
                                         <input type="hidden" name="page" value="0" />
                                         <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -138,6 +146,7 @@
                                     </p>
                                 </div>
 
+                                <!-- Indicateurs du nombre de résultats et de l'état de la recherche -->
                                 <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
                                     <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
                                     <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
@@ -151,6 +160,7 @@
 
             </div>
 
+            <!-- Résumé textuel des emprunts affichés et de la pagination active -->
             <div class="mt-6 max-w-full text-sm text-gray-700">
 
                 <section class="mt-6 max-w-full first:mt-0">
@@ -204,8 +214,10 @@
                         </section>
                     </div>
 
+                    <!-- Affichage des emprunts sous forme de cartes -->
                     <div class="mt-6 max-w-full" th:if="${loansCount > 0}">
 
+                        <!-- Variante pleine largeur utilisée lorsqu'un seul emprunt est affiché -->
                         <ul th:if="${isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4"
                             role="list">
@@ -342,6 +354,7 @@
                                                     Restituer
                                                 </button>
 
+                                                <!-- Confirmation de la restitution d'un emprunt -->
                                                 <div data-return-modal
                                                      class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
                                                      aria-hidden="true">
@@ -381,7 +394,7 @@
 
                             </li>
                         </ul>
-
+                        <!-- Variante en grille utilisée lorsque plusieurs emprunts sont affichés -->
                         <ul th:if="${!isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
                             role="list">
@@ -490,6 +503,7 @@
                                                     Restituer
                                                 </button>
 
+                                                <!-- Confirmation de la restitution d'un emprunt -->
                                                 <div data-return-modal
                                                      class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
                                                      aria-hidden="true">
@@ -530,6 +544,7 @@
 
                         </ul>
 
+                        <!-- Navigation entre les différentes pages de résultats -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des emprunts">
@@ -591,6 +606,11 @@
 
         </section>
 
+        <!--
+            Gestion de la recherche dynamique, des suggestions,
+            du tri interactif, de la navigation clavier
+            et des fenêtres de confirmation de restitution.
+        -->
         <script>
             (function () {
                 const search = document.getElementById('search');
@@ -1130,3 +1150,14 @@
     </th:block>
 
 </th:block>
+
+
+
+
+
+
+
+
+
+
+

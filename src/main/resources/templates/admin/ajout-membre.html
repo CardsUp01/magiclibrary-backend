@@ -4,6 +4,11 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'administration permettant la création d'un nouveau compte utilisateur.
+            Le formulaire est lié à l'objet userCreateDTO et affiche les messages
+            de succès ainsi que les erreurs de validation.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -27,6 +32,7 @@
                     </div>
                 </div>
 
+                <!-- Messages de retour affichés après la soumission du formulaire -->
                 <div th:if="${successMessage}"
                      class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
                      role="status"
@@ -43,6 +49,7 @@
                     Erreur : une anomalie est survenue.
                 </div>
 
+                <!-- Formulaire de création d'un nouveau membre -->
                 <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                     <h2 class="text-base font-semibold text-gray-900">Formulaire</h2>
 
@@ -218,6 +225,7 @@
 
                         </div>
 
+                        <!-- Actions du formulaire : annulation ou enregistrement du nouvel utilisateur -->
                         <div class="mt-6 flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                             <a th:href="@{/admin/membres}"
                                class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
@@ -236,6 +244,10 @@
 
         </section>
 
+        <!--
+            Gestion de l'affichage ou du masquage du mot de passe.
+            Le script synchronise le type du champ, l'icône visible et les attributs d'accessibilité.
+        -->
         <script>
             (function () {
                 const toggles = document.querySelectorAll('[data-password-toggle]');

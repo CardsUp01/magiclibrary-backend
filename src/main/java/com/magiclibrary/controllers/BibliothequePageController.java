@@ -26,14 +26,29 @@ import com.magiclibrary.exceptions.custom.ItemNotFoundException;
 import com.magiclibrary.repositories.interfaces.ItemRepository;
 import com.magiclibrary.services.ItemService;
 
+/**
+ * Contrôleur SSR de la bibliothèque numérique.
+ *
+ * Cette classe gère l'affichage du catalogue public, la consultation
+ * de la fiche détaillée d'un objet ainsi que le moteur de suggestions
+ * utilisé par la recherche dynamique.
+ */
 @Controller
 public class BibliothequePageController {
 
+    /*
+     * Paramètres utilisés par le moteur de recherche et l'affichage
+     * du catalogue numérique.
+     */
     private static final int SUGGEST_LIMIT = 8;
     private static final int MAX_QUERY_LENGTH = 80;
     private static final int MIN_TOKEN_LENGTH = 2;
     private static final int DEFAULT_PAGE_SIZE = 9;
 
+    /*
+     * Liste des mots ignorés lors du découpage des requêtes afin
+     * d'améliorer la pertinence des recherches.
+     */
     private static final java.util.Set<String> STOP_WORDS = java.util.Set.of(
             "de", "du", "des", "d",
             "la", "le", "les", "l",
@@ -51,11 +66,21 @@ public class BibliothequePageController {
         this.itemRepository = itemRepository;
     }
 
+    /*
+     * Redirige l'ancienne route bibliothèque vers l'URL canonique
+     * utilisée par l'application.
+     */
     @GetMapping("/bibliotheque")
     public String bibliothequeRedirectToCanonical() {
         return "redirect:/bibliotheque-numerique";
     }
 
+    /*
+     * Affiche la page principale de la bibliothèque numérique.
+     *
+     * La méthode gère la recherche, le tri et la pagination
+     * des objets du catalogue numérique.
+     */
     @GetMapping("/bibliotheque-numerique")
     public String bibliothequeNumeriquePage(
             @RequestParam(name = "q", required = false) String q,
@@ -91,6 +116,10 @@ public class BibliothequePageController {
         return "bibliotheque-numerique";
     }
 
+    /*
+     * Affiche la fiche détaillée d'un objet du catalogue numérique.
+     * Une réponse HTTP 404 est renvoyée si l'objet n'existe pas.
+     */
     @GetMapping("/bibliotheque/item/{id}")
     public String bibliothequeItemPage(
             @PathVariable("id") Integer id,
@@ -110,6 +139,10 @@ public class BibliothequePageController {
         return "bibliotheque-objet-detail";
     }
 
+    /*
+     * Fournit les suggestions de recherche utilisées par
+     * l'autocomplétion de la bibliothèque numérique.
+     */
     @GetMapping(value = "/bibliotheque/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<ItemSuggestResponse>> suggest(@RequestParam(name = "q", required = false) String q) {
@@ -165,6 +198,10 @@ public class BibliothequePageController {
         return ResponseEntity.ok(new ArrayList<>(out.values()));
     }
 
+    /*
+     * Recherche les objets dont l'identifiant commence par la valeur
+     * numérique saisie afin de faciliter la recherche par référence.
+     */
     private void addNumericPrefixMatches(Map<Integer, ItemSuggestResponse> out, String query) {
         if (out == null || out.size() >= SUGGEST_LIMIT || query == null || query.isBlank()) {
             return;
@@ -197,6 +234,10 @@ public class BibliothequePageController {
         }
     }
 
+    /*
+     * Applique un filtrage complémentaire afin d'exiger la présence
+     * de tous les termes significatifs de la recherche.
+     */
     private static void filterRequireAllTokens(Map<Integer, ItemSuggestResponse> out, List<String> tokens) {
         if (out == null || out.isEmpty() || tokens == null || tokens.isEmpty()) {
             return;
@@ -234,6 +275,10 @@ public class BibliothequePageController {
         }
     }
 
+    /*
+     * Construit la chaîne de comparaison utilisée lors des recherches
+     * multi-critères sur les suggestions.
+     */
     private static String buildHaystack(ItemSuggestResponse s) {
         String id = s.getId() == null ? "" : normalizeNumericToken(String.valueOf(s.getId()));
         String title = normalizeText(s.getTitle());
@@ -246,6 +291,10 @@ public class BibliothequePageController {
         return (id + " " + title + " " + category + " " + author + " " + publisher + " " + isbn + " " + tags).trim();
     }
 
+    /*
+     * Normalise une chaîne de caractères pour les comparaisons
+     * en supprimant notamment les accents et caractères parasites.
+     */
     private static String normalizeText(String v) {
         if (v == null || v.isBlank()) {
             return "";
@@ -264,6 +313,10 @@ public class BibliothequePageController {
         return normalized;
     }
 
+    /*
+     * Découpe une requête utilisateur en termes exploitables
+     * par le moteur de recherche.
+     */
     private static List<String> tokenize(String raw) {
         if (raw == null) {
             return List.of();
@@ -322,6 +375,10 @@ public class BibliothequePageController {
         return normalizeQuery(q);
     }
 
+    /*
+     * Normalise la valeur de tri afin de garantir un comportement
+     * cohérent de la bibliothèque numérique.
+     */
     private static String normalizeSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return "availabilityThenTitle";
@@ -329,6 +386,10 @@ public class BibliothequePageController {
         return sort.trim();
     }
 
+    /*
+     * Détermine si la saisie est suffisamment longue pour lancer
+     * une recherche de suggestions.
+     */
     private static boolean thresholdReached(String q) {
         if (q == null || q.isEmpty()) {
             return false;
@@ -336,6 +397,10 @@ public class BibliothequePageController {
         return isNumeric(q) ? q.length() >= 1 : q.length() >= 2;
     }
 
+    /*
+     * Rejette certains caractères afin d'éviter des requêtes
+     * non pertinentes ou potentiellement problématiques.
+     */
     private static boolean containsForbiddenChars(String q) {
         for (int i = 0; i < q.length(); i++) {
             char c = q.charAt(i);
@@ -387,6 +452,10 @@ public class BibliothequePageController {
         return true;
     }
 
+    /*
+     * Uniformise les valeurs numériques utilisées dans les comparaisons
+     * afin d'ignorer les zéros non significatifs.
+     */
     private static String normalizeNumericToken(String s) {
         if (s == null || s.isBlank()) {
             return "";
@@ -414,6 +483,10 @@ public class BibliothequePageController {
         return normalizeText(trimmed);
     }
 
+    /*
+     * DTO interne utilisé uniquement pour exposer les suggestions
+     * d'objets au format JSON.
+     */
     public static final class ItemSuggestResponse {
 
         private Integer id;

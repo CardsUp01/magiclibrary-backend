@@ -15,9 +15,20 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.magiclibrary.dto.user.UserResponseDTO;
 import com.magiclibrary.services.UserService;
 
+/**
+ * Contrôleur SSR réservé à l'administration des membres.
+ *
+ * Cette classe gère l'affichage paginé des utilisateurs, les filtres
+ * de recherche, de rôle et de statut, le tri ainsi que l'autocomplétion
+ * utilisée sur la page d'administration des membres.
+ */
 @Controller
 public class AdminMembersPageController {
 
+    /*
+     * Taille par défaut utilisée pour la pagination de la page SSR
+     * d'administration des membres.
+     */
     private static final int MEMBERS_PAGE_SIZE = 9;
 
     private final UserService userService;
@@ -26,6 +37,12 @@ public class AdminMembersPageController {
         this.userService = userService;
     }
 
+    /*
+     * Affiche la page d'administration des membres.
+     *
+     * La méthode prépare les filtres, le tri, la pagination et les indicateurs
+     * nécessaires à l'affichage de la liste dans le template Thymeleaf.
+     */
     @GetMapping("/admin/membres")
     @PreAuthorize("hasRole('ADMIN')")
     public String showMembersPage(
@@ -80,6 +97,10 @@ public class AdminMembersPageController {
         return "admin/membres";
     }
 
+    /*
+     * Fournit les suggestions de membres pour l'autocomplétion
+     * de la page d'administration.
+     */
     @GetMapping(value = "/admin/membres/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
@@ -104,6 +125,10 @@ public class AdminMembersPageController {
         );
     }
 
+    /*
+     * DTO interne utilisé uniquement pour exposer les suggestions
+     * de membres au format JSON.
+     */
     public static final class MemberSuggestResponse {
 
         private Integer id;

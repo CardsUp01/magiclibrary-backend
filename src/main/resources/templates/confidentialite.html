@@ -1,10 +1,18 @@
 <th:block xmlns:th="http://www.thymeleaf.org"
+          xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
           th:replace="~{layout :: layout(~{::content})}"
           th:with="pageTitle='Confidentialité &amp; protection des données'">
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'information dédiée à la confidentialité et à la protection des données.
+            Présente le contexte, les données traitées, les finalités,
+            les accès, la conservation, la sécurité et les droits des utilisateurs.
+        -->
         <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <!-- En-tête de la page avec présentation RGPD et retour conditionnel à l'accueil -->
             <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                     <h1 class="text-lg font-semibold text-gray-900 sm:text-xl">Confidentialité &amp; protection des données</h1>
@@ -24,6 +32,7 @@
                 </div>
             </header>
 
+            <!-- Contenu principal de la politique de confidentialité -->
             <div class="mt-6 break-words text-sm text-gray-700">
                 <section class="mt-6 first:mt-0" aria-labelledby="ctx">
                     <h2 id="ctx" class="text-base font-semibold text-gray-900">1. Contexte</h2>
@@ -104,10 +113,15 @@
                 <section class="mt-6 first:mt-0" aria-labelledby="rights">
                     <h2 id="rights" class="text-base font-semibold text-gray-900">7. Vos droits</h2>
                     <div class="mt-2 space-y-2">
-                        <p>
+                        <p sec:authorize="!hasRole('ADMIN')">
                             Vous disposez d’un droit d’accès, de rectification, de suppression et de limitation.
                             Toute demande doit être effectuée via la page
                             <a th:href="@{/contact}" class="font-medium text-indigo-700 hover:underline">Contact</a>.
+                        </p>
+
+                        <p sec:authorize="hasRole('ADMIN')">
+                            Vous disposez d’un droit d’accès, de rectification, de suppression et de limitation.
+                            Les demandes sont traitées via les outils internes d’administration.
                         </p>
                     </div>
                 </section>

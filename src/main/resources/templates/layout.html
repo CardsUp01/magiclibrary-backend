@@ -8,8 +8,10 @@
 
 <body class="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
 
+<!-- Barre de navigation principale injectée depuis le fragment dédié -->
 <header th:replace="~{fragments/navbar :: nav}"></header>
 
+<!-- Zone principale recevant le contenu spécifique de chaque page -->
 <main id="main" role="main" tabindex="-1"
       class="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
     <th:block th:replace="${content}">
@@ -20,6 +22,7 @@
     </th:block>
 </main>
 
+<!-- Pied de page commun injecté depuis le fragment dédié -->
 <footer th:replace="~{fragments/footer :: footer}"></footer>
 
 </body>

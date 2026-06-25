@@ -4,8 +4,14 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page de détail d'un objet.
+            Présente les informations complètes d'un élément
+            de la bibliothèque numérique sélectionné depuis le catalogue.
+        -->
         <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
 
+            <!-- En-tête de la fiche objet avec retour vers la bibliothèque numérique -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between max-w-full">
                 <div class="min-w-0 max-w-full">
                     <h1 class="text-base font-semibold text-gray-900 break-words">Objet</h1>
@@ -22,6 +28,7 @@
                 </div>
             </div>
 
+            <!-- État affiché lorsque l'objet demandé est introuvable -->
             <div class="mt-6 max-w-full" th:if="${item == null}">
                 <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
                     <h2 class="text-base font-semibold text-gray-900 break-words">Objet introuvable</h2>
@@ -33,10 +40,12 @@
                 </section>
             </div>
 
+            <!-- Fiche détaillée affichée lorsqu'un objet existe -->
             <div class="mt-6 max-w-full" th:if="${item != null}">
 
                 <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">
 
+                    <!-- Synthèse visuelle de l'objet : couverture, titre, disponibilité et résumé -->
                     <div class="flex flex-col gap-5 md:flex-row md:items-start md:justify-between max-w-full">
 
                         <div class="flex gap-4 min-w-0 max-w-full">
@@ -175,6 +184,7 @@
                     </div>
                 </section>
 
+                <!-- Informations éditoriales et métadonnées techniques de l'objet -->
                 <section class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 max-w-full">
 
                     <section class="rounded-lg bg-white p-4 sm:p-6 shadow-sm ring-1 ring-gray-200 max-w-full overflow-hidden">

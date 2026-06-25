@@ -8,9 +8,20 @@ import com.magiclibrary.entities.Item;
 import com.magiclibrary.entities.Loan;
 import com.magiclibrary.entities.LoanLine;
 
+/**
+ * Mapper chargé des conversions entre l'entité LoanLine
+ * et les DTO utilisés par les API REST.
+ *
+ * Cette classe centralise la transformation des lignes
+ * d'emprunt lors des opérations de création et de consultation.
+ */
 @Component
 public class LoanLineMapper {
 
+    /*
+     * Construit une entité LoanLine à partir du DTO reçu
+     * et des entités déjà résolues par la couche service.
+     */
     public LoanLine toEntity(LoanLineRequestDTO dto, Loan loan, Item item) {
         if (dto == null) {
             return null;
@@ -25,6 +36,11 @@ public class LoanLineMapper {
         return loanLine;
     }
 
+    /*
+     * Transforme une entité LoanLine en DTO de réponse.
+     * Les informations utiles de l'objet associé sont exposées
+     * directement afin de simplifier l'affichage côté client.
+     */
     public LoanLineResponseDTO toResponseDTO(LoanLine loanLine) {
         if (loanLine == null) {
             return null;

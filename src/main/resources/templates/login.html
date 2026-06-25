@@ -4,9 +4,15 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page de connexion de l'application.
+            Permet l'authentification d'un utilisateur habilité
+            avec validation locale du formulaire et protection CSRF.
+        -->
         <section id="login" class="w-full max-w-md">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-8">
 
+                <!-- Identité visuelle de l'application sur l'écran de connexion -->
                 <div class="flex flex-col items-center text-center gap-3">
                     <img
                             th:src="@{/img/Logo_MagiciensDabord_Amiens.png}"
@@ -30,6 +36,7 @@
                     Connexion
                 </h2>
 
+                <!-- Messages de retour après échec d'authentification ou déconnexion -->
                 <div
                         th:if="${param.error}"
                         class="mt-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 leading-snug"
@@ -49,6 +56,7 @@
                     Déconnexion effectuée.
                 </div>
 
+                <!-- Formulaire d'authentification sécurisé -->
                 <form
                         id="loginForm"
                         class="mt-6 space-y-5"
@@ -62,6 +70,7 @@
                             th:value="${_csrf.token}"
                     />
 
+                    <!-- Champ email utilisé comme identifiant de connexion -->
                     <div class="space-y-2">
                         <label for="email" class="block text-sm font-medium text-slate-900 break-words">
                             Email
@@ -97,6 +106,7 @@
                         </div>
                     </div>
 
+                    <!-- Champ mot de passe avec bouton d'affichage et de masquage -->
                     <div class="space-y-2">
                         <label for="password" class="block text-sm font-medium text-slate-900 break-words">
                             Mot de passe
@@ -175,6 +185,7 @@
                         </div>
                     </div>
 
+                    <!-- Bouton de connexion activé uniquement lorsque le formulaire est valide -->
                     <button
                             id="loginSubmit"
                             type="submit"
@@ -187,6 +198,7 @@
                         Se connecter
                     </button>
 
+                    <!-- Option de maintien de session via remember-me -->
                     <div class="flex items-center justify-center">
                         <label for="rememberMe" class="inline-flex items-start gap-2 text-sm text-slate-700 leading-snug">
                             <input
@@ -201,6 +213,7 @@
                         </label>
                     </div>
 
+                    <!-- Liens légaux accessibles depuis l'écran de connexion -->
                     <nav aria-label="Liens légaux" class="pt-4">
                         <ul class="flex flex-col items-center gap-2 text-sm text-slate-700 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-2">
                             <li>
@@ -246,6 +259,12 @@
             </div>
         </section>
 
+        <!--
+            Gestion de l'expérience de connexion.
+            Valide localement l'email, active le bouton de soumission,
+            gère l'affichage du mot de passe et évite les états obsolètes
+            lors du retour navigateur.
+        -->
         <script>
             (function () {
                 const form = document.getElementById('loginForm');

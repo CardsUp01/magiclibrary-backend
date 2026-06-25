@@ -10,6 +10,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.magiclibrary.dto.user.UserResponseDTO;
 import com.magiclibrary.services.UserService;
 
+/**
+ * Contrôleur SSR réservé à la consultation détaillée d'un membre.
+ *
+ * Cette classe permet à un administrateur d'afficher la fiche
+ * complète d'un utilisateur existant.
+ */
 @Controller
 public class AdminMemberDetailPageController {
 
@@ -19,6 +25,13 @@ public class AdminMemberDetailPageController {
         this.userService = userService;
     }
 
+    /*
+     * Affiche la fiche détaillée d'un membre.
+     *
+     * Si l'utilisateur demandé n'existe pas ou n'est plus disponible,
+     * un message d'erreur est affiché puis l'administrateur est redirigé
+     * vers la liste des membres.
+     */
     @GetMapping("/admin/membres/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public String showMemberDetailPage(

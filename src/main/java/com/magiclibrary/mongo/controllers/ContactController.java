@@ -13,6 +13,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Contrôleur REST dédié à l'envoi des messages de contact.
+ *
+ * Cette classe expose le point d'entrée public permettant
+ * aux visiteurs et aux utilisateurs authentifiés de transmettre
+ * un message à l'association via MongoDB.
+ */
 @RestController
 @RequestMapping("/contacts")
 @Tag(
@@ -27,6 +34,9 @@ public class ContactController {
         this.contactService = contactService;
     }
 
+    /*
+     * Enregistre un nouveau message de contact.
+     */
     @Operation(
             summary = "Envoyer un message de contact (US-12 — PUBLIC)",
             description = "Permet à un utilisateur (authentifié ou non) d’envoyer un message de contact."

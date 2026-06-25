@@ -8,6 +8,11 @@
                        hasQuery=${search != null && !#strings.isEmpty(#strings.trim(search))},
                        resultsDisplayCount=${totalElements != null ? totalElements : usersCount}">
 
+        <!--
+            Page d'administration des membres.
+            Permet la consultation, la recherche, le filtrage,
+            le tri, la pagination et l'accès aux actions de gestion.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
@@ -39,6 +44,8 @@
 
                             <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="min-w-0 max-w-full flex-1">
+
+                                    <!-- Recherche dynamique des membres avec conservation des filtres actifs -->
                                     <form id="searchForm" th:action="@{/admin/membres}" method="get" class="max-w-full">
                                         <input type="hidden" name="page" value="0" />
                                         <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -101,6 +108,8 @@
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0 max-w-full flex-1">
+
+                                    <!-- Filtres et tri appliqués à la liste des membres -->
                                     <form id="filtersForm" th:action="@{/admin/membres}" method="get" class="max-w-full">
                                         <input type="hidden" name="page" value="0" />
                                         <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -182,6 +191,7 @@
                                     </p>
                                 </div>
 
+                                <!-- Indicateurs du nombre de membres correspondant aux critères actifs -->
                                 <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
                                     <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
                                     <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
@@ -197,6 +207,7 @@
 
             <div class="mt-6 max-w-full text-sm text-gray-700">
 
+                <!-- Messages de retour affichés après une action d'administration -->
                 <div th:if="${successMessage}"
                      class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
                      role="status"
@@ -264,8 +275,10 @@
                         </section>
                     </div>
 
+                    <!-- Affichage des membres sous forme de cartes -->
                     <div class="mt-6 max-w-full" th:if="${usersCount > 0}">
 
+                        <!-- Variante pleine largeur utilisée lorsqu'un seul membre est affiché -->
                         <ul th:if="${isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4"
                             role="list">
@@ -326,7 +339,6 @@
                                             <span class="text-gray-400">•</span>
                                             <span th:text="${user.activeUser ? 'Actif' : 'Inactif'}">Actif</span>
                                         </p>
-
                                         <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                             <div>
                                                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Cotisation</p>
@@ -381,6 +393,7 @@
                             </li>
                         </ul>
 
+                        <!-- Variante en grille utilisée lorsque plusieurs membres sont affichés -->
                         <ul th:if="${!isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
                             role="list">
@@ -471,6 +484,7 @@
 
                         </ul>
 
+                        <!-- Navigation entre les différentes pages de membres -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des membres">
@@ -532,6 +546,10 @@
 
         </section>
 
+        <!--
+            Gestion de la recherche dynamique, des suggestions,
+            des filtres, du tri automatique et de la navigation clavier.
+        -->
         <script>
             (function () {
                 const search = document.getElementById('search');
@@ -1015,3 +1033,5 @@
     </th:block>
 
 </th:block>
+
+

@@ -1,5 +1,11 @@
 package com.magiclibrary.enums;
 
+/**
+ * Référentiel des statuts possibles d'une ligne d'emprunt.
+ *
+ * Ces valeurs permettent de suivre l'état individuel
+ * d'un objet au sein d'un emprunt.
+ */
 public enum LoanLineStatus {
 
     ACTIVE("En cours"),

@@ -1,10 +1,18 @@
 <th:block xmlns:th="http://www.thymeleaf.org"
+          xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
           th:replace="~{layout :: layout(~{::content})}"
           th:with="pageTitle='Conditions générales d’utilisation – MagicLibrary'">
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'information dédiée aux conditions générales d'utilisation.
+            Présente les règles d'accès, d'usage, de responsabilité
+            et de confidentialité applicables à MagicLibrary.
+        -->
         <section class="min-w-0 break-words hyphens-auto rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <!-- En-tête de la page avec version des CGU et retour conditionnel à l'accueil -->
             <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                     <h1 class="text-lg font-semibold text-gray-900">Conditions générales d’utilisation</h1>
@@ -26,7 +34,9 @@
                 </div>
             </header>
 
+            <!-- Contenu principal des conditions générales d'utilisation -->
             <div class="mt-6 break-words text-sm text-gray-700">
+
                 <section class="mt-6 first:mt-0" aria-labelledby="cgu-objet">
                     <h2 id="cgu-objet" class="text-base font-semibold text-gray-900">1. Objet</h2>
                     <div class="mt-2 space-y-2">
@@ -57,9 +67,14 @@
                             Chaque utilisateur est responsable de la confidentialité de ses identifiants et de l’usage effectué depuis son compte.
                             Toute action réalisée via un compte est réputée effectuée par son titulaire.
                         </p>
-                        <p>
+
+                        <p sec:authorize="!hasRole('ADMIN')">
                             En cas de suspicion d’accès non autorisé, l’utilisateur doit en informer l’association dès que possible via la page
                             <a th:href="@{/contact}" class="font-medium text-indigo-700 hover:underline">Contact</a>.
+                        </p>
+
+                        <p sec:authorize="hasRole('ADMIN')">
+                            En cas de suspicion d’accès non autorisé, l’utilisateur doit en informer l’association dès que possible via les outils internes d’administration.
                         </p>
                     </div>
                 </section>
@@ -67,7 +82,9 @@
                 <section class="mt-6 first:mt-0" aria-labelledby="cgu-usage">
                     <h2 id="cgu-usage" class="text-base font-semibold text-gray-900">4. Règles d’utilisation</h2>
                     <div class="mt-2 space-y-2">
-                        <p>L’utilisateur s’engage à utiliser l’application de manière loyale, conformément à sa finalité et aux règles internes de l’association.</p>
+                        <p>
+                            L’utilisateur s’engage à utiliser l’application de manière loyale, conformément à sa finalité et aux règles internes de l’association.
+                        </p>
 
                         <ul class="mt-3 list-disc space-y-2 pl-4 text-sm text-gray-700">
                             <li>Ne pas tenter de contourner l’authentification, les contrôles d’accès ou les restrictions de sécurité.</li>
@@ -86,6 +103,7 @@
                             L’application permet notamment la gestion des emprunts des objets de la bibliothèque réelle et la consultation du catalogue interne.
                             Certaines fonctionnalités peuvent être réservées aux administrateurs.
                         </p>
+
                         <p>
                             L’association peut faire évoluer l’application afin d’améliorer son fonctionnement, sa sécurité et l’expérience utilisateur,
                             sans obligation de maintenir une interface identique.
@@ -102,7 +120,9 @@
                         </p>
                         <p>
                             Les informations relatives aux données traitées, aux finalités et aux droits des utilisateurs sont décrites dans la page
-                            <a th:href="@{/confidentialite}" class="font-medium text-indigo-700 hover:underline">Confidentialité &amp; protection des données</a>.
+                            <a th:href="@{/confidentialite}" class="font-medium text-indigo-700 hover:underline">
+                                Confidentialité &amp; protection des données
+                            </a>.
                         </p>
                     </div>
                 </section>
@@ -111,8 +131,9 @@
                     <h2 id="cgu-dispo" class="text-base font-semibold text-gray-900">7. Disponibilité, maintenance et sécurité</h2>
                     <div class="mt-2 space-y-2">
                         <p>
-                            L’application est fournie “en l’état” pour les besoins internes de l’association. L’association met en œuvre des mesures raisonnables
-                            pour assurer la sécurité et la disponibilité du service, sans garantie d’absence d’interruption.
+                            L’application est fournie « en l’état » pour les besoins internes de l’association.
+                            L’association met en œuvre des mesures raisonnables pour assurer la sécurité et la disponibilité du service,
+                            sans garantie d’absence d’interruption.
                         </p>
                         <p>
                             Des opérations de maintenance, de mise à jour ou de correction peuvent entraîner une indisponibilité temporaire.
@@ -124,12 +145,12 @@
                     <h2 id="cgu-responsabilite" class="text-base font-semibold text-gray-900">8. Responsabilité</h2>
                     <div class="mt-2 space-y-2">
                         <p>
-                            L’association ne saurait être tenue responsable des dommages indirects résultant de l’usage de l’application, notamment en cas
-                            d’erreur de saisie, de mauvaise utilisation ou d’indisponibilité temporaire du service.
+                            L’association ne saurait être tenue responsable des dommages indirects résultant de l’usage de l’application,
+                            notamment en cas d’erreur de saisie, de mauvaise utilisation ou d’indisponibilité temporaire du service.
                         </p>
                         <p>
-                            L’utilisateur demeure responsable de la vérification des informations qu’il consulte ou saisit, et du respect des règles internes
-                            applicables à la gestion des emprunts.
+                            L’utilisateur demeure responsable de la vérification des informations qu’il consulte ou saisit,
+                            et du respect des règles internes applicables à la gestion des emprunts.
                         </p>
                     </div>
                 </section>
@@ -137,10 +158,18 @@
                 <section class="mt-6 first:mt-0" aria-labelledby="cgu-contact">
                     <h2 id="cgu-contact" class="text-base font-semibold text-gray-900">9. Contact</h2>
                     <div class="mt-2 space-y-2">
-                        <p>
+
+                        <p sec:authorize="!hasRole('ADMIN')">
                             Pour toute question relative aux présentes CGU, vous pouvez contacter l’association via la page
-                            <a th:href="@{/contact}" class="font-medium text-indigo-700 hover:underline">Contact</a>.
+                            <a th:href="@{/contact}" class="font-medium text-indigo-700 hover:underline">
+                                Contact
+                            </a>.
                         </p>
+
+                        <p sec:authorize="hasRole('ADMIN')">
+                            Pour toute question relative aux présentes CGU, les demandes sont traitées via les outils internes d’administration.
+                        </p>
+
                     </div>
                 </section>
 
@@ -148,14 +177,17 @@
                     <h2 id="cgu-maj" class="text-base font-semibold text-gray-900">10. Mise à jour des CGU</h2>
                     <div class="mt-2 space-y-2">
                         <p>
-                            Les présentes CGU peuvent être mises à jour à tout moment afin de refléter les évolutions de l’application, des usages internes
-                            et des exigences de sécurité. La version applicable est celle disponible dans l’application.
+                            Les présentes CGU peuvent être mises à jour à tout moment afin de refléter les évolutions de l’application,
+                            des usages internes et des exigences de sécurité.
+                            La version applicable est celle disponible dans l’application.
                         </p>
                     </div>
                 </section>
+
             </div>
         </section>
 
     </th:block>
 
 </th:block>
+

@@ -8,10 +8,16 @@
                        hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
                        resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : loansCount}">
 
+        <!--
+            Page de consultation des emprunts personnels.
+            Permet à un membre de rechercher, trier, consulter
+            et parcourir ses emprunts enregistrés dans MagicLibrary.
+        -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
 
+                <!-- En-tête de la page avec retour vers l'accueil -->
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 max-w-full sm:flex-1">
                         <h1 class="break-words text-base font-semibold text-gray-900">Mes emprunts</h1>
@@ -37,6 +43,7 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
+                            <!-- Recherche dynamique dans les emprunts du membre connecté -->
                             <form id="searchForm" th:action="@{/mes-emprunts}" method="get" class="max-w-full">
                                 <input type="hidden" name="page" value="0" />
                                 <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -88,6 +95,8 @@
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0 max-w-full flex-1">
+
+                                    <!-- Tri serveur appliqué aux emprunts affichés -->
                                     <form th:action="@{/mes-emprunts}" method="get" class="max-w-full">
                                         <input type="hidden" name="page" value="0" />
                                         <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
@@ -135,6 +144,7 @@
                                     </p>
                                 </div>
 
+                                <!-- Indicateur du nombre de résultats affichés -->
                                 <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
                                     <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
                                     <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
@@ -153,6 +163,7 @@
                 <section class="mt-6 max-w-full first:mt-0">
                     <h2 class="text-base font-semibold text-gray-900">Mes prêts</h2>
 
+                    <!-- Résumé de l'état courant : résultats, recherche active et pagination -->
                     <div class="mt-2 max-w-full space-y-2">
                         <p th:if="${loansCount > 0 and hasQuery}">
                             <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
@@ -183,6 +194,7 @@
                         </p>
                     </div>
 
+                    <!-- État vide des emprunts personnels ou de la recherche -->
                     <div class="mt-6 max-w-full" th:if="${loansCount == 0}">
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                             <h2 class="text-base font-semibold text-gray-900" th:text="${hasQuery ? 'Aucun résultat' : 'Aucun emprunt disponible'}">Aucun emprunt disponible</h2>
@@ -201,8 +213,10 @@
                         </section>
                     </div>
 
+                    <!-- Affichage des emprunts personnels -->
                     <div class="mt-6 max-w-full" th:if="${loansCount > 0}">
 
+                        <!-- Variante pleine largeur utilisée lorsqu'un seul emprunt est affiché -->
                         <ul th:if="${isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4"
                             role="list">
@@ -320,6 +334,7 @@
                             </li>
                         </ul>
 
+                        <!-- Variante en grille utilisée lorsque plusieurs emprunts sont affichés -->
                         <ul th:if="${!isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
                             role="list">
@@ -409,6 +424,7 @@
 
                         </ul>
 
+                        <!-- Navigation entre les différentes pages d'emprunts personnels -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination de mes emprunts">
@@ -470,6 +486,11 @@
 
         </section>
 
+        <!--
+            Gestion de la recherche dynamique, des suggestions,
+            du tri, de la pagination et de la mise en évidence
+            d'un emprunt ciblé.
+        -->
         <script>
             (function () {
                 const search = document.getElementById('search');

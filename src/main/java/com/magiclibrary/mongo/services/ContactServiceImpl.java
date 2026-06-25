@@ -18,9 +18,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Implémentation du service de gestion des messages de contact.
+ *
+ * Cette classe gère la création, la consultation et le traitement
+ * des messages stockés dans MongoDB, ainsi que les notifications
+ * associées aux administrateurs et aux membres.
+ */
 @Service
 public class ContactServiceImpl implements ContactService {
 
@@ -45,13 +54,36 @@ public class ContactServiceImpl implements ContactService {
         this.userRepository = userRepository;
     }
 
+    /*
+     * Crée un nouveau message de contact pour l'utilisateur authentifié
+     * puis génère les notifications destinées aux administrateurs.
+     */
     @Override
     public ContactResponseDTO createContact(ContactRequestDTO request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new RuntimeException("Utilisateur connecté introuvable : authentification absente.");
+        }
+
+        String memberEmail = authentication.getName();
+
+        User memberUser = userRepository.findByEmailUser(memberEmail)
+                .orElseThrow(() -> new RuntimeException(
+                        "Utilisateur connecté introuvable pour l'email : " + memberEmail
+                ));
+
+        Integer memberUserId = memberUser.getIdUser();
+
+        if (memberUserId == null) {
+            throw new RuntimeException("Utilisateur connecté invalide : identifiant introuvable.");
+        }
+
         ContactDocument document = new ContactDocument();
 
-        document.setIdUser(request.getIdUser());
+        document.setIdUser(memberUserId);
         document.setNameContact(request.getName());
-        document.setEmailContact(request.getEmail());
+        document.setEmailContact(memberEmail);
         document.setSubjectContact(request.getSubject());
         document.setContentContact(request.getMessage());
 
@@ -70,11 +102,29 @@ public class ContactServiceImpl implements ContactService {
         return convertToResponseDTO(saved);
     }
 
+    /*
+     * Retourne l'ensemble des messages de contact triés
+     * du plus récent au plus ancien.
+     */
     @Override
     public List<ContactResponseDTO> getAllContacts() {
         return contactRepository.findAll()
                 .stream()
                 .map(this::convertToResponseDTO)
+                .sorted(Comparator.comparing(
+                        ContactResponseDTO::getDate,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /*
+     * Retourne uniquement les messages associés à un utilisateur.
+     */
+    @Override
+    public List<ContactResponseDTO> getContactsForUser(Integer idUser) {
+        return getAllContacts().stream()
+                .filter(contact -> Objects.equals(contact.getIdUser(), idUser))
                 .collect(Collectors.toList());
     }
 
@@ -86,6 +136,26 @@ public class ContactServiceImpl implements ContactService {
         return convertToResponseDTO(doc);
     }
 
+    /*
+     * Retourne un message uniquement s'il appartient
+     * à l'utilisateur concerné.
+     */
+    @Override
+    public ContactResponseDTO getContactByIdForUser(String id, Integer idUser) {
+        if (id == null || id.isBlank() || idUser == null) {
+            return null;
+        }
+
+        return contactRepository.findById(id)
+                .filter(doc -> Objects.equals(doc.getIdUser(), idUser))
+                .map(this::convertToResponseDTO)
+                .orElse(null);
+    }
+
+    /*
+     * Enregistre une réponse administrateur puis notifie
+     * le membre concerné.
+     */
     @Override
     public ContactResponseDTO replyToContact(String id, ContactReplyRequestDTO request) {
         ContactDocument doc = contactRepository.findById(id)
@@ -129,6 +199,10 @@ public class ContactServiceImpl implements ContactService {
         return convertToResponseDTO(saved);
     }
 
+    /*
+     * Crée une notification pour chaque administrateur actif
+     * lorsqu'un nouveau message est reçu.
+     */
     private void createAdminNotificationsForNewContact(ContactDocument contact) {
         List<User> adminUsers = userRepository.findAllWithFilters("", "ADMIN", true);
 
@@ -148,6 +222,10 @@ public class ContactServiceImpl implements ContactService {
         }
     }
 
+    /*
+     * Crée une notification pour le membre lorsqu'une réponse
+     * est apportée à son message.
+     */
     private void createMemberNotificationForReply(ContactDocument contact) {
         if (contact.getIdUser() == null) {
             return;
@@ -159,7 +237,7 @@ public class ContactServiceImpl implements ContactService {
         notificationRequest.setMessageNotification(
                 "Une réponse a été apportée à votre demande : " + contact.getSubjectContact()
         );
-        notificationRequest.setTargetLinkNotification(null);
+        notificationRequest.setTargetLinkNotification("/mes-messages-de-contact?selectedContactId=" + contact.getId());
         notificationRequest.setTypeNotification(NotificationType.CONTACT);
         notificationRequest.setCategoryNotification(NotificationCategory.CONTACT);
         notificationRequest.setPriorityNotification("MEDIUM");
@@ -167,6 +245,10 @@ public class ContactServiceImpl implements ContactService {
         notificationService.createSystemNotification(notificationRequest);
     }
 
+    /*
+     * Construit le DTO exposé aux interfaces à partir
+     * du document MongoDB.
+     */
     private ContactResponseDTO convertToResponseDTO(ContactDocument d) {
         ContactStatus status = ContactStatus.fromValue(d.getStatusContact());
         boolean answered = ContactStatus.ANSWERED.equals(status);
@@ -196,6 +278,9 @@ public class ContactServiceImpl implements ContactService {
         );
     }
 
+    /*
+     * Détermine le rôle à afficher pour l'auteur du message.
+     */
     private String resolveSenderRoleLabel(Integer idUser) {
         if (idUser == null) {
             return MEMBER_ROLE_LABEL;
@@ -208,6 +293,10 @@ public class ContactServiceImpl implements ContactService {
                 .orElse(UNKNOWN_ROLE_LABEL);
     }
 
+    /*
+     * Détermine le nom affiché de l'administrateur
+     * ayant répondu au message.
+     */
     private String resolveAnsweredByAdminLabel(Integer answeredByUserId) {
         if (answeredByUserId == null) {
             return null;
@@ -219,6 +308,9 @@ public class ContactServiceImpl implements ContactService {
                 .orElse(UNKNOWN_ADMIN_LABEL);
     }
 
+    /*
+     * Construit le nom complet affiché d'un administrateur.
+     */
     private String buildAdminDisplayName(User user) {
         if (user == null) {
             return null;
@@ -231,6 +323,9 @@ public class ContactServiceImpl implements ContactService {
         return fullName.isBlank() ? null : fullName;
     }
 
+    /*
+     * Harmonise les libellés de rôles destinés à l'affichage.
+     */
     private String normalizeSenderRoleLabel(String roleLabel) {
         if (roleLabel == null || roleLabel.isBlank()) {
             return UNKNOWN_ROLE_LABEL;

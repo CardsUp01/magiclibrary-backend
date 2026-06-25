@@ -5,6 +5,13 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * DTO de réponse représentant un objet du catalogue numérique.
+ *
+ * Cette classe est utilisée pour exposer aux clients de l'application
+ * les informations complètes d'un objet, enrichies avec les libellés
+ * destinés à l'affichage dans l'interface utilisateur.
+ */
 @Schema(description = "Représente un objet complet du catalogue MagicLibrary.")
 public class ItemResponseDTO {
 
@@ -93,6 +100,9 @@ public class ItemResponseDTO {
         this.titleItem = titleItem;
     }
 
+    /*
+     * Alias conservé pour les usages nécessitant un accès générique au titre.
+     */
     public String getTitle() {
         return titleItem;
     }

@@ -4,9 +4,15 @@
 
     <th:block th:fragment="content">
 
+        <!--
+            Page d'erreur 429.
+            Informe l'utilisateur qu'un nombre trop important de tentatives
+            impose une attente temporaire avant une nouvelle connexion.
+        -->
         <section class="mx-auto max-w-5xl">
             <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
+                <!-- En-tête de l'erreur avec retour conditionnel vers la connexion -->
                 <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                     <div class="self-start">
@@ -28,6 +34,7 @@
 
                 </header>
 
+                <!-- Message principal et décompte avant nouvelle tentative -->
                 <div class="mt-4 rounded-xl bg-white p-4 ring-1 ring-gray-200 sm:p-6">
                     <div class="min-w-0 space-y-4 break-words hyphens-auto">
                         <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">
@@ -66,6 +73,7 @@
             </div>
         </section>
 
+        <!-- Gestion du décompte de réactivation du retour vers la page de connexion -->
         <script>
             (function () {
                 const info = document.getElementById('retryInfo');
