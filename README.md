@@ -1,10 +1,10 @@
-# MagicLibrary Backend
+# 📚 MagicLibrary Backend
 
 > Backend Spring Boot application for managing a thematic library (MagicLibrary)
 
 ---
 
-## Overview
+## 🚀 Overview
 
 MagicLibrary is a web application designed to manage a digital library system including items, loans, users, notifications and contact messages.
 
@@ -12,7 +12,7 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 
 ---
 
-## Tech Stack
+## 🧱 Tech Stack
 
 - Java 17+
 - Spring Boot 3
@@ -36,7 +36,7 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 
 ---
 
-## Authentication
+## 🔐 Authentication
 
 - JWT-based authentication
 - Roles:
@@ -46,32 +46,32 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 
 ---
 
-## Main Features
+## 📦 Main Features
 
-### User management
+### 👤 User management
 - Register / login
 - Role-based access control
 
-### Library catalog
+### 📚 Library catalog
 - Manage items
 - View available items
 
-### Loan system
+### 📦 Loan system
 - Create loans
 - Track borrowed items
 - Manage loan status
 
-### Notifications
+### 🔔 Notifications
 - User notifications
 - Admin alerts
 
-### Contact module (MongoDB)
+### 💬 Contact module (MongoDB)
 - Send messages
 - Admin responses
 
 ---
 
-## Screenshots
+## 📸 Screenshots
 
 ### Login
 ![Login](docs/images/login.png)
@@ -99,7 +99,7 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 Controller → Service → Repository → Database
 
@@ -109,7 +109,7 @@ Controller → Service → Repository → Database
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
 - application-dev.properties
 - application-prod.properties
@@ -118,30 +118,30 @@ Default profile: dev
 
 ---
 
-## Run project
+## ▶️ Run project
 
-mvn clean install  
+mvn clean install
 mvn spring-boot:run
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
-src/
-- main/java/com.magiclibrary/
-  - controller
-  - service
-  - repository
-  - security
-  - dto
-- main/resources/
-  - application.properties
-  - application-dev.properties
-  - application-prod.properties
+src/main/java/com.magiclibrary/
+- controller
+- service
+- repository
+- security
+- dto
+
+src/main/resources/
+- application.properties
+- application-dev.properties
+- application-prod.properties
 
 ---
 
-## Deployment
+## 🌐 Deployment
 
 Compatible with:
 - Railway
@@ -150,7 +150,7 @@ Compatible with:
 
 ---
 
-## Status
+## 📌 Status
 
 - Backend functional
 - Authentication implemented
@@ -159,6 +159,6 @@ Compatible with:
 
 ---
 
-## License
+## 📄 License
 
 Educational / portfolio project
