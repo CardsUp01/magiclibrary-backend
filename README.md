@@ -24,6 +24,18 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 
 ---
 
+## 👤 Comptes de démonstration
+
+### Admin
+- Email: admin@example.com
+- Password: Admin123!
+
+### Member
+- Email: lucas.demo@magiclibrary.fr
+- Password: Demo123!
+
+---
+
 ## Authentication
 
 - JWT-based authentication
