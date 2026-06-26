@@ -1,6 +1,16 @@
 # 📚 MagicLibrary Backend
 
-> Backend Spring Boot application for managing a thematic library (MagicLibrary)
+> Spring Boot web application for managing a thematic library system.
+
+---
+
+## 🌐 Live Demo
+
+MagicLibrary is deployed online and can be tested directly from a web browser:
+
+👉 **https://magiclibrary-backend-production.up.railway.app**
+
+No local installation is required to access the deployed demo version.
 
 ---
 
@@ -8,30 +18,40 @@
 
 MagicLibrary is a web application designed to manage a digital library system including items, loans, users, notifications and contact messages.
 
-It is built as a REST backend with Spring Boot and follows a layered architecture.
+It is built with Spring Boot and follows a clean layered architecture.
+
+The project includes authentication, role-based access control, a library catalog, loan management, notifications and a MongoDB-based contact module.
 
 ---
 
 ## 🧱 Tech Stack
 
-- Java 17+
+- Java 21
 - Spring Boot 3
-- Spring Security (JWT authentication)
+- Spring Security
+- JWT authentication
 - Maven
 - MariaDB / MySQL
-- MongoDB (Contact module)
-- REST API architecture
+- MongoDB Atlas for the contact module
+- Thymeleaf SSR
+- Railway deployment
 
 ---
 
-## 👤 Comptes de démonstration
+## 👤 Demo Accounts
+
+The deployed demo version can be tested with the following accounts.
 
 ### Admin
 - Email: admin@example.com
 - Password: Admin123!
 
-### Member
+### 👤 Member 1
 - Email: lucas.demo@magiclibrary.fr
+- Password: Demo123!
+
+### 👤 Member 2
+- Email: sarah.demo@magiclibrary.fr
 - Password: Demo123!
 
 ---
@@ -39,10 +59,13 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 ## 🔐 Authentication
 
 - JWT-based authentication
-- Roles:
-  - ADMIN
-  - MEMBER
-  - GUEST
+- BCrypt password hashing
+- Role-based access control
+
+Roles:
+- ADMIN
+- MEMBER
+- GUEST
 
 ---
 
@@ -50,11 +73,13 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 
 ### 👤 User management
 - Register / login
+- Secure authentication
 - Role-based access control
 
 ### 📚 Library catalog
-- Manage items
+- Manage library items
 - View available items
+- Browse item details
 
 ### 📦 Loan system
 - Create loans
@@ -65,9 +90,13 @@ It is built as a REST backend with Spring Boot and follows a layered architectur
 - User notifications
 - Admin alerts
 
-### 💬 Contact module (MongoDB)
-- Send messages
-- Admin responses
+### 💬 Contact module
+
+The contact module uses MongoDB.
+
+- Send contact messages
+- Store messages separately from the relational database
+- Admin message consultation
 
 ---
 
@@ -105,60 +134,87 @@ Controller → Service → Repository → Database
 
 - Clean layered architecture
 - Separation of concerns
-- RESTful API design
+- Spring MVC / SSR structure
+- Secure authentication layer
+- Relational database for the main business data
+- MongoDB storage for the contact module
 
 ---
 
 ## ⚙️ Configuration
 
-- application-dev.properties
-- application-prod.properties
+The project uses separated Spring profiles:
 
-Default profile: dev
+- `application-dev.properties`
+- `application-prod.properties`
+
+Default profile:
+
+- `dev`
+
+Production configuration is handled through environment variables on Railway.
 
 ---
 
-## ▶️ Run project
+## ▶️ Run project locally
 
+```bash
 mvn clean install
 mvn spring-boot:run
+```
+
+The local environment uses the development profile by default.
 
 ---
 
 ## 📁 Project Structure
 
+```text
 src/main/java/com.magiclibrary/
-- controller
-- service
-- repository
-- security
-- dto
+├── controller
+├── service
+├── repository
+├── security
+└── dto
 
 src/main/resources/
-- application.properties
-- application-dev.properties
-- application-prod.properties
+├── application.properties
+├── application-dev.properties
+└── application-prod.properties
+```
 
 ---
 
 ## 🌐 Deployment
 
-Compatible with:
-- Railway
-- Render
-- Any Java Spring Boot hosting
+The current demo version is deployed online with the following architecture:
+
+- Spring Boot application hosted on Railway
+- MariaDB database hosted on Railway
+- MongoDB Atlas used for the contact module
+- Production profile configured through environment variables
+- Public Railway URL available for demonstration
+
+Live application:
+
+👉 **https://magiclibrary-backend-production.up.railway.app**
 
 ---
 
 ## 📌 Status
 
+- Application deployed online
+- Public demo version available
 - Backend functional
 - Authentication implemented
-- Database integration ready
-- Demo-ready version
+- JWT security active
+- MariaDB integration configured
+- MongoDB contact module configured
+- Demo accounts available for recruiters
+- Portfolio-ready version
 
 ---
 
 ## 📄 License
 
-Educational / portfolio project
+Educational / portfolio project.
