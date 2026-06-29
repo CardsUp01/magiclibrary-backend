@@ -6,12 +6,19 @@ package com.magiclibrary.init;
 import java.time.LocalDateTime;
 
 // -----------------------------------------------------------------------------
+// IMPORTS LOGGING
+// -----------------------------------------------------------------------------
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+// -----------------------------------------------------------------------------
 // IMPORTS SPRING
 // -----------------------------------------------------------------------------
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 // -----------------------------------------------------------------------------
@@ -29,39 +36,47 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
  *
  *  🔐 OBJECTIF :
  *  -----------------------------------------------------------------------------
- *  Cette classe initialise automatiquement un compte administrateur
- *  lors du démarrage de l'application Spring Boot.
+ *  Cette classe initialise automatiquement un compte administrateur au démarrage
+ *  de l'application Spring Boot, uniquement si ce compte n'existe pas encore.
  *
- *  Elle est exécutée via un CommandLineRunner, ce qui signifie :
- *  → exécution au lancement de l'application
- *  → après initialisation du contexte Spring
+ *  Le compte admin initial permet d'accéder à l'espace d'administration après
+ *  un premier déploiement sur une base Railway vide.
  *
  * =============================================================================
  *
  *  🧠 LOGIQUE MÉTIER :
  *  -----------------------------------------------------------------------------
- *  - Vérifie si l'admin existe déjà en base
- *  - Récupère le rôle ADMIN
- *  - Crée un utilisateur admin par défaut
+ *  - Lit l'email administrateur depuis les variables d'environnement
+ *  - Vérifie si le compte admin existe déjà
+ *  - Lit obligatoirement le mot de passe depuis les variables d'environnement
+ *  - Récupère le rôle ADMIN créé par RoleInitializer
  *  - Hash le mot de passe avec BCrypt
+ *  - Crée l'utilisateur administrateur initial
  *  - Sauvegarde en base MariaDB
  *
  * =============================================================================
  *
- *  ☁️ CONTEXTE DEPLOIEMENT (RAILWAY) :
+ *  ☁️ CONTEXTE DÉPLOIEMENT (RAILWAY) :
  *  -----------------------------------------------------------------------------
- *  ⚠️ IMPORTANT :
- *  - Ce code dépend fortement de la disponibilité des tables SQL
- *  - Si Hibernate ne crée pas les tables (ddl-auto=none), crash possible
- *  - Une base vide sur Railway entraîne un échec immédiat ici
+ *  Les secrets ne doivent jamais être hardcodés dans le code source.
+ *
+ *  En production Railway, le mot de passe initial doit être fourni via :
+ *  → ADMIN_PASSWORD
+ *
+ *  L'email administrateur peut être fourni via :
+ *  → ADMIN_EMAIL
+ *
+ *  Si ADMIN_EMAIL est absent, une valeur par défaut non sensible est utilisée.
  *
  * =============================================================================
  *
- *  ⚠️ RISQUE CONNU :
+ *  🔒 SÉCURITÉ :
  *  -----------------------------------------------------------------------------
- *  Si la table `user` n'existe pas :
- *  → userRepository.findByEmailUser() déclenche une exception SQL
- *  → l'application Spring Boot CRASH au démarrage
+ *  - Aucun mot de passe n'est présent dans le code source
+ *  - Aucun mot de passe n'est affiché dans les logs
+ *  - Le mot de passe est hashé avec BCrypt avant sauvegarde
+ *  - La création est idempotente pour éviter les doublons au redémarrage
+ *  - Si le compte existe déjà, aucun secret n'est requis au démarrage
  *
  * =============================================================================
  */
@@ -69,29 +84,75 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
 @Order(2) // 👉 Exécuté après RoleInitializer (ordre critique pour dépendances)
 public class UserInitializer {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserInitializer.class);
+
+    private static final String DEFAULT_ADMIN_EMAIL = "admin@example.com";
+    private static final String ADMIN_EMAIL_PROPERTY = "ADMIN_EMAIL";
+    private static final String ADMIN_PASSWORD_PROPERTY = "ADMIN_PASSWORD";
+
     @Bean
     public CommandLineRunner initAdmin(
             UserRepository userRepository,
-            RoleRepository roleRepository
+            RoleRepository roleRepository,
+            Environment environment
     ) {
 
         return args -> {
 
             // -----------------------------------------------------------------
-            // 1) CHECK D'EXISTENCE - ÉVITE DUPLICATION ADMIN
+            // 1) RÉCUPÉRATION DE L'EMAIL ADMINISTRATEUR
             // -----------------------------------------------------------------
-            // Si un admin existe déjà → aucune action
-            // Sécurité : évite double insertion en cas de restart Railway
+            // L'email peut être injecté via variable d'environnement Railway.
+            // Si aucune variable n'est fournie, une valeur par défaut est utilisée.
+            // Cette valeur n'est pas sensible et peut rester visible dans le code.
             // -----------------------------------------------------------------
-            if (userRepository.findByEmailUser("admin@example.com").isPresent()) {
+            String adminEmail = environment.getProperty(
+                    ADMIN_EMAIL_PROPERTY,
+                    DEFAULT_ADMIN_EMAIL
+            );
+
+            // -----------------------------------------------------------------
+            // 2) CHECK D'EXISTENCE - ÉVITE DUPLICATION ADMIN
+            // -----------------------------------------------------------------
+            // Si l'admin existe déjà → aucune action.
+            // Sécurité : évite une double insertion en cas de restart Railway.
+            //
+            // Important :
+            // Le check est effectué AVANT la lecture du mot de passe.
+            // Ainsi, si le compte existe déjà, l'application peut démarrer sans
+            // nécessiter ADMIN_PASSWORD.
+            // -----------------------------------------------------------------
+            if (userRepository.findByEmailUser(adminEmail).isPresent()) {
+                logger.info("Compte administrateur initial déjà présent.");
                 return;
             }
 
             // -----------------------------------------------------------------
-            // 2) RÉCUPÉRATION DU ROLE ADMIN
+            // 3) RÉCUPÉRATION DU MOT DE PASSE ADMIN DEPUIS L'ENVIRONNEMENT
             // -----------------------------------------------------------------
-            // Ce rôle DOIT exister en base via RoleInitializer
-            // Sinon → RuntimeException (erreur volontaire pour signaler DB incomplète)
+            // Le mot de passe initial est un secret.
+            // Il ne doit JAMAIS être hardcodé dans le code source.
+            //
+            // En production Railway :
+            //   ADMIN_PASSWORD doit être défini dans l'onglet Variables.
+            //
+            // Si la variable est absente, l'application échoue volontairement au
+            // démarrage afin d'éviter la création d'un compte administrateur faible
+            // ou prévisible.
+            // -----------------------------------------------------------------
+            String adminPassword = environment.getProperty(ADMIN_PASSWORD_PROPERTY);
+
+            if (adminPassword == null || adminPassword.isBlank()) {
+                throw new IllegalStateException(
+                        "ADMIN_PASSWORD est manquant. Impossible de créer le compte administrateur initial."
+                );
+            }
+
+            // -----------------------------------------------------------------
+            // 4) RÉCUPÉRATION DU ROLE ADMIN
+            // -----------------------------------------------------------------
+            // Ce rôle DOIT exister en base via RoleInitializer.
+            // Sinon → erreur volontaire pour signaler une initialisation DB incomplète.
             // -----------------------------------------------------------------
             Role adminRole = roleRepository.findByLabelRole("ADMIN")
                     .orElseThrow(() ->
@@ -99,26 +160,26 @@ public class UserInitializer {
                     );
 
             // -----------------------------------------------------------------
-            // 3) HASH DU MOT DE PASSE
+            // 5) HASH DU MOT DE PASSE
             // -----------------------------------------------------------------
-            // BCrypt = standard sécurité Spring Security
-            // Mot de passe initial (démo uniquement)
+            // BCrypt = standard sécurité Spring Security.
+            // Le mot de passe brut n'est jamais sauvegardé ni affiché.
             // -----------------------------------------------------------------
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-            String hashedPassword = encoder.encode("Admin123!");
+            String hashedPassword = encoder.encode(adminPassword);
 
             // -----------------------------------------------------------------
-            // 4) CRÉATION DE L'UTILISATEUR ADMIN
+            // 6) CRÉATION DE L'UTILISATEUR ADMIN
             // -----------------------------------------------------------------
-            // ⚠️ Données système (compte technique)
-            // Utilisé uniquement pour accès initial application
+            // Compte technique initial utilisé pour accéder à l'administration.
+            // Les données non sensibles restent volontairement explicites.
             // -----------------------------------------------------------------
             User admin = new User(
                     adminRole,
                     "M",
                     "Admin",
                     "System",
-                    "admin@example.com",
+                    adminEmail,
                     hashedPassword,
                     true,
                     true,
@@ -126,26 +187,29 @@ public class UserInitializer {
             );
 
             // -----------------------------------------------------------------
-            // 5) FLAGS MÉTIER
+            // 7) FLAGS MÉTIER
             // -----------------------------------------------------------------
-            // Activation email + dépôt autorisé
-            // → simplifie utilisation en mode démo
+            // Activation email + dépôt autorisé.
+            // Cela simplifie l'utilisation immédiate en mode démo / production.
             // -----------------------------------------------------------------
             admin.setEmailVerifiedUser(true);
             admin.setDepositUser(true);
 
             // -----------------------------------------------------------------
-            // 6) SAUVEGARDE EN BASE
+            // 8) SAUVEGARDE EN BASE
             // -----------------------------------------------------------------
-            // Insertion en MariaDB via JPA Repository
-            // ⚠️ Échoue si table USER inexistante sur Railway
+            // Insertion en MariaDB via JPA Repository.
+            // L'opération est exécutée uniquement si le compte n'existe pas déjà.
             // -----------------------------------------------------------------
             userRepository.save(admin);
 
             // -----------------------------------------------------------------
-            // 7) LOG DE CONFIRMATION
+            // 9) LOG DE CONFIRMATION SÉCURISÉ
             // -----------------------------------------------------------------
-            System.out.println(">>> ADMIN créé : admin@example.com / Admin123!");
+            // Le mot de passe n'est jamais affiché.
+            // L'email n'est pas loggé afin de conserver des logs sobres en production.
+            // -----------------------------------------------------------------
+            logger.info("Compte administrateur initial créé avec succès.");
         };
     }
 }
