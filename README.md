@@ -8,7 +8,7 @@
 
 MagicLibrary is deployed online and can be tested directly from a web browser:
 
-👉 **https://magiclibrary-backend-production.up.railway.app**
+👉 https://magiclibrary-backend-production-878b.up.railway.app
 
 No local installation is required to access the deployed demo version.
 
