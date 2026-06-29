@@ -73,4 +73,4 @@ EXPOSE 8080
 # démarrage.
 # ============================================================================
 
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} $JAVA_OPTS -jar app.jar"]"" 
+ENTRYPOINT ["java","-Dserver.port=${PORT:-8080}","-jar","app.jar"]
