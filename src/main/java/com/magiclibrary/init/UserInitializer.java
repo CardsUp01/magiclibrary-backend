@@ -24,13 +24,49 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
 
 /**
  * =============================================================================
- *  INITIALISATION DE L'UTILISATEUR ADMINISTRATEUR
+ *  INITIALISATION AUTOMATIQUE - UTILISATEUR ADMINISTRATEUR
  * =============================================================================
- *  Crée automatiquement le compte administrateur si absent.
+ *
+ *  🔐 OBJECTIF :
+ *  -----------------------------------------------------------------------------
+ *  Cette classe initialise automatiquement un compte administrateur
+ *  lors du démarrage de l'application Spring Boot.
+ *
+ *  Elle est exécutée via un CommandLineRunner, ce qui signifie :
+ *  → exécution au lancement de l'application
+ *  → après initialisation du contexte Spring
+ *
+ * =============================================================================
+ *
+ *  🧠 LOGIQUE MÉTIER :
+ *  -----------------------------------------------------------------------------
+ *  - Vérifie si l'admin existe déjà en base
+ *  - Récupère le rôle ADMIN
+ *  - Crée un utilisateur admin par défaut
+ *  - Hash le mot de passe avec BCrypt
+ *  - Sauvegarde en base MariaDB
+ *
+ * =============================================================================
+ *
+ *  ☁️ CONTEXTE DEPLOIEMENT (RAILWAY) :
+ *  -----------------------------------------------------------------------------
+ *  ⚠️ IMPORTANT :
+ *  - Ce code dépend fortement de la disponibilité des tables SQL
+ *  - Si Hibernate ne crée pas les tables (ddl-auto=none), crash possible
+ *  - Une base vide sur Railway entraîne un échec immédiat ici
+ *
+ * =============================================================================
+ *
+ *  ⚠️ RISQUE CONNU :
+ *  -----------------------------------------------------------------------------
+ *  Si la table `user` n'existe pas :
+ *  → userRepository.findByEmailUser() déclenche une exception SQL
+ *  → l'application Spring Boot CRASH au démarrage
+ *
  * =============================================================================
  */
 @Configuration
-@Order(2) // ⬅️ APRÈS RoleInitializer
+@Order(2) // 👉 Exécuté après RoleInitializer (ordre critique pour dépendances)
 public class UserInitializer {
 
     @Bean
@@ -38,24 +74,45 @@ public class UserInitializer {
             UserRepository userRepository,
             RoleRepository roleRepository
     ) {
+
         return args -> {
 
-            // 1) Ne rien faire si l'admin existe déjà
+            // -----------------------------------------------------------------
+            // 1) CHECK D'EXISTENCE - ÉVITE DUPLICATION ADMIN
+            // -----------------------------------------------------------------
+            // Si un admin existe déjà → aucune action
+            // Sécurité : évite double insertion en cas de restart Railway
+            // -----------------------------------------------------------------
             if (userRepository.findByEmailUser("admin@example.com").isPresent()) {
                 return;
             }
 
-            // 2) Récupération du rôle ADMIN (garanti par RoleInitializer)
+            // -----------------------------------------------------------------
+            // 2) RÉCUPÉRATION DU ROLE ADMIN
+            // -----------------------------------------------------------------
+            // Ce rôle DOIT exister en base via RoleInitializer
+            // Sinon → RuntimeException (erreur volontaire pour signaler DB incomplète)
+            // -----------------------------------------------------------------
             Role adminRole = roleRepository.findByLabelRole("ADMIN")
                     .orElseThrow(() ->
                             new RuntimeException("ROLE ADMIN introuvable en base !")
                     );
 
-            // 3) Hash du mot de passe
+            // -----------------------------------------------------------------
+            // 3) HASH DU MOT DE PASSE
+            // -----------------------------------------------------------------
+            // BCrypt = standard sécurité Spring Security
+            // Mot de passe initial (démo uniquement)
+            // -----------------------------------------------------------------
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
             String hashedPassword = encoder.encode("Admin123!");
 
-            // 4) Création de l'utilisateur ADMIN
+            // -----------------------------------------------------------------
+            // 4) CRÉATION DE L'UTILISATEUR ADMIN
+            // -----------------------------------------------------------------
+            // ⚠️ Données système (compte technique)
+            // Utilisé uniquement pour accès initial application
+            // -----------------------------------------------------------------
             User admin = new User(
                     adminRole,
                     "M",
@@ -68,13 +125,26 @@ public class UserInitializer {
                     LocalDateTime.now()
             );
 
-            // 5) Champs optionnels sécurisés
+            // -----------------------------------------------------------------
+            // 5) FLAGS MÉTIER
+            // -----------------------------------------------------------------
+            // Activation email + dépôt autorisé
+            // → simplifie utilisation en mode démo
+            // -----------------------------------------------------------------
             admin.setEmailVerifiedUser(true);
             admin.setDepositUser(true);
 
-            // 6) Sauvegarde
+            // -----------------------------------------------------------------
+            // 6) SAUVEGARDE EN BASE
+            // -----------------------------------------------------------------
+            // Insertion en MariaDB via JPA Repository
+            // ⚠️ Échoue si table USER inexistante sur Railway
+            // -----------------------------------------------------------------
             userRepository.save(admin);
 
+            // -----------------------------------------------------------------
+            // 7) LOG DE CONFIRMATION
+            // -----------------------------------------------------------------
             System.out.println(">>> ADMIN créé : admin@example.com / Admin123!");
         };
     }
