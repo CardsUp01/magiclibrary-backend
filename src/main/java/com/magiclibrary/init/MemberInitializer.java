@@ -4,6 +4,7 @@ package com.magiclibrary.init;
 // IMPORTS JAVA
 // -----------------------------------------------------------------------------
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 // -----------------------------------------------------------------------------
 // IMPORTS LOGGING
@@ -102,17 +103,29 @@ public class MemberInitializer {
         return args -> {
 
             // -----------------------------------------------------------------
-            // 1) CHECK GLOBAL D'EXISTENCE - ÉVITE TRAVAIL INUTILE
+            // 1) CHECK D'EXISTENCE DES COMPTES MEMBRES
             // -----------------------------------------------------------------
-            // Si les deux membres existent déjà, aucune action n'est effectuée.
+            // Les comptes membres de démonstration sont recherchés par email afin
+            // de conserver l'idempotence historique de l'initializer.
             //
-            // Important :
-            // Ce contrôle intervient AVANT la lecture du mot de passe.
-            // Ainsi, si les comptes sont déjà présents, l'application peut
-            // démarrer sans nécessiter DEMO_MEMBER_PASSWORD.
+            // Architecture DEMO :
+            // Si Lucas ou Sarah existent déjà mais ne sont pas encore marqués
+            // comme comptes socles de démonstration, le marqueur est ajouté sans
+            // modifier le mot de passe, le rôle ou les autres données du compte.
             // -----------------------------------------------------------------
-            boolean memberOneExists = userRepository.findByEmailUser(MEMBER_ONE_EMAIL).isPresent();
-            boolean memberTwoExists = userRepository.findByEmailUser(MEMBER_TWO_EMAIL).isPresent();
+            Optional<User> memberOneOptional = userRepository.findByEmailUser(MEMBER_ONE_EMAIL);
+            Optional<User> memberTwoOptional = userRepository.findByEmailUser(MEMBER_TWO_EMAIL);
+
+            boolean memberOneExists = memberOneOptional.isPresent();
+            boolean memberTwoExists = memberTwoOptional.isPresent();
+
+            if (memberOneExists) {
+                markDemoMemberIfNeeded(userRepository, memberOneOptional.get(), "1");
+            }
+
+            if (memberTwoExists) {
+                markDemoMemberIfNeeded(userRepository, memberTwoOptional.get(), "2");
+            }
 
             if (memberOneExists && memberTwoExists) {
                 logger.info("Comptes membres de démonstration déjà présents.");
@@ -181,6 +194,7 @@ public class MemberInitializer {
 
                 memberOne.setEmailVerifiedUser(true);
                 memberOne.setDepositUser(true);
+                memberOne.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
 
                 userRepository.save(memberOne);
 
@@ -208,11 +222,37 @@ public class MemberInitializer {
 
                 memberTwo.setEmailVerifiedUser(true);
                 memberTwo.setDepositUser(true);
+                memberTwo.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
 
                 userRepository.save(memberTwo);
 
                 logger.info("Compte membre de démonstration 2 créé avec succès.");
             }
         };
+    }
+
+    // -------------------------------------------------------------------------
+    // MARQUAGE DES COMPTES SOCLES DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+    /**
+     * Ajoute le marqueur de démonstration à un compte membre existant si celui-ci
+     * n'est pas encore aligné avec l'architecture demoScenarioCode.
+     *
+     * Cette mise à niveau est volontairement non destructive :
+     *      - aucun mot de passe n'est modifié ;
+     *      - aucun rôle n'est modifié ;
+     *      - aucune donnée personnelle du compte n'est modifiée ;
+     *      - aucun compte n'est supprimé.
+     */
+    private void markDemoMemberIfNeeded(
+            UserRepository userRepository,
+            User member,
+            String memberNumber
+    ) {
+        if (!DemoScenarioCodes.RECRUITER_DEMO_USERS.equals(member.getDemoScenarioCode())) {
+            member.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
+            userRepository.save(member);
+            logger.info("Compte membre de démonstration {} déjà présent et marqué comme compte de démonstration.", memberNumber);
+        }
     }
 }

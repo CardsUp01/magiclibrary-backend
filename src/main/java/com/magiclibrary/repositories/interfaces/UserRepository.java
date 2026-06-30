@@ -47,6 +47,20 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByEmailUser(String emailUser);
 
     /*
+     * Recherche les utilisateurs associés à un scénario de démonstration.
+     *
+     * Important :
+     *      Ces méthodes servent uniquement à lire et contrôler les comptes
+     *      de démonstration. Aucune suppression directe des utilisateurs n'est
+     *      volontairement exposée dans ce repository.
+     */
+    List<User> findByDemoScenarioCode(String demoScenarioCode);
+
+    boolean existsByDemoScenarioCode(String demoScenarioCode);
+
+    long countByDemoScenarioCode(String demoScenarioCode);
+
+    /*
      * Recherche les utilisateurs selon les filtres utilisés
      * par l'administration des membres.
      */

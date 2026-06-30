@@ -87,6 +87,21 @@ public class ContactDocument {
     private LocalDateTime updatedAtContact;
 
     // -------------------------------------------------------------------------
+    // MARQUEUR TECHNIQUE DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+    /**
+     * Code de scénario de démonstration associé au document Contact.
+     *
+     * Ce champ permet d'identifier les messages Contact MongoDB recréables sans
+     * dépendre de l'ObjectId MongoDB, de l'email, du sujet, de l'origine ou du
+     * contenu textuel du message.
+     *
+     * Les messages réels conservent une valeur null.
+     */
+    @Field("demoScenarioCode")
+    private String demoScenarioCode;
+
+    // -------------------------------------------------------------------------
     // CONSTRUCTEUR PAR DÉFAUT
     // -------------------------------------------------------------------------
     /** Constructeur par défaut requis par Spring */
@@ -194,5 +209,13 @@ public class ContactDocument {
 
     public void setUpdatedAtContact(LocalDateTime updatedAtContact) {
         this.updatedAtContact = updatedAtContact;
+    }
+
+    public String getDemoScenarioCode() {
+        return demoScenarioCode;
+    }
+
+    public void setDemoScenarioCode(String demoScenarioCode) {
+        this.demoScenarioCode = demoScenarioCode;
     }
 }

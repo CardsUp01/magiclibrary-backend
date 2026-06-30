@@ -26,6 +26,7 @@ import java.util.List;
  * Remarque :
  *      - JpaRepository fournit les méthodes CRUD standard
  *      - toute requête spécifique doit respecter les règles métier et la sécurité
+ *      - les méthodes de démonstration ciblent exclusivement demoScenarioCode
  */
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
 
@@ -60,4 +61,53 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
      * @return page de notifications
      */
     Page<Notification> findAllByOrderByDateNotificationDesc(Pageable pageable);
+
+    // -------------------------------------------------------------------------
+    // SCÉNARIOS DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne toutes les notifications appartenant à un scénario de
+     * démonstration.
+     *
+     * @param demoScenarioCode code fonctionnel de scénario
+     * @return liste des notifications correspondantes
+     */
+    List<Notification> findByDemoScenarioCode(String demoScenarioCode);
+
+    /**
+     * Vérifie si une notification existe pour un scénario de démonstration.
+     *
+     * @param demoScenarioCode code fonctionnel de scénario
+     * @return true si au moins une notification existe
+     */
+    boolean existsByDemoScenarioCode(String demoScenarioCode);
+
+    /**
+     * Compte les notifications associées à un scénario de démonstration.
+     *
+     * @param demoScenarioCode code fonctionnel de scénario
+     * @return nombre de notifications correspondantes
+     */
+    long countByDemoScenarioCode(String demoScenarioCode);
+
+    /**
+     * Retourne les notifications d'un utilisateur appartenant à un scénario de
+     * démonstration donné.
+     *
+     * @param user utilisateur concerné
+     * @param demoScenarioCode code fonctionnel de scénario
+     * @return liste des notifications correspondantes
+     */
+    List<Notification> findByUserAndDemoScenarioCode(User user, String demoScenarioCode);
+
+    /**
+     * Supprime les notifications appartenant à un scénario de démonstration.
+     *
+     * Cette méthode est destinée exclusivement à la reconstruction contrôlée des
+     * données de démonstration.
+     *
+     * @param demoScenarioCode code fonctionnel de scénario
+     */
+    void deleteByDemoScenarioCode(String demoScenarioCode);
 }

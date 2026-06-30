@@ -31,20 +31,52 @@ import com.magiclibrary.entities.LoanLine;
  *      - possibilité de pagination si nécessaire
  *
  * Remarque :
- *      - aucune méthode personnalisée requise dans le MVP
- *      - aucune logique métier dans ce repository
+ *      - aucune logique métier dans ce repository ;
+ *      - LoanLine ne possède volontairement aucun champ demoScenarioCode ;
+ *      - les opérations de reconstruction des données de démonstration
+ *        s'appuient exclusivement sur le marqueur porté par l'entité Loan.
  */
 public interface LoanLineRepository extends JpaRepository<LoanLine, Integer> {
 
     // -------------------------------------------------------------------------
-    // NOUVEAU (SSR / DÉTAIL EMPRUNT) : lecture des lignes par emprunt
+    // LECTURE DES LIGNES D'UN EMPRUNT
     // -------------------------------------------------------------------------
-    // Objectif :
-    //      - permettre l’affichage SSR du détail d’un emprunt (loan-detail)
-    //      - récupérer toutes les lignes associées à un idLoan
-    //
-    // Note :
-    //      - dérivation Spring Data JPA basée sur l’association LoanLine -> Loan
-    //      - ne contient aucune logique métier
+    /**
+     * Retourne toutes les lignes appartenant à un emprunt.
+     *
+     * Utilisé notamment pour l'affichage SSR du détail d'un emprunt.
+     *
+     * @param idLoan identifiant technique de l'emprunt
+     * @return liste des lignes associées
+     */
     List<LoanLine> findByLoan_IdLoan(Integer idLoan);
+
+    // -------------------------------------------------------------------------
+    // SCÉNARIOS DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+    /**
+     * Retourne toutes les lignes d'emprunt rattachées à un emprunt appartenant
+     * à un scénario de démonstration.
+     *
+     * Important :
+     *      LoanLine ne possède pas son propre champ demoScenarioCode.
+     *      La dérivation Spring Data traverse simplement la relation :
+     *
+     *          LoanLine -> Loan -> demoScenarioCode
+     *
+     * @param demoScenarioCode code fonctionnel du scénario de démonstration
+     * @return liste des lignes d'emprunt concernées
+     */
+    List<LoanLine> findByLoan_DemoScenarioCode(String demoScenarioCode);
+
+    /**
+     * Supprime les lignes d'emprunt rattachées à un emprunt appartenant à un
+     * scénario de démonstration.
+     *
+     * Cette méthode est utilisée uniquement lors de la reconstruction contrôlée
+     * des données de démonstration.
+     *
+     * @param demoScenarioCode code fonctionnel du scénario de démonstration
+     */
+    void deleteByLoan_DemoScenarioCode(String demoScenarioCode);
 }

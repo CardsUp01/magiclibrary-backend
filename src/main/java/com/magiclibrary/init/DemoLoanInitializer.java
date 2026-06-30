@@ -5,6 +5,7 @@ package com.magiclibrary.init;
 // -----------------------------------------------------------------------------
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,17 +49,18 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
  * =============================================================================
  *
  * Objectif :
- *      Créer automatiquement des emprunts, lignes d'emprunt et notifications
- *      de démonstration lorsque la base contient déjà les utilisateurs membres
- *      de démonstration et le catalogue importé.
+ *      Reconstruire automatiquement les emprunts, lignes d'emprunt et
+ *      notifications de démonstration lorsque la base contient déjà les
+ *      utilisateurs membres de démonstration et le catalogue importé.
  *
  * Principes :
  *      - aucun identifiant technique n'est utilisé ;
  *      - les utilisateurs sont retrouvés par email ;
  *      - les objets sont retrouvés par source_ref stocké dans tags_item ;
- *      - l'initialisation est idempotente ;
- *      - les données déjà présentes ne sont jamais dupliquées ;
- *      - aucune donnée réelle existante n'est modifiée hors objets ciblés ;
+ *      - les scénarios sont identifiés par demoScenarioCode ;
+ *      - les notes restent du contenu lisible et ne servent plus de marqueur ;
+ *      - les données scénarisées sont supprimées puis recréées proprement ;
+ *      - aucune donnée réelle existante n'est supprimée ;
  *      - la classe fonctionne après RoleInitializer, UserInitializer et
  *        MemberInitializer.
  *
@@ -66,7 +68,9 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
  *      - si les comptes membres ou les objets attendus sont absents, l'initializer
  *        ne bloque pas le démarrage de l'application ;
  *      - dans ce cas, un log explicite est produit et la création sera retentée
- *        au prochain démarrage.
+ *        au prochain démarrage ;
+ *      - les suppressions ciblent exclusivement les constantes officielles
+ *        DemoScenarioCodes.
  *
  * =============================================================================
  */
@@ -75,7 +79,6 @@ public class DemoLoanInitializer {
 
     private static final Logger logger = LoggerFactory.getLogger(DemoLoanInitializer.class);
 
-    private static final String DEMO_MARKER = "[DEMO_LOAN_INITIALIZER]";
     private static final String ORIGIN_SYSTEM = "SYSTEM";
 
     private static final String LUCAS_EMAIL = "lucas.demo@magiclibrary.fr";
@@ -112,11 +115,6 @@ public class DemoLoanInitializer {
             NotificationRepository notificationRepository
     ) {
 
-        if (demoLoansAlreadyExist(loanRepository)) {
-            logger.info("Emprunts de démonstration déjà présents.");
-            return;
-        }
-
         Optional<User> lucasOptional = userRepository.findByEmailUser(LUCAS_EMAIL);
         Optional<User> sarahOptional = userRepository.findByEmailUser(SARAH_EMAIL);
 
@@ -134,6 +132,13 @@ public class DemoLoanInitializer {
             return;
         }
 
+        rebuildDemoLoans(
+                itemRepository,
+                loanRepository,
+                loanLineRepository,
+                notificationRepository
+        );
+
         User lucas = lucasOptional.get();
         User sarah = sarahOptional.get();
 
@@ -148,7 +153,8 @@ public class DemoLoanInitializer {
                 LoanStatus.ONGOING,
                 false,
                 false,
-                "Emprunt de démonstration actif pour Lucas."
+                "Emprunt de démonstration actif pour Lucas.",
+                DemoScenarioCodes.RECRUITER_DEMO_LUCAS_ACTIVE_LOAN
         );
 
         loanRepository.save(lucasLoan);
@@ -177,7 +183,8 @@ public class DemoLoanInitializer {
                 LoanStatus.LATE,
                 false,
                 true,
-                "Emprunt de démonstration en retard pour Sarah."
+                "Emprunt de démonstration en retard pour Sarah.",
+                DemoScenarioCodes.RECRUITER_DEMO_SARAH_OVERDUE_LOAN
         );
 
         loanRepository.save(sarahLoan);
@@ -196,16 +203,75 @@ public class DemoLoanInitializer {
                 "HIGH"
         ));
 
-        logger.info("Emprunts, lignes d'emprunt et notifications de démonstration créés avec succès.");
+        logger.info("Emprunts, lignes d'emprunt et notifications de démonstration reconstruits avec succès.");
     }
 
-    private boolean demoLoansAlreadyExist(LoanRepository loanRepository) {
-        return loanRepository.findAll()
-                .stream()
-                .anyMatch(loan ->
-                        loan.getNotesLoan() != null
-                                && loan.getNotesLoan().contains(DEMO_MARKER)
-                );
+    // -------------------------------------------------------------------------
+    // RECONSTRUCTION CONTRÔLÉE DES DONNÉES DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+    /**
+     * Nettoie les données scénarisées avant reconstruction.
+     *
+     * Ordre volontaire :
+     *      1. supprimer les notifications DEMO ;
+     *      2. retrouver les lignes rattachées aux prêts DEMO ;
+     *      3. remettre les items concernés disponibles ;
+     *      4. supprimer les lignes d'emprunt DEMO ;
+     *      5. supprimer les prêts DEMO.
+     *
+     * Les comptes utilisateurs et les objets catalogue ne sont jamais supprimés.
+     */
+    private void rebuildDemoLoans(
+            ItemRepository itemRepository,
+            LoanRepository loanRepository,
+            LoanLineRepository loanLineRepository,
+            NotificationRepository notificationRepository
+    ) {
+        notificationRepository.deleteByDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_LOAN_NOTIFICATIONS);
+
+        restoreItemsLinkedToDemoLoans(
+                itemRepository,
+                loanLineRepository,
+                DemoScenarioCodes.RECRUITER_DEMO_LUCAS_ACTIVE_LOAN
+        );
+
+        restoreItemsLinkedToDemoLoans(
+                itemRepository,
+                loanLineRepository,
+                DemoScenarioCodes.RECRUITER_DEMO_SARAH_OVERDUE_LOAN
+        );
+
+        loanLineRepository.deleteByLoan_DemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_LUCAS_ACTIVE_LOAN);
+        loanLineRepository.deleteByLoan_DemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_SARAH_OVERDUE_LOAN);
+
+        loanRepository.deleteByDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_LUCAS_ACTIVE_LOAN);
+        loanRepository.deleteByDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_SARAH_OVERDUE_LOAN);
+    }
+
+    /**
+     * Remet disponibles les objets actuellement rattachés à un prêt de
+     * démonstration avant suppression des lignes d'emprunt.
+     */
+    private void restoreItemsLinkedToDemoLoans(
+            ItemRepository itemRepository,
+            LoanLineRepository loanLineRepository,
+            String demoScenarioCode
+    ) {
+        List<LoanLine> demoLoanLines = loanLineRepository.findByLoan_DemoScenarioCode(demoScenarioCode);
+        List<Item> itemsToRestore = new ArrayList<>();
+
+        for (LoanLine loanLine : demoLoanLines) {
+            Item item = loanLine.getItem();
+
+            if (item != null) {
+                markItemAvailable(item);
+                itemsToRestore.add(item);
+            }
+        }
+
+        if (!itemsToRestore.isEmpty()) {
+            itemRepository.saveAll(itemsToRestore);
+        }
     }
 
     private Optional<Item> findDemoItem(ItemRepository itemRepository, String sourceRef) {
@@ -219,7 +285,8 @@ public class DemoLoanInitializer {
             LoanStatus status,
             Boolean returned,
             Boolean overdue,
-            String notes
+            String notes,
+            String demoScenarioCode
     ) {
         Loan loan = new Loan(
                 user,
@@ -233,7 +300,8 @@ public class DemoLoanInitializer {
                 ORIGIN_SYSTEM
         );
 
-        loan.setNotesLoan(DEMO_MARKER + " " + notes);
+        loan.setNotesLoan(notes);
+        loan.setDemoScenarioCode(demoScenarioCode);
         return loan;
     }
 
@@ -246,7 +314,7 @@ public class DemoLoanInitializer {
                 LocalDateTime.now()
         );
 
-        loanLine.setNotesLoanLine(DEMO_MARKER + " Ligne d'emprunt de démonstration.");
+        loanLine.setNotesLoanLine("Ligne d'emprunt de démonstration.");
         return loanLine;
     }
 
@@ -258,7 +326,7 @@ public class DemoLoanInitializer {
             NotificationCategory category,
             String priority
     ) {
-        return new Notification(
+        Notification notification = new Notification(
                 user,
                 title,
                 message,
@@ -267,11 +335,20 @@ public class DemoLoanInitializer {
                 category,
                 priority
         );
+
+        notification.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_LOAN_NOTIFICATIONS);
+        return notification;
     }
 
     private void markItemUnavailable(Item item) {
         item.setAvailableItem(false);
         item.setStatusItem(ItemStatus.UNAVAILABLE);
+        item.setUpdatedAtItem(LocalDateTime.now());
+    }
+
+    private void markItemAvailable(Item item) {
+        item.setAvailableItem(true);
+        item.setStatusItem(ItemStatus.AVAILABLE);
         item.setUpdatedAtItem(LocalDateTime.now());
     }
 }

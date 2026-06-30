@@ -227,6 +227,27 @@ public class Loan {
     private String notesLoan;
 
     // -------------------------------------------------------------------------
+    // MARQUEUR TECHNIQUE DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Code de scénario de démonstration associé à l'emprunt.
+     *
+     * Ce champ permet d'identifier les emprunts scénarisés recréables sans
+     * dépendre d'un identifiant technique, d'une note, d'un statut métier ou
+     * d'un contenu textuel.
+     *
+     * Important :
+     *      Les lignes d'emprunt ne possèdent pas leur propre marqueur.
+     *      Une LoanLine est considérée comme donnée de démonstration uniquement
+     *      par rattachement à son emprunt parent :
+     *
+     *          LoanLine -> Loan -> demoScenarioCode
+     */
+    @Column(name = "demo_scenario_code", length = 150)
+    private String demoScenarioCode;
+
+    // -------------------------------------------------------------------------
     // CONSTRUCTEURS
     // -------------------------------------------------------------------------
 
@@ -505,6 +526,24 @@ public class Loan {
      */
     public void setNotesLoan(String notesLoan) {
         this.notesLoan = notesLoan;
+    }
+
+    /**
+     * Retourne le code de scénario de démonstration associé à l'emprunt.
+     *
+     * @return code de scénario ou null pour un emprunt réel.
+     */
+    public String getDemoScenarioCode() {
+        return demoScenarioCode;
+    }
+
+    /**
+     * Définit le code de scénario de démonstration de l'emprunt.
+     *
+     * @param demoScenarioCode code fonctionnel de démonstration.
+     */
+    public void setDemoScenarioCode(String demoScenarioCode) {
+        this.demoScenarioCode = demoScenarioCode;
     }
 
     // -------------------------------------------------------------------------

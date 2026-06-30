@@ -2,6 +2,7 @@ package com.magiclibrary.mongo.demo;
 
 import com.magiclibrary.entities.User;
 import com.magiclibrary.enums.ContactStatus;
+import com.magiclibrary.init.DemoScenarioCodes;
 import com.magiclibrary.mongo.documents.ContactDocument;
 import com.magiclibrary.mongo.repositories.ContactMongoRepository;
 import com.magiclibrary.repositories.interfaces.UserRepository;
@@ -22,15 +23,15 @@ import java.util.Optional;
  * =============================================================================
  *
  * Objectif :
- *      Créer automatiquement des messages de contact réalistes dans MongoDB
- *      afin d'alimenter le module CONTACT de démonstration MagicLibrary.
+ *      Reconstruire automatiquement des messages de contact réalistes dans
+ *      MongoDB afin d'alimenter le module CONTACT de démonstration MagicLibrary.
  *
  * Principes :
  *      - aucun identifiant technique MongoDB n'est utilisé ;
  *      - les utilisateurs SQL sont retrouvés dynamiquement par email ;
- *      - l'idempotence repose sur une clé métier naturelle :
- *        email + sujet + origine ;
- *      - aucun doublon n'est créé lors des redémarrages ;
+ *      - les documents de démonstration sont identifiés par demoScenarioCode ;
+ *      - les messages Contact de démonstration sont supprimés puis recréés ;
+ *      - aucun message réel n'est supprimé ;
  *      - aucune notification automatique n'est générée ;
  *      - le service métier ContactService n'est pas appelé ;
  *      - l'initializer ne bloque jamais le démarrage de l'application.
@@ -83,8 +84,11 @@ public class DemoContactInitializer {
     // INITIALISATION PRINCIPALE
     // -------------------------------------------------------------------------
     /**
-     * Initialise les messages de contact MongoDB lorsque les comptes de
+     * Reconstruit les messages de contact MongoDB lorsque les comptes de
      * démonstration requis existent déjà en base relationnelle.
+     *
+     * Les anciens documents Contact de démonstration sont supprimés uniquement
+     * via demoScenarioCode, puis les scénarios officiels sont recréés.
      *
      * Si un compte requis par un scénario est absent, seul le scénario concerné
      * est ignoré afin de ne jamais bloquer le démarrage de l'application.
@@ -96,13 +100,11 @@ public class DemoContactInitializer {
         LocalDateTime initializationDate = LocalDateTime.now();
         List<DemoContactScenario> scenarios = buildDemoContactScenarios();
 
+        contactMongoRepository.deleteByDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_CONTACT_MESSAGES);
+
         int createdCount = 0;
 
         for (DemoContactScenario scenario : scenarios) {
-            if (contactAlreadyExists(contactMongoRepository, scenario)) {
-                continue;
-            }
-
             Optional<User> senderOptional = userRepository.findByEmailUserWithRole(scenario.senderEmail());
 
             if (senderOptional.isEmpty()) {
@@ -134,32 +136,7 @@ public class DemoContactInitializer {
             createdCount++;
         }
 
-        if (createdCount == 0) {
-            logger.info("Contacts de démonstration déjà présents.");
-            return;
-        }
-
-        logger.info("{} contact(s) de démonstration MongoDB créé(s) avec succès.", createdCount);
-    }
-
-    // -------------------------------------------------------------------------
-    // CONTRÔLE D'IDEMPOTENCE
-    // -------------------------------------------------------------------------
-    /**
-     * Vérifie l'existence d'un scénario de démonstration à partir d'une clé
-     * métier naturelle stable.
-     *
-     * Cette stratégie évite toute dépendance à l'ObjectId MongoDB.
-     */
-    private boolean contactAlreadyExists(
-            ContactMongoRepository contactMongoRepository,
-            DemoContactScenario scenario
-    ) {
-        return contactMongoRepository.existsByEmailContactAndSubjectContactAndOriginContact(
-                scenario.senderEmail(),
-                scenario.subject(),
-                scenario.origin()
-        );
+        logger.info("{} contact(s) de démonstration MongoDB reconstruit(s) avec succès.", createdCount);
     }
 
     // -------------------------------------------------------------------------
@@ -240,6 +217,7 @@ public class DemoContactInitializer {
         document.setDateContact(initializationDate.minusDays(scenario.createdDaysAgo()));
         document.setResponseSentContact(scenario.responseSent());
         document.setResponseContentContact(scenario.responseContent());
+        document.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_CONTACT_MESSAGES);
 
         if (ContactStatus.ANSWERED.equals(scenario.status())) {
             document.setAnsweredByUserId(answeringAdmin.getIdUser());

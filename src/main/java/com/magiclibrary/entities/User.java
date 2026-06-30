@@ -231,6 +231,26 @@ public class User {
     private String notesUser;
 
     // -------------------------------------------------------------------------
+    // MARQUEUR TECHNIQUE DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Code de scénario de démonstration associé à l'utilisateur.
+     *
+     * Ce champ permet d'identifier les comptes socles de démonstration sans
+     * dépendre d'un email, d'un identifiant technique, d'une note ou d'un statut
+     * métier.
+     *
+     * Important :
+     *      Les comptes de démonstration restent des données socles permanentes.
+     *      Ce marqueur sert à les reconnaître et à les auditer, mais ne doit pas
+     *      être utilisé pour les supprimer automatiquement lors d'une
+     *      reconstruction des scénarios recruteurs.
+     */
+    @Column(name = "demo_scenario_code", length = 150)
+    private String demoScenarioCode;
+
+    // -------------------------------------------------------------------------
     // CONSTRUCTEURS
     // -------------------------------------------------------------------------
 
@@ -336,6 +356,9 @@ public class User {
 
     public String getNotesUser() { return notesUser; }
     public void setNotesUser(String notesUser) { this.notesUser = notesUser; }
+
+    public String getDemoScenarioCode() { return demoScenarioCode; }
+    public void setDemoScenarioCode(String demoScenarioCode) { this.demoScenarioCode = demoScenarioCode; }
 
     // -------------------------------------------------------------------------
     // MÉTHODES UTILITAIRES

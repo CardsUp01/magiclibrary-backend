@@ -4,6 +4,7 @@ package com.magiclibrary.init;
 // IMPORTS JAVA
 // -----------------------------------------------------------------------------
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 // -----------------------------------------------------------------------------
 // IMPORTS LOGGING
@@ -114,15 +115,31 @@ public class UserInitializer {
             // -----------------------------------------------------------------
             // 2) CHECK D'EXISTENCE - ÉVITE DUPLICATION ADMIN
             // -----------------------------------------------------------------
-            // Si l'admin existe déjà → aucune action.
+            // Si l'admin existe déjà → aucune recréation.
             // Sécurité : évite une double insertion en cas de restart Railway.
             //
             // Important :
             // Le check est effectué AVANT la lecture du mot de passe.
             // Ainsi, si le compte existe déjà, l'application peut démarrer sans
             // nécessiter ADMIN_PASSWORD.
+            //
+            // Architecture DEMO :
+            // Si le compte existe déjà mais n'est pas encore marqué comme compte
+            // socle de démonstration, le marqueur est ajouté sans modifier le mot
+            // de passe, le rôle ou les autres données du compte.
             // -----------------------------------------------------------------
-            if (userRepository.findByEmailUser(adminEmail).isPresent()) {
+            Optional<User> existingAdminOptional = userRepository.findByEmailUser(adminEmail);
+
+            if (existingAdminOptional.isPresent()) {
+                User existingAdmin = existingAdminOptional.get();
+
+                if (!DemoScenarioCodes.RECRUITER_DEMO_USERS.equals(existingAdmin.getDemoScenarioCode())) {
+                    existingAdmin.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
+                    userRepository.save(existingAdmin);
+                    logger.info("Compte administrateur initial déjà présent et marqué comme compte de démonstration.");
+                    return;
+                }
+
                 logger.info("Compte administrateur initial déjà présent.");
                 return;
             }
@@ -196,7 +213,16 @@ public class UserInitializer {
             admin.setDepositUser(true);
 
             // -----------------------------------------------------------------
-            // 8) SAUVEGARDE EN BASE
+            // 8) MARQUEUR DE DÉMONSTRATION
+            // -----------------------------------------------------------------
+            // Le compte administrateur de démonstration est une donnée socle :
+            // il peut être identifié par demoScenarioCode, mais ne doit jamais
+            // être supprimé automatiquement lors d'une reconstruction.
+            // -----------------------------------------------------------------
+            admin.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
+
+            // -----------------------------------------------------------------
+            // 9) SAUVEGARDE EN BASE
             // -----------------------------------------------------------------
             // Insertion en MariaDB via JPA Repository.
             // L'opération est exécutée uniquement si le compte n'existe pas déjà.
@@ -204,7 +230,7 @@ public class UserInitializer {
             userRepository.save(admin);
 
             // -----------------------------------------------------------------
-            // 9) LOG DE CONFIRMATION SÉCURISÉ
+            // 10) LOG DE CONFIRMATION SÉCURISÉ
             // -----------------------------------------------------------------
             // Le mot de passe n'est jamais affiché.
             // L'email n'est pas loggé afin de conserver des logs sobres en production.

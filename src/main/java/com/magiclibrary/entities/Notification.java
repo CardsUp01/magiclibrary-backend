@@ -67,6 +67,21 @@ public class Notification {
     private String priorityNotification; // Priorité (ex : LOW, MEDIUM, HIGH), facultatif, max 20 caractères
 
     // -------------------------------------------------------------------------
+    // MARQUEUR TECHNIQUE DE DÉMONSTRATION
+    // -------------------------------------------------------------------------
+    /**
+     * Code de scénario de démonstration associé à la notification.
+     *
+     * Ce champ permet d'identifier les notifications recréables de démonstration
+     * sans dépendre d'un titre, d'un message, d'un utilisateur, d'un statut métier
+     * ou d'un identifiant technique.
+     *
+     * Les notifications réelles conservent une valeur null.
+     */
+    @Column(name = "demo_scenario_code", length = 150)
+    private String demoScenarioCode;
+
+    // -------------------------------------------------------------------------
     // CONSTRUCTEUR PAR DÉFAUT
     // -------------------------------------------------------------------------
     public Notification() {
@@ -148,4 +163,7 @@ public class Notification {
 
     public String getPriorityNotification() { return priorityNotification; }
     public void setPriorityNotification(String priorityNotification) { this.priorityNotification = priorityNotification; }
+
+    public String getDemoScenarioCode() { return demoScenarioCode; }
+    public void setDemoScenarioCode(String demoScenarioCode) { this.demoScenarioCode = demoScenarioCode; }
 }
