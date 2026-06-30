@@ -22,16 +22,25 @@ import org.springframework.stereotype.Repository;
    - Couche d’accès aux données MongoDB dédiée au module CONTACT
    - Totalement isolée de MySQL (aucune dépendance JPA)
    - Utilisée par ContactServiceImpl pour US-12 et US-13
+   - Utilisée par DemoContactInitializer pour garantir l'idempotence des messages
+     de démonstration sans dépendre des identifiants MongoDB
 
-   MVP : aucune méthode personnalisée n’est requise.
-   Les méthodes avancées pourront être ajoutées plus tard (ex : recherche filtrée).
+   Méthodes personnalisées :
+   - existsByEmailContactAndSubjectContactAndOriginContact(...)
+     → vérifie l'existence d'un message à partir d'une clé métier naturelle
+       utilisée pour éviter les doublons lors de l'initialisation de démonstration.
    ================================================================================================= */
 @Repository
 public interface ContactMongoRepository extends MongoRepository<ContactDocument, String> {
 
     /* =============================================================================================
-       Aucun ajout dans le MVP.
-       MongoRepository fournit déjà toutes les opérations nécessaires pour US-12 / US-13.
+       Vérification d'existence par clé métier naturelle.
+       Utilisée par DemoContactInitializer pour éviter toute création de doublon
+       sans dépendre de l'identifiant technique MongoDB.
        ============================================================================================= */
-
+    boolean existsByEmailContactAndSubjectContactAndOriginContact(
+            String emailContact,
+            String subjectContact,
+            String originContact
+    );
 }

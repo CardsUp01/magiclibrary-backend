@@ -81,7 +81,6 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
  * =============================================================================
  */
 @Configuration
-@Order(2) // 👉 Exécuté après RoleInitializer (ordre critique pour dépendances)
 public class UserInitializer {
 
     private static final Logger logger = LoggerFactory.getLogger(UserInitializer.class);
@@ -91,6 +90,7 @@ public class UserInitializer {
     private static final String ADMIN_PASSWORD_PROPERTY = "ADMIN_PASSWORD";
 
     @Bean
+    @Order(2) // 👉 Exécuté après RoleInitializer (ordre critique pour dépendances)
     public CommandLineRunner initAdmin(
             UserRepository userRepository,
             RoleRepository roleRepository,

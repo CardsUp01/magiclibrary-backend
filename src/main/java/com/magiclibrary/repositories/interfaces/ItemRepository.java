@@ -1,6 +1,7 @@
 package com.magiclibrary.repositories.interfaces;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,43 +20,82 @@ import com.magiclibrary.entities.Item;
  */
 public interface ItemRepository extends JpaRepository<Item, Integer> {
 
-    /*
-     * Suggestions de recherche par titre.
+    // -------------------------------------------------------------------------
+    // SUGGESTIONS DE RECHERCHE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Recherche les premières suggestions actives correspondant à une partie de titre.
      */
     List<Item> findTop8ByDeletedDateItemIsNullAndTitleItemContainingIgnoreCaseOrderByTitleItemAsc(String titlePart);
 
-    /*
-     * Suggestions de recherche par auteur.
+    /**
+     * Recherche les premières suggestions actives correspondant à une partie d'auteur.
      */
     List<Item> findTop8ByDeletedDateItemIsNullAndAuthorItemContainingIgnoreCaseOrderByAuthorItemAsc(String authorPart);
 
-    /*
-     * Suggestions de recherche par éditeur.
+    /**
+     * Recherche les premières suggestions actives correspondant à une partie d'éditeur.
      */
     List<Item> findTop8ByDeletedDateItemIsNullAndPublisherItemContainingIgnoreCaseOrderByPublisherItemAsc(String publisherPart);
 
-    /*
-     * Suggestions de recherche par catégorie.
+    /**
+     * Recherche les premières suggestions actives correspondant à une partie de catégorie.
      */
     List<Item> findTop8ByDeletedDateItemIsNullAndCategoryItemContainingIgnoreCaseOrderByCategoryItemAsc(String categoryPart);
 
-    /*
-     * Suggestions de recherche par ISBN.
+    /**
+     * Recherche les premières suggestions actives correspondant à une partie d'ISBN.
      */
     List<Item> findTop8ByDeletedDateItemIsNullAndIsbnItemContainingIgnoreCaseOrderByIsbnItemAsc(String isbnPart);
 
-    /*
+    // -------------------------------------------------------------------------
+    // RECHERCHE TECHNIQUE PAR RÉFÉRENCE SOURCE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Recherche un objet actif à partir d'une référence source stockée dans tagsItem.
+     *
+     * Objectif :
+     *      - permettre aux initialiseurs de démonstration de retrouver un objet
+     *        sans dépendre d'un identifiant technique auto-incrémenté ;
+     *      - utiliser une donnée métier stable issue de l'import catalogue :
+     *        source_ref:L000xx ou source_ref:D000xx ;
+     *      - conserver une logique compatible DEV, DEMO, Railway et future PROD.
+     *
+     * Exemple de valeur recherchée :
+     *      source_ref:L00001
+     *
+     * La méthode retourne un Optional afin de forcer le code appelant à gérer
+     * explicitement le cas où la référence attendue serait absente du catalogue.
+     */
+    Optional<Item> findFirstByDeletedDateItemIsNullAndTagsItemContaining(String sourceRef);
+
+    // -------------------------------------------------------------------------
+    // LECTURE DES OBJETS ACTIFS
+    // -------------------------------------------------------------------------
+
+    /**
      * Retourne tous les objets actifs avec un tri fourni dynamiquement.
      */
     List<Item> findByDeletedDateItemIsNull(Sort sort);
 
-    /*
+    /**
      * Retourne les objets actifs sous forme paginée.
      */
     Page<Item> findByDeletedDateItemIsNull(Pageable pageable);
 
-    /*
-     * Recherche multicritère dans les objets actifs du catalogue.
+    // -------------------------------------------------------------------------
+    // RECHERCHE MULTICRITÈRE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Recherche paginée dans les objets actifs du catalogue.
+     *
+     * La recherche couvre les principaux champs consultables côté interface :
+     * titre, auteur, éditeur, catégorie, ISBN, tags, description et identifiant.
+     *
+     * Le countQuery est défini explicitement afin de sécuriser la pagination.
      */
     @Query(
             value = """
@@ -91,9 +131,18 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> searchActiveItems(@Param("q") String q, Pageable pageable);
 
-    /*
-     * Recherche multicritère avec classement par disponibilité,
-     * puis par titre et identifiant.
+    // -------------------------------------------------------------------------
+    // RECHERCHE MULTICRITÈRE AVEC TRI MÉTIER
+    // -------------------------------------------------------------------------
+
+    /**
+     * Recherche paginée dans les objets actifs avec classement par disponibilité.
+     *
+     * Le CASE impose un ordre métier stable :
+     * AVAILABLE, UNAVAILABLE, DAMAGED, LOST, puis les autres valeurs éventuelles.
+     *
+     * Le tri secondaire par titre puis identifiant garantit un affichage stable
+     * lorsque plusieurs objets partagent le même statut.
      */
     @Query(
             value = """
@@ -139,9 +188,14 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> searchActiveItemsOrderByStatusRankThenTitleThenId(@Param("q") String q, Pageable pageable);
 
-    /*
-     * Recherche multicritère avec classement par état,
-     * puis par titre et identifiant.
+    /**
+     * Recherche paginée dans les objets actifs avec classement par état matériel.
+     *
+     * Le CASE impose un ordre métier stable :
+     * NEW, GOOD, USED, DAMAGED, puis les autres valeurs éventuelles.
+     *
+     * Le tri secondaire par titre puis identifiant garantit un affichage stable
+     * lorsque plusieurs objets partagent le même état.
      */
     @Query(
             value = """
@@ -187,8 +241,15 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> searchActiveItemsOrderByConditionRankThenTitleThenId(@Param("q") String q, Pageable pageable);
 
-    /*
-     * Retourne les objets actifs triés selon le rang de disponibilité.
+    // -------------------------------------------------------------------------
+    // TRI DES OBJETS ACTIFS PAR DISPONIBILITÉ
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne les objets actifs paginés selon le rang métier de disponibilité.
+     *
+     * Cette requête est utilisée lorsque l'utilisateur consulte le catalogue
+     * sans recherche textuelle, avec un tri orienté disponibilité.
      */
     @Query(
             value = """
@@ -214,8 +275,11 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> findByDeletedDateItemIsNullOrderByStatusRankThenTitleThenId(Pageable pageable);
 
-    /*
-     * Retourne la liste complète des objets actifs triés selon le rang de disponibilité.
+    /**
+     * Retourne la liste complète des objets actifs selon le rang métier de disponibilité.
+     *
+     * Version non paginée utilisée lorsque le service a besoin d'une collection complète
+     * tout en conservant le même ordre d'affichage que la version paginée.
      */
     @Query("""
             SELECT i
@@ -234,8 +298,15 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
             """)
     List<Item> findByDeletedDateItemIsNullOrderByStatusRankThenTitleThenId();
 
-    /*
-     * Retourne les objets actifs triés selon le rang d'état.
+    // -------------------------------------------------------------------------
+    // TRI DES OBJETS ACTIFS PAR ÉTAT MATÉRIEL
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne les objets actifs paginés selon le rang métier de leur état matériel.
+     *
+     * Cette requête est utilisée lorsque l'utilisateur consulte le catalogue
+     * sans recherche textuelle, avec un tri orienté condition physique.
      */
     @Query(
             value = """
@@ -261,8 +332,11 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     )
     Page<Item> findByDeletedDateItemIsNullOrderByConditionRankThenTitleThenId(Pageable pageable);
 
-    /*
-     * Retourne la liste complète des objets actifs triés selon le rang d'état.
+    /**
+     * Retourne la liste complète des objets actifs selon le rang métier de leur état matériel.
+     *
+     * Version non paginée utilisée lorsque le service a besoin d'une collection complète
+     * tout en conservant le même ordre d'affichage que la version paginée.
      */
     @Query("""
             SELECT i

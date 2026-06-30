@@ -80,7 +80,6 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
  * =============================================================================
  */
 @Configuration
-@Order(3) // 👉 Exécuté après RoleInitializer et UserInitializer
 public class MemberInitializer {
 
     private static final Logger logger = LoggerFactory.getLogger(MemberInitializer.class);
@@ -93,6 +92,7 @@ public class MemberInitializer {
     private static final String MEMBER_TWO_EMAIL = "sarah.demo@magiclibrary.fr";
 
     @Bean
+    @Order(3) // 👉 Exécuté après RoleInitializer et UserInitializer
     public CommandLineRunner initDemoMembers(
             UserRepository userRepository,
             RoleRepository roleRepository,

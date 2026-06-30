@@ -68,7 +68,6 @@ import com.magiclibrary.repositories.interfaces.RoleRepository;
  * =============================================================================
  */
 @Configuration
-@Order(1) // 👉 OBLIGATOIRE : les rôles doivent exister avant les utilisateurs
 public class RoleInitializer {
 
     private static final Logger logger = LoggerFactory.getLogger(RoleInitializer.class);
@@ -78,6 +77,7 @@ public class RoleInitializer {
     private static final String ROLE_INVITE = "INVITE";
 
     @Bean
+    @Order(1) // 👉 OBLIGATOIRE : les rôles doivent exister avant les utilisateurs
     public CommandLineRunner initializeRoles(RoleRepository roleRepository) {
         return args -> {
 
