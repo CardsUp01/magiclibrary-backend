@@ -40,9 +40,11 @@ import com.magiclibrary.services.demo.DemoScenarioDefinition;
  *     <li>validation complète de chaque définition ;</li>
  *     <li>résolution de tous les utilisateurs SQL requis ;</li>
  *     <li>préparation de tous les documents MongoDB en mémoire ;</li>
- *     <li>suppression exclusive des documents portant le marqueur DEMO ;</li>
+ *     <li>suppression exclusive des documents canoniques marqués DEMO ;</li>
+ *     <li>suppression exclusive des documents temporaires créés en DEMO ;</li>
  *     <li>enregistrement groupé des huit documents préparés ;</li>
- *     <li>contrôle final du nombre de documents persistés.</li>
+ *     <li>contrôle final du nombre de documents persistés ;</li>
+ *     <li>contrôle de l'absence de document temporaire résiduel.</li>
  * </ul>
  *
  * <p>Aucune suppression n'est exécutée avant la validation complète des
@@ -52,6 +54,16 @@ import com.magiclibrary.services.demo.DemoScenarioDefinition;
  * <p>Le caractère DEMO des documents supprimables repose exclusivement sur
  * {@code demoScenarioCode}. Les emails, sujets, statuts, origines et contenus
  * servent uniquement à reconstruire le scénario canonique.</p>
+ *
+ * <p>Deux catégories de documents sont distinguées :</p>
+ *
+ * <ul>
+ *     <li>les huit documents canoniques, recréés à chaque reset ;</li>
+ *     <li>les documents temporaires créés pendant les tests fonctionnels,
+ *     supprimés mais jamais recréés.</li>
+ * </ul>
+ *
+ * <p>Les documents sans marqueur DEMO sont systématiquement préservés.</p>
  *
  * <p>Les documents sont construits directement sans passer par
  * {@code ContactService}. Cette séparation empêche la génération de
@@ -119,9 +131,13 @@ public class DemoMongoScenarioServiceImpl
 
         validatePreparedDocuments(preparedDocuments);
 
-        contactMongoRepository.deleteByDemoScenarioCode(
-                DemoScenarioCodes.RECRUITER_DEMO_CONTACT_MESSAGES
-        );
+        long temporaryDocumentCountBeforeReset =
+                contactMongoRepository.countByDemoScenarioCode(
+                        DemoScenarioCodes
+                                .RECRUITER_DEMO_CREATED_CONTACT_MESSAGES
+                );
+
+        deleteDemoContactDocuments();
 
         contactMongoRepository.saveAll(preparedDocuments);
 
@@ -129,8 +145,35 @@ public class DemoMongoScenarioServiceImpl
 
         logger.info(
                 "{} document(s) CONTACT de démonstration MongoDB "
-                        + "reconstruit(s) avec succès.",
-                preparedDocuments.size()
+                        + "reconstruit(s) avec succès ; "
+                        + "{} message(s) CONTACT temporaire(s) supprimé(s).",
+                preparedDocuments.size(),
+                temporaryDocumentCountBeforeReset
+        );
+    }
+
+    /**
+     * Supprime exclusivement les documents Contact explicitement marqués
+     * comme données de démonstration.
+     *
+     * <p>Deux marqueurs sont ciblés :</p>
+     *
+     * <ul>
+     *     <li>le marqueur des huit documents canoniques précédents ;</li>
+     *     <li>le marqueur des messages temporaires créés pendant les tests.</li>
+     * </ul>
+     *
+     * <p>Les documents sans marqueur ou portant un autre marqueur ne sont
+     * jamais supprimés.</p>
+     */
+    private void deleteDemoContactDocuments() {
+        contactMongoRepository.deleteByDemoScenarioCode(
+                DemoScenarioCodes.RECRUITER_DEMO_CONTACT_MESSAGES
+        );
+
+        contactMongoRepository.deleteByDemoScenarioCode(
+                DemoScenarioCodes
+                        .RECRUITER_DEMO_CREATED_CONTACT_MESSAGES
         );
     }
 
@@ -607,24 +650,39 @@ public class DemoMongoScenarioServiceImpl
     // =========================================================================
 
     /**
-     * Vérifie que MongoDB contient exactement les huit documents du scénario
-     * après l'enregistrement groupé.
+     * Vérifie que MongoDB contient exactement les huit documents canoniques et
+     * qu'aucun document temporaire marqué ne subsiste après reconstruction.
      */
     private void verifyPersistedScenario() {
-        long persistedCount =
+        long persistedCanonicalCount =
                 contactMongoRepository.countByDemoScenarioCode(
                         DemoScenarioCodes
                                 .RECRUITER_DEMO_CONTACT_MESSAGES
                 );
 
-        if (persistedCount
+        if (persistedCanonicalCount
                 != DemoScenarioDefinition.EXPECTED_CONTACT_COUNT) {
             throw new IllegalStateException(
                     "Reconstruction CONTACT DEMO incomplète : "
-                            + persistedCount
-                            + " document(s) persisté(s) au lieu de "
+                            + persistedCanonicalCount
+                            + " document(s) canonique(s) persisté(s) au lieu de "
                             + DemoScenarioDefinition.EXPECTED_CONTACT_COUNT
                             + "."
+            );
+        }
+
+        long persistedTemporaryCount =
+                contactMongoRepository.countByDemoScenarioCode(
+                        DemoScenarioCodes
+                                .RECRUITER_DEMO_CREATED_CONTACT_MESSAGES
+                );
+
+        if (persistedTemporaryCount != 0L) {
+            throw new IllegalStateException(
+                    "Reconstruction CONTACT DEMO incomplète : "
+                            + persistedTemporaryCount
+                            + " document(s) CONTACT temporaire(s) "
+                            + "subsiste(nt) après le reset."
             );
         }
     }

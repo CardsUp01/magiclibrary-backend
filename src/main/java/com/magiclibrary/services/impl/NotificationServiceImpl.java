@@ -11,7 +11,10 @@ import java.util.stream.Collectors;
 // -----------------------------------------------------------------------------
 // IMPORTS SPRING
 // -----------------------------------------------------------------------------
-// Déclaration du service Spring et gestion transactionnelle
+// Configuration, environnement, déclaration du service et transactions
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +35,8 @@ import com.magiclibrary.entities.User;
 import com.magiclibrary.exceptions.custom.ForbiddenException;
 import com.magiclibrary.exceptions.custom.NotificationNotFoundException;
 import com.magiclibrary.exceptions.custom.UserNotFoundException;
+// Constantes officielles des scénarios DEMO
+import com.magiclibrary.init.DemoScenarioCodes;
 // Mapper pour conversion entité ↔ DTO
 import com.magiclibrary.mappers.NotificationMapper;
 // Repositories JPA
@@ -44,20 +49,52 @@ import com.magiclibrary.services.NotificationService;
  * =============================================================================
  * SERVICE IMPLEMENTATION : NotificationServiceImpl
  * =============================================================================
+ *
  * Implémente les opérations métier pour la gestion des notifications.
  *
  * Rôle :
- *      - récupération des notifications d’un utilisateur
- *      - récupération paginée des notifications d’un utilisateur
- *      - récupération paginée de toutes les notifications pour l’administration
- *      - création d’une notification par un Administrateur
- *      - création d’une notification système automatique
- *      - marquage d’une notification comme lue
+ *      - récupération des notifications d’un utilisateur ;
+ *      - récupération paginée des notifications d’un utilisateur ;
+ *      - récupération paginée de toutes les notifications pour
+ *        l’administration ;
+ *      - création d’une notification par un administrateur ;
+ *      - création d’une notification système automatique ;
+ *      - marquage d’une notification comme lue.
  *
  * Règles métier :
- *      - seul le propriétaire ou un ADMIN peut marquer une notification comme lue
- *      - les dates et flags système sont générés côté backend
- *      - cohérence entre notification et utilisateur
+ *      - seul le propriétaire ou un ADMIN peut marquer une notification comme
+ *        lue ;
+ *      - les dates et indicateurs système sont générés côté backend ;
+ *      - l’utilisateur destinataire doit exister ;
+ *      - les contrôles de rôle sont effectués côté service.
+ *
+ * Gestion de l’environnement DEMO :
+ *      Lorsqu’une notification est créée pendant l’exécution du profil
+ *      {@code demo} et que le mécanisme de réinitialisation est explicitement
+ *      activé, elle reçoit le marqueur :
+ *
+ *          RECRUITER_DEMO_CREATED_NOTIFICATIONS
+ *
+ *      Ce marqueur permet de supprimer sélectivement les notifications
+ *      temporaires produites pendant les tests fonctionnels, notamment :
+ *          - les notifications générées lors de l’envoi d’un message Contact ;
+ *          - les notifications générées après une réponse administrateur ;
+ *          - les notifications créées manuellement par un administrateur ;
+ *          - les autres notifications système produites pendant une session
+ *            de démonstration.
+ *
+ * Sécurité CLIENT :
+ *      Hors profil {@code demo}, ou lorsque
+ *      {@code magiclibrary.demo.reset.enabled=false}, aucun marqueur temporaire
+ *      n’est attribué. Les notifications de la future instance CLIENT
+ *      conservent donc un {@code demoScenarioCode} null et ne peuvent pas être
+ *      ciblées par le reset DEMO.
+ *
+ * Important :
+ *      Les notifications canoniques du scénario recruteur ne sont pas créées
+ *      par cette classe pendant la reconstruction. Elles sont préparées
+ *      directement par le service relationnel DEMO avec leur marqueur
+ *      canonique propre.
  */
 @Service
 @Transactional
@@ -66,21 +103,32 @@ public class NotificationServiceImpl implements NotificationService {
     // -------------------------------------------------------------------------
     // DÉPENDANCES
     // -------------------------------------------------------------------------
+
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final Environment environment;
+    private final boolean demoResetEnabled;
 
     /**
-     * Constructeur avec injection des dépendances nécessaires pour gérer les notifications.
+     * Constructeur avec injection des dépendances nécessaires pour gérer les
+     * notifications et identifier de manière sécurisée l’environnement DEMO.
      *
      * @param notificationRepository repository JPA pour les notifications
      * @param userRepository repository JPA pour les utilisateurs
+     * @param environment environnement Spring actif
+     * @param demoResetEnabled indique si le mécanisme de reset DEMO est activé
      */
     public NotificationServiceImpl(
             NotificationRepository notificationRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            Environment environment,
+            @Value("${magiclibrary.demo.reset.enabled:false}")
+            boolean demoResetEnabled
     ) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.environment = environment;
+        this.demoResetEnabled = demoResetEnabled;
     }
 
     // -------------------------------------------------------------------------
@@ -96,10 +144,13 @@ public class NotificationServiceImpl implements NotificationService {
      */
     @Override
     @Transactional(readOnly = true)
-    public List<NotificationResponseDTO> getNotificationsForUser(Integer idUser) {
-
+    public List<NotificationResponseDTO> getNotificationsForUser(
+            Integer idUser
+    ) {
         User user = userRepository.findById(idUser)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable avec l'id : " + idUser));
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Utilisateur introuvable avec l'id : " + idUser
+                ));
 
         return notificationRepository
                 .findByUserOrderByDateNotificationDesc(user)
@@ -119,10 +170,15 @@ public class NotificationServiceImpl implements NotificationService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponseDTO> getNotificationsForUserPaged(Integer idUser, int page, int size) {
-
+    public Page<NotificationResponseDTO> getNotificationsForUserPaged(
+            Integer idUser,
+            int page,
+            int size
+    ) {
         User user = userRepository.findById(idUser)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable avec l'id : " + idUser));
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Utilisateur introuvable avec l'id : " + idUser
+                ));
 
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : 9;
@@ -130,14 +186,23 @@ public class NotificationServiceImpl implements NotificationService {
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
         Page<Notification> notificationsPage =
-                notificationRepository.findByUserOrderByDateNotificationDesc(user, pageable);
+                notificationRepository
+                        .findByUserOrderByDateNotificationDesc(
+                                user,
+                                pageable
+                        );
 
-        List<NotificationResponseDTO> content = notificationsPage.getContent()
-                .stream()
-                .map(NotificationMapper::toResponseDTO)
-                .collect(Collectors.toList());
+        List<NotificationResponseDTO> content =
+                notificationsPage.getContent()
+                        .stream()
+                        .map(NotificationMapper::toResponseDTO)
+                        .collect(Collectors.toList());
 
-        return new PageImpl<>(content, pageable, notificationsPage.getTotalElements());
+        return new PageImpl<>(
+                content,
+                pageable,
+                notificationsPage.getTotalElements()
+        );
     }
 
     /**
@@ -149,71 +214,82 @@ public class NotificationServiceImpl implements NotificationService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponseDTO> getAllNotificationsPaged(int page, int size) {
-
+    public Page<NotificationResponseDTO> getAllNotificationsPaged(
+            int page,
+            int size
+    ) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : 9;
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
         Page<Notification> notificationsPage =
-                notificationRepository.findAllByOrderByDateNotificationDesc(pageable);
+                notificationRepository
+                        .findAllByOrderByDateNotificationDesc(pageable);
 
-        List<NotificationResponseDTO> content = notificationsPage.getContent()
-                .stream()
-                .map(NotificationMapper::toResponseDTO)
-                .collect(Collectors.toList());
+        List<NotificationResponseDTO> content =
+                notificationsPage.getContent()
+                        .stream()
+                        .map(NotificationMapper::toResponseDTO)
+                        .collect(Collectors.toList());
 
-        return new PageImpl<>(content, pageable, notificationsPage.getTotalElements());
+        return new PageImpl<>(
+                content,
+                pageable,
+                notificationsPage.getTotalElements()
+        );
     }
 
     // -------------------------------------------------------------------------
-    // POST : Création d’une notification (ADMIN uniquement)
+    // POST : Création d’une notification par un ADMIN
     // -------------------------------------------------------------------------
 
     /**
      * Crée une notification pour un utilisateur cible.
      *
      * Règles métier :
-     *      - seul un ADMIN peut créer une notification
-     *      - l’utilisateur cible doit exister
-     *      - dateNotification et readNotification sont gérées côté backend
+     *      - seul un ADMIN peut créer une notification ;
+     *      - l’utilisateur cible doit exister ;
+     *      - dateNotification et readNotification sont gérées côté backend ;
+     *      - en environnement DEMO, la notification reçoit le marqueur
+     *        temporaire officiel.
      *
      * @param requestDTO DTO de création contenant l’id de l’utilisateur cible
-     * @param idRequester identifiant de l’utilisateur requérant (doit être ADMIN)
-     * @return NotificationResponseDTO représentant la notification créée
+     * @param idRequester identifiant de l’utilisateur requérant
+     * @return notification créée
      * @throws IllegalArgumentException si le DTO est invalide
-     * @throws UserNotFoundException si utilisateur requérant ou cible introuvable
-     * @throws ForbiddenException si l’utilisateur requérant n’est pas ADMIN
+     * @throws UserNotFoundException si le requérant ou la cible est introuvable
+     * @throws ForbiddenException si le requérant n’est pas ADMIN
      */
     @Override
-    public NotificationResponseDTO createNotification(NotificationRequestDTO requestDTO, Integer idRequester) {
-
-        if (requestDTO == null || requestDTO.getIdUser() == null) {
-            throw new IllegalArgumentException("L'identifiant utilisateur cible est obligatoire.");
-        }
+    public NotificationResponseDTO createNotification(
+            NotificationRequestDTO requestDTO,
+            Integer idRequester
+    ) {
+        validateNotificationRequest(requestDTO);
 
         User requester = userRepository.findById(idRequester)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur requérant introuvable avec l'id : " + idRequester));
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Utilisateur requérant introuvable avec l'id : "
+                                + idRequester
+                ));
 
-        boolean isAdmin = requester.getRole() != null
-                && requester.getRole().getLabelRole() != null
-                && requester.getRole().getLabelRole().equalsIgnoreCase("ADMIN");
-
-        if (!isAdmin) {
-            throw new ForbiddenException("Accès interdit : ADMIN uniquement.");
+        if (!isAdmin(requester)) {
+            throw new ForbiddenException(
+                    "Accès interdit : ADMIN uniquement."
+            );
         }
 
-        User target = userRepository.findById(requestDTO.getIdUser())
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur cible introuvable avec l'id : " + requestDTO.getIdUser()));
+        User target = findTargetUser(requestDTO.getIdUser());
 
-        Notification notification = NotificationMapper.toEntity(requestDTO, target);
+        Notification notification =
+                NotificationMapper.toEntity(requestDTO, target);
 
-        // Champs système : date et read flag
-        notification.setDateNotification(LocalDateTime.now());
-        notification.setReadNotification(false);
+        initializeSystemFields(notification);
+        applyDemoMarkerIfRequired(notification);
 
-        Notification saved = notificationRepository.save(notification);
+        Notification saved =
+                notificationRepository.save(notification);
 
         return NotificationMapper.toResponseDTO(saved);
     }
@@ -226,32 +302,33 @@ public class NotificationServiceImpl implements NotificationService {
      * Crée une notification système automatique pour un utilisateur cible.
      *
      * Règles métier :
-     *      - aucun requérant ADMIN n’est exigé
-     *      - l’utilisateur cible doit exister
-     *      - dateNotification et readNotification sont gérées côté backend
+     *      - aucun requérant ADMIN n’est exigé ;
+     *      - l’utilisateur cible doit exister ;
+     *      - dateNotification et readNotification sont gérées côté backend ;
+     *      - en environnement DEMO, la notification reçoit le marqueur
+     *        temporaire officiel.
      *
      * @param requestDTO DTO de création contenant l’id de l’utilisateur cible
-     * @return NotificationResponseDTO représentant la notification créée
+     * @return notification créée
      * @throws IllegalArgumentException si le DTO est invalide
      * @throws UserNotFoundException si l’utilisateur cible est introuvable
      */
     @Override
-    public NotificationResponseDTO createSystemNotification(NotificationRequestDTO requestDTO) {
+    public NotificationResponseDTO createSystemNotification(
+            NotificationRequestDTO requestDTO
+    ) {
+        validateNotificationRequest(requestDTO);
 
-        if (requestDTO == null || requestDTO.getIdUser() == null) {
-            throw new IllegalArgumentException("L'identifiant utilisateur cible est obligatoire.");
-        }
+        User target = findTargetUser(requestDTO.getIdUser());
 
-        User target = userRepository.findById(requestDTO.getIdUser())
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur cible introuvable avec l'id : " + requestDTO.getIdUser()));
+        Notification notification =
+                NotificationMapper.toEntity(requestDTO, target);
 
-        Notification notification = NotificationMapper.toEntity(requestDTO, target);
+        initializeSystemFields(notification);
+        applyDemoMarkerIfRequired(notification);
 
-        // Champs système : date et read flag
-        notification.setDateNotification(LocalDateTime.now());
-        notification.setReadNotification(false);
-
-        Notification saved = notificationRepository.save(notification);
+        Notification saved =
+                notificationRepository.save(notification);
 
         return NotificationMapper.toResponseDTO(saved);
     }
@@ -264,43 +341,153 @@ public class NotificationServiceImpl implements NotificationService {
      * Marque une notification comme lue.
      *
      * Règles métier :
-     *      - seul le propriétaire ou un ADMIN peut effectuer l’action
-     *      - la date de création de la notification n’est pas modifiée
+     *      - seul le propriétaire ou un ADMIN peut effectuer l’action ;
+     *      - la date de création n’est pas modifiée ;
+     *      - le marqueur DEMO éventuellement présent est conservé.
      *
      * @param idNotification identifiant de la notification
      * @param idRequester identifiant de l’utilisateur effectuant l’action
-     * @return NotificationResponseDTO représentant la notification mise à jour
+     * @return notification mise à jour
      * @throws NotificationNotFoundException si la notification n’existe pas
-     * @throws UserNotFoundException si l’utilisateur requérant n’existe pas
-     * @throws ForbiddenException si l’utilisateur n’est ni propriétaire ni ADMIN
+     * @throws UserNotFoundException si le requérant n’existe pas
+     * @throws ForbiddenException si le requérant n’est ni propriétaire ni ADMIN
      */
     @Override
-    public NotificationResponseDTO markAsRead(Integer idNotification, Integer idRequester) {
-
-        Notification notif = notificationRepository.findById(idNotification)
-                .orElseThrow(() -> new NotificationNotFoundException("Notification introuvable avec l'id : " + idNotification));
+    public NotificationResponseDTO markAsRead(
+            Integer idNotification,
+            Integer idRequester
+    ) {
+        Notification notification =
+                notificationRepository.findById(idNotification)
+                        .orElseThrow(() ->
+                                new NotificationNotFoundException(
+                                        "Notification introuvable avec l'id : "
+                                                + idNotification
+                                )
+                        );
 
         User requester = userRepository.findById(idRequester)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur requérant introuvable avec l'id : " + idRequester));
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Utilisateur requérant introuvable avec l'id : "
+                                + idRequester
+                ));
 
-        boolean isAdmin = requester.getRole() != null
-                && requester.getRole().getLabelRole() != null
-                && requester.getRole().getLabelRole().equalsIgnoreCase("ADMIN");
-
-        Integer ownerId = (notif.getUser() != null) ? notif.getUser().getIdUser() : null;
+        Integer ownerId = notification.getUser() != null
+                ? notification.getUser().getIdUser()
+                : null;
 
         if (ownerId == null) {
-            throw new IllegalStateException("Notification invalide : aucun propriétaire associé.");
+            throw new IllegalStateException(
+                    "Notification invalide : aucun propriétaire associé."
+            );
         }
 
-        if (!ownerId.equals(idRequester) && !isAdmin) {
-            throw new ForbiddenException("Accès interdit à cette notification.");
+        if (!ownerId.equals(idRequester) && !isAdmin(requester)) {
+            throw new ForbiddenException(
+                    "Accès interdit à cette notification."
+            );
         }
 
-        notif.setReadNotification(true);
+        notification.setReadNotification(true);
 
-        Notification saved = notificationRepository.save(notif);
+        Notification saved =
+                notificationRepository.save(notification);
 
         return NotificationMapper.toResponseDTO(saved);
+    }
+
+    // -------------------------------------------------------------------------
+    // OUTILS DE VALIDATION ET DE CRÉATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Vérifie qu’une demande de création contient un utilisateur cible.
+     *
+     * @param requestDTO demande à contrôler
+     */
+    private void validateNotificationRequest(
+            NotificationRequestDTO requestDTO
+    ) {
+        if (requestDTO == null || requestDTO.getIdUser() == null) {
+            throw new IllegalArgumentException(
+                    "L'identifiant utilisateur cible est obligatoire."
+            );
+        }
+    }
+
+    /**
+     * Résout l’utilisateur destinataire d’une notification.
+     *
+     * @param idUser identifiant de la cible
+     * @return utilisateur cible
+     */
+    private User findTargetUser(Integer idUser) {
+        return userRepository.findById(idUser)
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Utilisateur cible introuvable avec l'id : "
+                                + idUser
+                ));
+    }
+
+    /**
+     * Initialise les champs système obligatoires d’une notification.
+     *
+     * @param notification notification en cours de création
+     */
+    private void initializeSystemFields(Notification notification) {
+        notification.setDateNotification(LocalDateTime.now());
+        notification.setReadNotification(false);
+    }
+
+    /**
+     * Détermine si un utilisateur possède le rôle ADMIN.
+     *
+     * @param user utilisateur à contrôler
+     * @return true si l’utilisateur est administrateur
+     */
+    private boolean isAdmin(User user) {
+        return user != null
+                && user.getRole() != null
+                && user.getRole().getLabelRole() != null
+                && user.getRole()
+                .getLabelRole()
+                .equalsIgnoreCase("ADMIN");
+    }
+
+    /**
+     * Attribue le marqueur temporaire officiel à une notification créée
+     * pendant l’utilisation fonctionnelle de la DEMO.
+     *
+     * <p>Les deux protections doivent être réunies :</p>
+     *
+     * <ul>
+     *     <li>le profil Spring {@code demo} est actif ;</li>
+     *     <li>la propriété {@code magiclibrary.demo.reset.enabled} vaut
+     *     {@code true}.</li>
+     * </ul>
+     *
+     * <p>En dehors de cette configuration, le champ
+     * {@code demoScenarioCode} reste inchangé et normalement null.</p>
+     *
+     * @param notification notification en cours de création
+     */
+    private void applyDemoMarkerIfRequired(
+            Notification notification
+    ) {
+        if (notification == null) {
+            return;
+        }
+
+        boolean demoProfileActive =
+                environment.acceptsProfiles(Profiles.of("demo"));
+
+        if (!demoProfileActive || !demoResetEnabled) {
+            return;
+        }
+
+        notification.setDemoScenarioCode(
+                DemoScenarioCodes
+                        .RECRUITER_DEMO_CREATED_NOTIFICATIONS
+        );
     }
 }

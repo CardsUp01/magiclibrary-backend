@@ -38,8 +38,8 @@ import com.magiclibrary.services.demo.DemoScenarioHealthService;
  * Contrôle l'état canonique complet des scénarios de démonstration.
  *
  * <p>Cette implémentation est strictement diagnostique. Elle consulte les
- * données MariaDB et MongoDB sans réaliser aucune suppression, correction ou
- * reconstruction.</p>
+ * données MariaDB / MySQL et MongoDB sans réaliser aucune suppression,
+ * correction ou reconstruction.</p>
  *
  * <p>Le contrôle couvre cinq périmètres :</p>
  *
@@ -48,8 +48,10 @@ import com.magiclibrary.services.demo.DemoScenarioHealthService;
  *         l'absence de comptes temporaires DEMO résiduels ;</li>
  *     <li>les deux prêts DEMO et leurs lignes ;</li>
  *     <li>les trois objets du catalogue associés aux prêts ;</li>
- *     <li>les notifications relationnelles ;</li>
- *     <li>les huit messages du module CONTACT.</li>
+ *     <li>les notifications relationnelles canoniques et l'absence de
+ *         notifications temporaires DEMO résiduelles ;</li>
+ *     <li>les huit messages canoniques du module CONTACT et l'absence de
+ *         messages CONTACT temporaires DEMO résiduels.</li>
  * </ul>
  *
  * <p>Chaque anomalie détectée est ajoutée au rapport afin de permettre au
@@ -757,8 +759,9 @@ public class DemoScenarioHealthServiceImpl implements DemoScenarioHealthService 
     // =========================================================================
 
     /**
-     * Vérifie le nombre total de notifications et leur répartition entre Lucas
-     * et Sarah.
+     * Vérifie le nombre total de notifications canoniques, leur répartition
+     * entre Lucas et Sarah, ainsi que l'absence de notification temporaire
+     * marquée DEMO.
      *
      * @param anomalies collection recevant les anomalies détectées
      * @return {@code true} si les notifications DEMO sont conformes
@@ -776,8 +779,24 @@ public class DemoScenarioHealthServiceImpl implements DemoScenarioHealthService 
                     "Le scénario doit contenir exactement "
                             + DemoScenarioDefinition
                             .EXPECTED_LOAN_NOTIFICATION_COUNT
-                            + " notifications DEMO, "
+                            + " notifications DEMO canoniques, "
                             + totalCount + " trouvée(s)."
+            );
+            healthy = false;
+        }
+
+        long temporaryNotificationCount =
+                notificationRepository.countByDemoScenarioCode(
+                        DemoScenarioCodes
+                                .RECRUITER_DEMO_CREATED_NOTIFICATIONS
+                );
+
+        if (temporaryNotificationCount != 0L) {
+            anomalies.add(
+                    "Des notifications temporaires DEMO subsistent après "
+                            + "réinitialisation : "
+                            + temporaryNotificationCount
+                            + " notification(s) trouvée(s)."
             );
             healthy = false;
         }
@@ -845,7 +864,8 @@ public class DemoScenarioHealthServiceImpl implements DemoScenarioHealthService 
 
     /**
      * Vérifie le nombre, les statuts, l'origine, les sujets et la cohérence des
-     * réponses des documents Contact DEMO.
+     * réponses des documents Contact canoniques, ainsi que l'absence de message
+     * Contact temporaire marqué DEMO.
      *
      * @param anomalies collection recevant les anomalies détectées
      * @return {@code true} si les huit documents Contact sont conformes
@@ -858,12 +878,28 @@ public class DemoScenarioHealthServiceImpl implements DemoScenarioHealthService 
 
         boolean healthy = true;
 
+        long temporaryContactCount =
+                contactMongoRepository.countByDemoScenarioCode(
+                        DemoScenarioCodes
+                                .RECRUITER_DEMO_CREATED_CONTACT_MESSAGES
+                );
+
+        if (temporaryContactCount != 0L) {
+            anomalies.add(
+                    "Des messages CONTACT temporaires DEMO subsistent après "
+                            + "réinitialisation : "
+                            + temporaryContactCount
+                            + " message(s) trouvé(s)."
+            );
+            healthy = false;
+        }
+
         if (contacts.size()
                 != DemoScenarioDefinition.EXPECTED_CONTACT_COUNT) {
             anomalies.add(
                     "Le scénario CONTACT doit contenir exactement "
                             + DemoScenarioDefinition.EXPECTED_CONTACT_COUNT
-                            + " documents, "
+                            + " documents canoniques, "
                             + contacts.size() + " trouvé(s)."
             );
             healthy = false;

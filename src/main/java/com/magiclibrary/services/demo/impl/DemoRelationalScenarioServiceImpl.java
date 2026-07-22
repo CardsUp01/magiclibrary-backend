@@ -52,7 +52,8 @@ import com.magiclibrary.services.demo.DemoScenarioDefinition;
  * <ul>
  *     <li>la restauration canonique des comptes Admin, Lucas et Sarah ;</li>
  *     <li>la suppression sécurisée des comptes temporaires créés en DEMO ;</li>
- *     <li>la suppression ciblée des notifications d'emprunt DEMO ;</li>
+ *     <li>la suppression ciblée des notifications temporaires créées en DEMO ;</li>
+ *     <li>la suppression ciblée des notifications canoniques d'emprunt DEMO ;</li>
  *     <li>la suppression des lignes rattachées aux deux prêts DEMO ;</li>
  *     <li>la suppression des deux prêts portant les marqueurs officiels ;</li>
  *     <li>la restauration sécurisée des objets libérés par ces prêts ;</li>
@@ -227,6 +228,12 @@ public class DemoRelationalScenarioServiceImpl
                 DemoScenarioCodes.RECRUITER_DEMO_CREATED_USERS
         );
 
+        long temporaryNotificationCount =
+                notificationRepository.countByDemoScenarioCode(
+                        DemoScenarioCodes
+                                .RECRUITER_DEMO_CREATED_NOTIFICATIONS
+                );
+
         List<Item> itemsPreviouslyLinkedToRecreatableLoans =
                 collectItemsLinkedToRecreatableLoans(temporaryUsers);
 
@@ -266,9 +273,11 @@ public class DemoRelationalScenarioServiceImpl
         logger.info(
                 "Scénarios relationnels DEMO reconstruits avec succès : "
                         + "3 comptes canoniques restaurés, {} compte(s) "
-                        + "temporaire(s) supprimé(s), 2 prêts, 3 lignes et "
-                        + "2 notifications.",
-                temporaryUsers.size()
+                        + "temporaire(s) supprimé(s), {} notification(s) "
+                        + "temporaire(s) supprimée(s), 2 prêts, 3 lignes et "
+                        + "2 notifications canoniques.",
+                temporaryUsers.size(),
+                temporaryNotificationCount
         );
     }
 
@@ -708,13 +717,19 @@ public class DemoRelationalScenarioServiceImpl
      *     <li>lignes de leurs prêts ;</li>
      *     <li>leurs prêts ;</li>
      *     <li>comptes temporaires explicitement marqués ;</li>
-     *     <li>notifications, lignes et prêts des scénarios canoniques.</li>
+     *     <li>notifications temporaires créées pendant les tests DEMO ;</li>
+     *     <li>notifications canoniques d'emprunt ;</li>
+     *     <li>lignes et prêts des scénarios canoniques.</li>
      * </ol>
      *
      * @param temporaryUsers comptes temporaires à nettoyer
      */
     private void deleteRecreatableDemoData(List<User> temporaryUsers) {
         deleteTemporaryUsersAndDependencies(temporaryUsers);
+
+        notificationRepository.deleteByDemoScenarioCode(
+                DemoScenarioCodes.RECRUITER_DEMO_CREATED_NOTIFICATIONS
+        );
 
         notificationRepository.deleteByDemoScenarioCode(
                 DemoScenarioCodes.RECRUITER_DEMO_LOAN_NOTIFICATIONS
@@ -1189,6 +1204,21 @@ public class DemoRelationalScenarioServiceImpl
                     "Reconstruction DEMO incomplète : "
                             + remainingTemporaryUserCount
                             + " compte(s) temporaire(s) subsiste(nt)."
+            );
+        }
+
+        long remainingTemporaryNotificationCount =
+                notificationRepository.countByDemoScenarioCode(
+                        DemoScenarioCodes
+                                .RECRUITER_DEMO_CREATED_NOTIFICATIONS
+                );
+
+        if (remainingTemporaryNotificationCount != 0L) {
+            throw new IllegalStateException(
+                    "Reconstruction DEMO incomplète : "
+                            + remainingTemporaryNotificationCount
+                            + " notification(s) temporaire(s) "
+                            + "subsiste(nt) après le reset."
             );
         }
 

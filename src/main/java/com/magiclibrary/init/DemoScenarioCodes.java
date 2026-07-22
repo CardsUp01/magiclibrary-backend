@@ -22,7 +22,7 @@ package com.magiclibrary.init;
  *          - des notes ;
  *          - des statuts métier.
  *
- * Base relationnelle MariaDB :
+ * Base relationnelle MariaDB / MySQL :
  *      Les entités concernées utilisent la colonne :
  *
  *          demo_scenario_code
@@ -35,9 +35,11 @@ package com.magiclibrary.init;
  * Données concernées :
  *      - comptes socles permanents de démonstration ;
  *      - comptes temporaires créés pendant l'utilisation de la démo ;
- *      - emprunts de démonstration ;
- *      - notifications de démonstration ;
- *      - messages Contact de démonstration.
+ *      - emprunts canoniques de démonstration ;
+ *      - notifications canoniques liées aux emprunts ;
+ *      - notifications temporaires créées pendant les tests ;
+ *      - messages Contact canoniques MongoDB ;
+ *      - messages Contact temporaires créés pendant les tests.
  *
  * Données non concernées :
  *      - ROLE ;
@@ -51,6 +53,14 @@ package com.magiclibrary.init;
  *
  *          LoanLine -> Loan -> demoScenarioCode
  *
+ * Distinction canonique / temporaire :
+ *      Les données canoniques sont reconstruites dans leur état officiel lors
+ *      d'une réinitialisation DEMO.
+ *
+ *      Les données temporaires sont créées pendant l'utilisation fonctionnelle
+ *      de la démonstration. Elles sont supprimées lors de la réinitialisation,
+ *      mais ne sont pas recréées.
+ *
  * Sécurité :
  *      Ces constantes ne contiennent aucun secret.
  *      Elles peuvent être versionnées dans GitHub sans risque.
@@ -60,15 +70,15 @@ package com.magiclibrary.init;
  *          - profil Spring demo actif ;
  *          - propriété magiclibrary.demo.reset.enabled=true.
  *
- *      Les comptes temporaires ne peuvent être supprimés automatiquement que
- *      lorsqu'ils portent explicitement le marqueur dédié. L'absence de
+ *      Une donnée temporaire ne peut être supprimée automatiquement que
+ *      lorsqu'elle porte explicitement le marqueur dédié. L'absence de
  *      marqueur ne doit jamais être interprétée comme une autorisation de
  *      suppression.
  *
  * Maintenance :
- *      Toute nouvelle donnée scénarisée de démonstration devra réutiliser ou
- *      compléter cette classe afin d'éviter les fautes de frappe et les
- *      divergences entre les composants du mécanisme DEMO.
+ *      Toute nouvelle donnée scénarisée ou temporaire de démonstration devra
+ *      réutiliser ou compléter cette classe afin d'éviter les fautes de frappe
+ *      et les divergences entre les composants du mécanisme DEMO.
  *
  * =============================================================================
  */
@@ -164,27 +174,68 @@ public final class DemoScenarioCodes {
     // -------------------------------------------------------------------------
 
     /**
-     * Scénario regroupant les notifications de démonstration liées aux
-     * emprunts.
+     * Scénario regroupant les notifications canoniques de démonstration liées
+     * aux emprunts.
      *
-     * Les notifications sont recréables et peuvent être supprimées proprement
-     * avant reconstruction, sans impacter les notifications non-DEMO.
+     * Ces notifications sont recréées dans leur état officiel à chaque
+     * reconstruction du scénario, sans impacter les notifications non-DEMO.
      */
     public static final String RECRUITER_DEMO_LOAN_NOTIFICATIONS =
             "RECRUITER_DEMO_LOAN_NOTIFICATIONS";
+
+    /**
+     * Code associé aux notifications temporaires créées pendant l'utilisation
+     * fonctionnelle de la démonstration.
+     *
+     * Ce marqueur peut notamment identifier :
+     *      - les notifications administrateur générées lors de l'envoi d'un
+     *        nouveau message Contact ;
+     *      - les notifications membre générées lors de la réponse à un message ;
+     *      - les notifications créées manuellement pendant les tests ;
+     *      - les autres notifications système produites pendant une session
+     *        de démonstration.
+     *
+     * Ces notifications sont supprimées lors de la réinitialisation DEMO et ne
+     * sont pas recréées.
+     *
+     * Ce marqueur ne doit jamais être attribué en dehors de l'environnement
+     * DEMO explicitement activé.
+     */
+    public static final String RECRUITER_DEMO_CREATED_NOTIFICATIONS =
+            "RECRUITER_DEMO_CREATED_NOTIFICATIONS";
 
     // -------------------------------------------------------------------------
     // SCÉNARIOS CONTACT MONGODB
     // -------------------------------------------------------------------------
 
     /**
-     * Scénario regroupant les messages Contact MongoDB de démonstration.
+     * Scénario regroupant les messages Contact MongoDB canoniques de
+     * démonstration.
      *
      * Utilisé par le mécanisme de reconstruction CONTACT DEMO pour :
-     *      - nettoyer uniquement les messages Contact de démonstration ;
+     *      - nettoyer uniquement les messages Contact canoniques précédents ;
      *      - recréer une collection MongoDB crédible ;
      *      - préserver les messages Contact non-DEMO.
      */
     public static final String RECRUITER_DEMO_CONTACT_MESSAGES =
             "RECRUITER_DEMO_CONTACT_MESSAGES";
+
+    /**
+     * Code associé aux messages Contact temporaires créés depuis le formulaire
+     * pendant l'utilisation de la démonstration.
+     *
+     * Ces messages permettent de tester le parcours complet :
+     *      - envoi d'un message par un membre ;
+     *      - consultation du message côté membre ;
+     *      - réception et traitement côté administration ;
+     *      - réponse éventuelle de l'administrateur.
+     *
+     * Ils sont supprimés lors de la réinitialisation DEMO, mais ne sont pas
+     * recréés avec les huit messages canoniques.
+     *
+     * Les messages réels ou créés hors environnement DEMO doivent conserver un
+     * marqueur null et ne doivent jamais être ciblés par cette constante.
+     */
+    public static final String RECRUITER_DEMO_CREATED_CONTACT_MESSAGES =
+            "RECRUITER_DEMO_CREATED_CONTACT_MESSAGES";
 }
