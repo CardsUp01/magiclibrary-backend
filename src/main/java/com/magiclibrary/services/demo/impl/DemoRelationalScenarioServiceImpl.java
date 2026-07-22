@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,6 +96,9 @@ public class DemoRelationalScenarioServiceImpl
     private static final String ADMIN_EMAIL_PROPERTY =
             "ADMIN_EMAIL";
 
+    private static final String ADMIN_PASSWORD_PROPERTY =
+            "ADMIN_PASSWORD";
+
     private static final String DEFAULT_ADMIN_EMAIL =
             "admin@example.com";
 
@@ -128,6 +132,7 @@ public class DemoRelationalScenarioServiceImpl
     private final LoanLineRepository loanLineRepository;
     private final NotificationRepository notificationRepository;
     private final Environment environment;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Initialise le service avec les repositories relationnels requis.
@@ -139,6 +144,7 @@ public class DemoRelationalScenarioServiceImpl
      * @param loanLineRepository repository des lignes d'emprunt
      * @param notificationRepository repository des notifications
      * @param environment environnement Spring et propriétés actives
+     * @param passwordEncoder encodeur BCrypt partagé par l'application
      */
     public DemoRelationalScenarioServiceImpl(
             UserRepository userRepository,
@@ -147,7 +153,8 @@ public class DemoRelationalScenarioServiceImpl
             LoanRepository loanRepository,
             LoanLineRepository loanLineRepository,
             NotificationRepository notificationRepository,
-            Environment environment
+            Environment environment,
+            PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -156,6 +163,7 @@ public class DemoRelationalScenarioServiceImpl
         this.loanLineRepository = loanLineRepository;
         this.notificationRepository = notificationRepository;
         this.environment = environment;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -166,6 +174,7 @@ public class DemoRelationalScenarioServiceImpl
         LocalDateTime initializationDate = LocalDateTime.now();
 
         String adminEmail = resolveAdminEmail();
+        String adminPassword = resolveAdminPassword();
 
         User admin = resolveRequiredDemoUser(
                 adminEmail,
@@ -227,7 +236,8 @@ public class DemoRelationalScenarioServiceImpl
                 sarah,
                 adminRole,
                 memberRole,
-                adminEmail
+                adminEmail,
+                adminPassword
         );
 
         deleteRecreatableDemoData(temporaryUsers);
@@ -249,7 +259,8 @@ public class DemoRelationalScenarioServiceImpl
                 sarah,
                 adminRole,
                 memberRole,
-                adminEmail
+                adminEmail,
+                adminPassword
         );
 
         logger.info(
@@ -284,6 +295,30 @@ public class DemoRelationalScenarioServiceImpl
         }
 
         return adminEmail.trim();
+    }
+
+    /**
+     * Résout le mot de passe canonique du compte administrateur DEMO.
+     *
+     * <p>La valeur est lue depuis {@code ADMIN_PASSWORD}. Elle n'est jamais
+     * journalisée ni conservée en clair dans l'entité : seul son hash BCrypt
+     * est persisté.</p>
+     *
+     * @return mot de passe administrateur non vide
+     */
+    private String resolveAdminPassword() {
+        String adminPassword = environment.getProperty(
+                ADMIN_PASSWORD_PROPERTY
+        );
+
+        if (adminPassword == null || adminPassword.isBlank()) {
+            throw new IllegalStateException(
+                    "ADMIN_PASSWORD est vide ou absent. Impossible de "
+                            + "restaurer le mot de passe administrateur DEMO."
+            );
+        }
+
+        return adminPassword;
     }
 
     /**
@@ -480,8 +515,9 @@ public class DemoRelationalScenarioServiceImpl
 
     /**
      * Restaure intégralement l'identité fonctionnelle et les statuts des trois
-     * comptes canoniques sans modifier leurs mots de passe ni leurs dates
-     * d'inscription.
+     * comptes canoniques. Le mot de passe de l'administrateur est réencodé
+     * depuis la configuration DEMO ; les mots de passe de Lucas et Sarah ainsi
+     * que les dates d'inscription restent inchangés.
      *
      * @param admin compte administrateur
      * @param lucas compte Lucas
@@ -489,6 +525,7 @@ public class DemoRelationalScenarioServiceImpl
      * @param adminRole rôle ADMIN persistant
      * @param memberRole rôle MEMBRE persistant
      * @param adminEmail adresse canonique configurée de l'administrateur
+     * @param adminPassword mot de passe canonique de l'administrateur
      */
     private void restoreDemoAccounts(
             User admin,
@@ -496,7 +533,8 @@ public class DemoRelationalScenarioServiceImpl
             User sarah,
             Role adminRole,
             Role memberRole,
-            String adminEmail
+            String adminEmail,
+            String adminPassword
     ) {
         restoreCanonicalAccount(
                 admin,
@@ -505,6 +543,10 @@ public class DemoRelationalScenarioServiceImpl
                 DemoScenarioDefinition.ADMIN_FIRST_NAME,
                 DemoScenarioDefinition.ADMIN_LAST_NAME,
                 adminEmail
+        );
+
+        admin.setPasswordUser(
+                passwordEncoder.encode(adminPassword)
         );
 
         restoreCanonicalAccount(
@@ -532,6 +574,10 @@ public class DemoRelationalScenarioServiceImpl
     /**
      * Restaure un compte socle dans son état canonique tout en préservant son
      * mot de passe haché et sa date d'inscription initiale.
+     *
+     * <p>Pour l'administrateur, le mot de passe est remplacé séparément dans
+     * {@link #restoreDemoAccounts(User, User, User, Role, Role, String, String)}
+     * après cette restauration générique.</p>
      *
      * @param user compte à restaurer
      * @param role rôle canonique
@@ -1082,6 +1128,7 @@ public class DemoRelationalScenarioServiceImpl
      * @param adminRole rôle ADMIN attendu
      * @param memberRole rôle MEMBRE attendu
      * @param adminEmail adresse canonique de l'administrateur
+     * @param adminPassword mot de passe administrateur attendu en clair
      */
     private void verifyPersistedScenario(
             User admin,
@@ -1089,7 +1136,8 @@ public class DemoRelationalScenarioServiceImpl
             User sarah,
             Role adminRole,
             Role memberRole,
-            String adminEmail
+            String adminEmail,
+            String adminPassword
     ) {
         verifyCanonicalUser(
                 admin,
@@ -1100,6 +1148,16 @@ public class DemoRelationalScenarioServiceImpl
                 adminEmail,
                 "Admin"
         );
+
+        if (!passwordEncoder.matches(
+                adminPassword,
+                admin.getPasswordUser()
+        )) {
+            throw new IllegalStateException(
+                    "Reconstruction DEMO incomplète : le mot de passe "
+                            + "administrateur n'a pas été restauré."
+            );
+        }
 
         verifyCanonicalUser(
                 lucas,
