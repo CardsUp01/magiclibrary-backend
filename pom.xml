@@ -44,6 +44,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
+
     <!-- =========================================================================
          DÉPENDANCES PRINCIPALES
          Gestion des fonctionnalités backend MagicLibrary
@@ -115,11 +116,24 @@
         </dependency>
 
         <!-- ============================ MariaDB JDBC ============================
-             Driver JDBC pour la base relationnelle MariaDB
+             Pilote JDBC conservé pour les bases locales MariaDB.
+             Spring Boot sélectionnera ce pilote lorsque l'URL commence par
+             jdbc:mariadb:.
         ========================================================================= -->
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
             <artifactId>mariadb-java-client</artifactId>
+        </dependency>
+
+        <!-- ============================ MySQL JDBC ============================
+             Pilote JDBC officiel utilisé pour la base MySQL Railway.
+             Spring Boot sélectionnera ce pilote lorsque l'URL commence par
+             jdbc:mysql:.
+        ========================================================================= -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- ============================ JJWT (JSON Web Tokens) ============================
