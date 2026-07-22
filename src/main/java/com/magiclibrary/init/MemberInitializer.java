@@ -16,8 +16,10 @@ import org.slf4j.LoggerFactory;
 // IMPORTS SPRING
 // -----------------------------------------------------------------------------
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,230 +31,284 @@ import com.magiclibrary.entities.Role;
 import com.magiclibrary.entities.User;
 import com.magiclibrary.repositories.interfaces.RoleRepository;
 import com.magiclibrary.repositories.interfaces.UserRepository;
+import com.magiclibrary.services.demo.DemoScenarioDefinition;
 
 /**
  * =============================================================================
- *  INITIALISATION AUTOMATIQUE - UTILISATEURS MEMBRES DE DÉMONSTRATION
+ * INITIALISATION AUTOMATIQUE - UTILISATEURS MEMBRES DE DÉMONSTRATION
  * =============================================================================
  *
- *  🎯 OBJECTIF :
- *  -----------------------------------------------------------------------------
- *  Cette classe initialise automatiquement les comptes MEMBRE nécessaires à la
- *  démonstration publique de MagicLibrary.
+ * <p>Cette configuration garantit la présence des comptes membres nécessaires
+ * aux parcours de démonstration publique de MagicLibrary :</p>
  *
- *  Elle permet de garantir qu'une base Railway vide dispose immédiatement :
- *      - d'un compte administrateur créé par UserInitializer ;
- *      - de comptes membres utilisables pour tester les parcours utilisateur.
+ * <ul>
+ *     <li>Lucas, utilisé pour le scénario d'emprunt actif ;</li>
+ *     <li>Sarah, utilisée pour le scénario d'emprunt en retard.</li>
+ * </ul>
  *
- * =============================================================================
+ * <p>Les comptes constituent des données socles permanentes. Ils peuvent être
+ * créés ou marqués comme données DEMO, mais ils ne sont jamais supprimés par
+ * le mécanisme de reconstruction automatique.</p>
  *
- *  🧠 LOGIQUE MÉTIER :
- *  -----------------------------------------------------------------------------
- *  - Vérifie si les comptes membres de démonstration existent déjà
- *  - Récupère le rôle MEMBRE créé par RoleInitializer
- *  - Lit le mot de passe commun des comptes démo depuis l'environnement
- *  - Hash le mot de passe avec BCrypt
- *  - Crée les utilisateurs membres manquants
- *  - Sauvegarde les comptes en base MariaDB
+ * <h2>Isolation de l'environnement</h2>
  *
- * =============================================================================
+ * <p>La configuration est chargée uniquement lorsque les deux conditions
+ * suivantes sont réunies :</p>
  *
- *  ☁️ CONTEXTE DÉPLOIEMENT (RAILWAY) :
- *  -----------------------------------------------------------------------------
- *  Le mot de passe des comptes membres de démonstration doit être fourni via :
+ * <ul>
+ *     <li>le profil Spring {@code demo} est actif ;</li>
+ *     <li>la propriété {@code magiclibrary.demo.reset.enabled} vaut
+ *     explicitement {@code true}.</li>
+ * </ul>
  *
- *      DEMO_MEMBER_PASSWORD
+ * <p>Une instance utilisant uniquement le profil {@code prod}, notamment la
+ * future instance CLIENT, ne crée donc jamais Lucas ou Sarah et ne marque
+ * aucun compte existant comme donnée de démonstration.</p>
  *
- *  Cette variable doit être configurée dans Railway, onglet Variables.
+ * <h2>Idempotence</h2>
  *
- *  Les emails des comptes membres correspondent aux identifiants documentés dans
- *  le README public du projet afin de permettre une démo recruteur immédiate.
+ * <p>Les comptes sont recherchés par leur email fonctionnel stable :</p>
  *
- * =============================================================================
+ * <ul>
+ *     <li>un compte absent est créé avec le rôle MEMBRE ;</li>
+ *     <li>un compte existant n'est pas recréé ;</li>
+ *     <li>un compte existant non marqué reçoit uniquement le marqueur DEMO ;</li>
+ *     <li>son mot de passe, son rôle et son identité ne sont pas remplacés.</li>
+ * </ul>
  *
- *  🔒 SÉCURITÉ :
- *  -----------------------------------------------------------------------------
- *  - Aucun mot de passe n'est hardcodé dans le code source
- *  - Aucun mot de passe n'est affiché dans les logs
- *  - Le mot de passe est hashé avec BCrypt avant sauvegarde
- *  - L'initialisation est idempotente
- *  - Si les comptes existent déjà, aucun secret n'est requis au démarrage
+ * <h2>Sécurité des mots de passe</h2>
  *
- * =============================================================================
+ * <p>Le mot de passe commun des membres de démonstration provient de la
+ * propriété d'environnement {@code DEMO_MEMBER_PASSWORD}. Il n'est jamais
+ * codé en dur, journalisé ou conservé en clair.</p>
+ *
+ * <p>Cette propriété est exigée uniquement lorsqu'au moins un compte doit être
+ * créé. Lorsque les deux comptes existent déjà, aucun secret n'est requis par
+ * cet initialiseur.</p>
+ *
+ * <h2>Ordre d'exécution</h2>
+ *
+ * <p>L'ordre {@code 3} garantit l'exécution après :</p>
+ *
+ * <ol>
+ *     <li>{@code RoleInitializer}, qui crée le rôle MEMBRE ;</li>
+ *     <li>{@code UserInitializer}, qui prépare le compte administrateur.</li>
+ * </ol>
+ *
+ * <p>Le déclencheur global de reconstruction DEMO s'exécute ensuite à
+ * l'ordre {@code 4}.</p>
  */
 @Configuration
+@Profile("demo")
+@ConditionalOnProperty(
+        prefix = "magiclibrary.demo.reset",
+        name = "enabled",
+        havingValue = "true"
+)
 public class MemberInitializer {
 
-    private static final Logger logger = LoggerFactory.getLogger(MemberInitializer.class);
+    private static final Logger logger =
+            LoggerFactory.getLogger(MemberInitializer.class);
 
     private static final String ROLE_MEMBRE = "MEMBRE";
 
-    private static final String DEMO_MEMBER_PASSWORD_PROPERTY = "DEMO_MEMBER_PASSWORD";
+    private static final String DEMO_MEMBER_PASSWORD_PROPERTY =
+            "DEMO_MEMBER_PASSWORD";
 
-    private static final String MEMBER_ONE_EMAIL = "lucas.demo@magiclibrary.fr";
-    private static final String MEMBER_TWO_EMAIL = "sarah.demo@magiclibrary.fr";
-
+    /**
+     * Initialise les comptes membres socles de démonstration.
+     *
+     * <p>La méthode conserve une logique strictement idempotente. Elle valide
+     * d'abord l'existence des deux comptes, marque les comptes déjà présents,
+     * puis ne charge le mot de passe et le rôle que lorsqu'une création est
+     * réellement nécessaire.</p>
+     *
+     * @param userRepository repository des comptes utilisateurs
+     * @param roleRepository repository des rôles
+     * @param environment environnement Spring contenant le secret DEMO
+     * @return runner exécuté après les initialiseurs des rôles et de l'admin
+     */
     @Bean
-    @Order(3) // 👉 Exécuté après RoleInitializer et UserInitializer
+    @Order(3)
     public CommandLineRunner initDemoMembers(
             UserRepository userRepository,
             RoleRepository roleRepository,
             Environment environment
     ) {
-
         return args -> {
+            Optional<User> lucasOptional = userRepository.findByEmailUser(
+                    DemoScenarioDefinition.LUCAS_EMAIL
+            );
 
-            // -----------------------------------------------------------------
-            // 1) CHECK D'EXISTENCE DES COMPTES MEMBRES
-            // -----------------------------------------------------------------
-            // Les comptes membres de démonstration sont recherchés par email afin
-            // de conserver l'idempotence historique de l'initializer.
-            //
-            // Architecture DEMO :
-            // Si Lucas ou Sarah existent déjà mais ne sont pas encore marqués
-            // comme comptes socles de démonstration, le marqueur est ajouté sans
-            // modifier le mot de passe, le rôle ou les autres données du compte.
-            // -----------------------------------------------------------------
-            Optional<User> memberOneOptional = userRepository.findByEmailUser(MEMBER_ONE_EMAIL);
-            Optional<User> memberTwoOptional = userRepository.findByEmailUser(MEMBER_TWO_EMAIL);
+            Optional<User> sarahOptional = userRepository.findByEmailUser(
+                    DemoScenarioDefinition.SARAH_EMAIL
+            );
 
-            boolean memberOneExists = memberOneOptional.isPresent();
-            boolean memberTwoExists = memberTwoOptional.isPresent();
+            boolean lucasExists = lucasOptional.isPresent();
+            boolean sarahExists = sarahOptional.isPresent();
 
-            if (memberOneExists) {
-                markDemoMemberIfNeeded(userRepository, memberOneOptional.get(), "1");
-            }
+            lucasOptional.ifPresent(
+                    user -> markDemoMemberIfNeeded(
+                            userRepository,
+                            user,
+                            DemoScenarioDefinition.LUCAS_DISPLAY_NAME
+                    )
+            );
 
-            if (memberTwoExists) {
-                markDemoMemberIfNeeded(userRepository, memberTwoOptional.get(), "2");
-            }
+            sarahOptional.ifPresent(
+                    user -> markDemoMemberIfNeeded(
+                            userRepository,
+                            user,
+                            DemoScenarioDefinition.SARAH_DISPLAY_NAME
+                    )
+            );
 
-            if (memberOneExists && memberTwoExists) {
-                logger.info("Comptes membres de démonstration déjà présents.");
+            if (lucasExists && sarahExists) {
+                logger.info(
+                        "Comptes membres socles de démonstration déjà présents."
+                );
                 return;
             }
 
-            // -----------------------------------------------------------------
-            // 2) RÉCUPÉRATION DU MOT DE PASSE DÉMO DEPUIS L'ENVIRONNEMENT
-            // -----------------------------------------------------------------
-            // Le mot de passe est un secret.
-            // Il ne doit JAMAIS être présent en dur dans le code source.
-            //
-            // En production Railway :
-            //   DEMO_MEMBER_PASSWORD doit être défini dans l'onglet Variables.
-            //
-            // Si au moins un compte membre doit être créé et que la variable est
-            // absente, l'application échoue volontairement au démarrage afin
-            // d'éviter la création de comptes faibles ou incohérents.
-            // -----------------------------------------------------------------
-            String demoMemberPassword = environment.getProperty(DEMO_MEMBER_PASSWORD_PROPERTY);
+            String demoMemberPassword = environment.getProperty(
+                    DEMO_MEMBER_PASSWORD_PROPERTY
+            );
 
-            if (demoMemberPassword == null || demoMemberPassword.isBlank()) {
+            if (demoMemberPassword == null
+                    || demoMemberPassword.isBlank()) {
                 throw new IllegalStateException(
-                        "DEMO_MEMBER_PASSWORD est manquant. Impossible de créer les comptes membres de démonstration."
+                        "DEMO_MEMBER_PASSWORD est manquant. Impossible de "
+                                + "créer les comptes membres de démonstration."
                 );
             }
 
-            // -----------------------------------------------------------------
-            // 3) RÉCUPÉRATION DU ROLE MEMBRE
-            // -----------------------------------------------------------------
-            // Ce rôle DOIT exister en base via RoleInitializer.
-            // Sinon → erreur volontaire pour signaler une initialisation DB incomplète.
-            // -----------------------------------------------------------------
             Role memberRole = roleRepository.findByLabelRole(ROLE_MEMBRE)
-                    .orElseThrow(() ->
-                            new RuntimeException("ROLE MEMBRE introuvable en base !")
-                    );
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Le rôle MEMBRE est introuvable. "
+                                    + "L'initialisation des rôles est incomplète."
+                    ));
 
-            // -----------------------------------------------------------------
-            // 4) HASH DU MOT DE PASSE
-            // -----------------------------------------------------------------
-            // BCrypt = standard sécurité Spring Security.
-            // Le mot de passe brut n'est jamais sauvegardé ni affiché.
-            // -----------------------------------------------------------------
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-            String hashedPassword = encoder.encode(demoMemberPassword);
+            BCryptPasswordEncoder passwordEncoder =
+                    new BCryptPasswordEncoder();
 
-            // -----------------------------------------------------------------
-            // 5) CRÉATION CONDITIONNELLE DU MEMBRE 1
-            // -----------------------------------------------------------------
-            // Compte membre utilisé pour tester les fonctionnalités utilisateur :
-            // consultation catalogue, emprunts, profil et parcours non admin.
-            // -----------------------------------------------------------------
-            if (!memberOneExists) {
-                User memberOne = new User(
+            String hashedPassword = passwordEncoder.encode(
+                    demoMemberPassword
+            );
+
+            if (!lucasExists) {
+                User lucas = createDemoMember(
                         memberRole,
                         "M",
                         "Lucas",
                         "Demo",
-                        MEMBER_ONE_EMAIL,
-                        hashedPassword,
-                        true,
-                        true,
-                        LocalDateTime.now()
+                        DemoScenarioDefinition.LUCAS_EMAIL,
+                        hashedPassword
                 );
 
-                memberOne.setEmailVerifiedUser(true);
-                memberOne.setDepositUser(true);
-                memberOne.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
+                userRepository.save(lucas);
 
-                userRepository.save(memberOne);
-
-                logger.info("Compte membre de démonstration 1 créé avec succès.");
+                logger.info(
+                        "Compte membre de démonstration Lucas créé avec succès."
+                );
             }
 
-            // -----------------------------------------------------------------
-            // 6) CRÉATION CONDITIONNELLE DU MEMBRE 2
-            // -----------------------------------------------------------------
-            // Second compte membre permettant de tester plusieurs profils sans
-            // utiliser le compte administrateur.
-            // -----------------------------------------------------------------
-            if (!memberTwoExists) {
-                User memberTwo = new User(
+            if (!sarahExists) {
+                User sarah = createDemoMember(
                         memberRole,
                         "Mme",
                         "Sarah",
                         "Demo",
-                        MEMBER_TWO_EMAIL,
-                        hashedPassword,
-                        true,
-                        true,
-                        LocalDateTime.now()
+                        DemoScenarioDefinition.SARAH_EMAIL,
+                        hashedPassword
                 );
 
-                memberTwo.setEmailVerifiedUser(true);
-                memberTwo.setDepositUser(true);
-                memberTwo.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
+                userRepository.save(sarah);
 
-                userRepository.save(memberTwo);
-
-                logger.info("Compte membre de démonstration 2 créé avec succès.");
+                logger.info(
+                        "Compte membre de démonstration Sarah créé avec succès."
+                );
             }
         };
     }
 
-    // -------------------------------------------------------------------------
-    // MARQUAGE DES COMPTES SOCLES DE DÉMONSTRATION
-    // -------------------------------------------------------------------------
     /**
-     * Ajoute le marqueur de démonstration à un compte membre existant si celui-ci
-     * n'est pas encore aligné avec l'architecture demoScenarioCode.
+     * Construit un compte membre socle avec les indicateurs nécessaires aux
+     * parcours de démonstration.
      *
-     * Cette mise à niveau est volontairement non destructive :
-     *      - aucun mot de passe n'est modifié ;
-     *      - aucun rôle n'est modifié ;
-     *      - aucune donnée personnelle du compte n'est modifiée ;
-     *      - aucun compte n'est supprimé.
+     * @param role rôle MEMBRE
+     * @param civility civilité
+     * @param firstName prénom
+     * @param lastName nom
+     * @param email email fonctionnel stable
+     * @param hashedPassword mot de passe BCrypt
+     * @return compte complet prêt à être persisté
+     */
+    private User createDemoMember(
+            Role role,
+            String civility,
+            String firstName,
+            String lastName,
+            String email,
+            String hashedPassword
+    ) {
+        User member = new User(
+                role,
+                civility,
+                firstName,
+                lastName,
+                email,
+                hashedPassword,
+                Boolean.TRUE,
+                Boolean.TRUE,
+                LocalDateTime.now()
+        );
+
+        member.setEmailVerifiedUser(Boolean.TRUE);
+        member.setDepositUser(Boolean.TRUE);
+        member.setDemoScenarioCode(
+                DemoScenarioCodes.RECRUITER_DEMO_USERS
+        );
+
+        return member;
+    }
+
+    /**
+     * Ajoute le marqueur officiel à un compte membre existant uniquement
+     * lorsque celui-ci n'est pas encore identifié comme compte socle DEMO.
+     *
+     * <p>Cette mise à niveau est non destructive :</p>
+     *
+     * <ul>
+     *     <li>aucun mot de passe n'est modifié ;</li>
+     *     <li>aucun rôle n'est modifié ;</li>
+     *     <li>aucune information d'identité n'est modifiée ;</li>
+     *     <li>aucun compte n'est supprimé.</li>
+     * </ul>
+     *
+     * @param userRepository repository des utilisateurs
+     * @param member compte existant
+     * @param displayName nom utilisé dans le journal applicatif
      */
     private void markDemoMemberIfNeeded(
             UserRepository userRepository,
             User member,
-            String memberNumber
+            String displayName
     ) {
-        if (!DemoScenarioCodes.RECRUITER_DEMO_USERS.equals(member.getDemoScenarioCode())) {
-            member.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
-            userRepository.save(member);
-            logger.info("Compte membre de démonstration {} déjà présent et marqué comme compte de démonstration.", memberNumber);
+        if (DemoScenarioCodes.RECRUITER_DEMO_USERS.equals(
+                member.getDemoScenarioCode()
+        )) {
+            return;
         }
+
+        member.setDemoScenarioCode(
+                DemoScenarioCodes.RECRUITER_DEMO_USERS
+        );
+
+        userRepository.save(member);
+
+        logger.info(
+                "Compte membre {} déjà présent et marqué comme compte DEMO.",
+                displayName
+        );
     }
 }

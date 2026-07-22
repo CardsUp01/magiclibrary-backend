@@ -4,6 +4,7 @@ package com.magiclibrary.init;
 // IMPORTS JAVA
 // -----------------------------------------------------------------------------
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Optional;
 
 // -----------------------------------------------------------------------------
@@ -32,210 +33,324 @@ import com.magiclibrary.repositories.interfaces.UserRepository;
 
 /**
  * =============================================================================
- *  INITIALISATION AUTOMATIQUE - UTILISATEUR ADMINISTRATEUR
+ * INITIALISATION AUTOMATIQUE - UTILISATEUR ADMINISTRATEUR
  * =============================================================================
  *
- *  🔐 OBJECTIF :
- *  -----------------------------------------------------------------------------
- *  Cette classe initialise automatiquement un compte administrateur au démarrage
- *  de l'application Spring Boot, uniquement si ce compte n'existe pas encore.
+ * <p>Cette configuration garantit la présence du compte administrateur initial
+ * nécessaire à l'accès à l'espace d'administration de MagicLibrary.</p>
  *
- *  Le compte admin initial permet d'accéder à l'espace d'administration après
- *  un premier déploiement sur une base Railway vide.
+ * <p>Contrairement aux initialiseurs strictement réservés à la démonstration,
+ * cette classe reste active dans tous les environnements :</p>
  *
- * =============================================================================
+ * <ul>
+ *     <li>DEV, pour permettre l'utilisation locale de l'application ;</li>
+ *     <li>DEMO, pour préparer le compte administrateur recruteur ;</li>
+ *     <li>PROD CLIENT, pour permettre l'administration de l'instance réelle.</li>
+ * </ul>
  *
- *  🧠 LOGIQUE MÉTIER :
- *  -----------------------------------------------------------------------------
- *  - Lit l'email administrateur depuis les variables d'environnement
- *  - Vérifie si le compte admin existe déjà
- *  - Lit obligatoirement le mot de passe depuis les variables d'environnement
- *  - Récupère le rôle ADMIN créé par RoleInitializer
- *  - Hash le mot de passe avec BCrypt
- *  - Crée l'utilisateur administrateur initial
- *  - Sauvegarde en base MariaDB
+ * <h2>Isolation du marqueur DEMO</h2>
  *
- * =============================================================================
+ * <p>La création du compte administrateur est une responsabilité commune.
+ * En revanche, l'attribution du marqueur
+ * {@code DemoScenarioCodes.RECRUITER_DEMO_USERS} est strictement limitée à
+ * l'environnement de démonstration.</p>
  *
- *  ☁️ CONTEXTE DÉPLOIEMENT (RAILWAY) :
- *  -----------------------------------------------------------------------------
- *  Les secrets ne doivent jamais être hardcodés dans le code source.
+ * <p>Le marqueur est appliqué uniquement lorsque les deux conditions
+ * suivantes sont réunies :</p>
  *
- *  En production Railway, le mot de passe initial doit être fourni via :
- *  → ADMIN_PASSWORD
+ * <ul>
+ *     <li>le profil Spring {@code demo} est explicitement actif ;</li>
+ *     <li>la propriété {@code magiclibrary.demo.reset.enabled} vaut
+ *     explicitement {@code true}.</li>
+ * </ul>
  *
- *  L'email administrateur peut être fourni via :
- *  → ADMIN_EMAIL
+ * <p>Une instance CLIENT utilisant uniquement le profil {@code prod} crée donc
+ * son administrateur initial sans jamais le marquer comme donnée DEMO.</p>
  *
- *  Si ADMIN_EMAIL est absent, une valeur par défaut non sensible est utilisée.
+ * <h2>Idempotence</h2>
  *
- * =============================================================================
+ * <p>Le compte est recherché par l'adresse configurée dans
+ * {@code ADMIN_EMAIL} :</p>
  *
- *  🔒 SÉCURITÉ :
- *  -----------------------------------------------------------------------------
- *  - Aucun mot de passe n'est présent dans le code source
- *  - Aucun mot de passe n'est affiché dans les logs
- *  - Le mot de passe est hashé avec BCrypt avant sauvegarde
- *  - La création est idempotente pour éviter les doublons au redémarrage
- *  - Si le compte existe déjà, aucun secret n'est requis au démarrage
+ * <ul>
+ *     <li>s'il existe déjà, il n'est pas recréé ;</li>
+ *     <li>son mot de passe, son rôle et son identité ne sont pas remplacés ;</li>
+ *     <li>en environnement DEMO uniquement, le marqueur manquant est ajouté ;</li>
+ *     <li>en environnement non DEMO, aucun marqueur n'est ajouté ou retiré.</li>
+ * </ul>
  *
- * =============================================================================
+ * <h2>Sécurité des secrets</h2>
+ *
+ * <p>Le mot de passe initial provient exclusivement de
+ * {@code ADMIN_PASSWORD}. Il n'est chargé que lorsqu'une création est
+ * nécessaire, puis il est haché avec BCrypt avant persistance.</p>
+ *
+ * <p>Aucun mot de passe brut n'est enregistré ou écrit dans les journaux.</p>
+ *
+ * <h2>Ordre d'exécution</h2>
+ *
+ * <p>L'ordre {@code 2} garantit que {@code RoleInitializer} a déjà préparé le
+ * rôle ADMIN avant la création éventuelle du compte.</p>
  */
 @Configuration
 public class UserInitializer {
 
-    private static final Logger logger = LoggerFactory.getLogger(UserInitializer.class);
+    private static final Logger logger =
+            LoggerFactory.getLogger(UserInitializer.class);
 
-    private static final String DEFAULT_ADMIN_EMAIL = "admin@example.com";
-    private static final String ADMIN_EMAIL_PROPERTY = "ADMIN_EMAIL";
-    private static final String ADMIN_PASSWORD_PROPERTY = "ADMIN_PASSWORD";
+    private static final String DEFAULT_ADMIN_EMAIL =
+            "admin@example.com";
 
+    private static final String ADMIN_EMAIL_PROPERTY =
+            "ADMIN_EMAIL";
+
+    private static final String ADMIN_PASSWORD_PROPERTY =
+            "ADMIN_PASSWORD";
+
+    private static final String DEMO_PROFILE =
+            "demo";
+
+    private static final String DEMO_RESET_ENABLED_PROPERTY =
+            "magiclibrary.demo.reset.enabled";
+
+    private static final String ROLE_ADMIN =
+            "ADMIN";
+
+    /**
+     * Initialise le compte administrateur commun à l'environnement courant.
+     *
+     * <p>La méthode distingue explicitement :</p>
+     *
+     * <ul>
+     *     <li>la création commune du compte administrateur ;</li>
+     *     <li>le marquage supplémentaire réservé à la DEMO.</li>
+     * </ul>
+     *
+     * @param userRepository repository des utilisateurs
+     * @param roleRepository repository des rôles
+     * @param environment environnement Spring et propriétés de déploiement
+     * @return runner exécuté après l'initialisation des rôles
+     */
     @Bean
-    @Order(2) // 👉 Exécuté après RoleInitializer (ordre critique pour dépendances)
+    @Order(2)
     public CommandLineRunner initAdmin(
             UserRepository userRepository,
             RoleRepository roleRepository,
             Environment environment
     ) {
-
         return args -> {
+            String adminEmail = resolveAdminEmail(environment);
+            boolean demoEnvironment = isDemoEnvironment(environment);
 
-            // -----------------------------------------------------------------
-            // 1) RÉCUPÉRATION DE L'EMAIL ADMINISTRATEUR
-            // -----------------------------------------------------------------
-            // L'email peut être injecté via variable d'environnement Railway.
-            // Si aucune variable n'est fournie, une valeur par défaut est utilisée.
-            // Cette valeur n'est pas sensible et peut rester visible dans le code.
-            // -----------------------------------------------------------------
-            String adminEmail = environment.getProperty(
-                    ADMIN_EMAIL_PROPERTY,
-                    DEFAULT_ADMIN_EMAIL
-            );
-
-            // -----------------------------------------------------------------
-            // 2) CHECK D'EXISTENCE - ÉVITE DUPLICATION ADMIN
-            // -----------------------------------------------------------------
-            // Si l'admin existe déjà → aucune recréation.
-            // Sécurité : évite une double insertion en cas de restart Railway.
-            //
-            // Important :
-            // Le check est effectué AVANT la lecture du mot de passe.
-            // Ainsi, si le compte existe déjà, l'application peut démarrer sans
-            // nécessiter ADMIN_PASSWORD.
-            //
-            // Architecture DEMO :
-            // Si le compte existe déjà mais n'est pas encore marqué comme compte
-            // socle de démonstration, le marqueur est ajouté sans modifier le mot
-            // de passe, le rôle ou les autres données du compte.
-            // -----------------------------------------------------------------
-            Optional<User> existingAdminOptional = userRepository.findByEmailUser(adminEmail);
+            Optional<User> existingAdminOptional =
+                    userRepository.findByEmailUser(adminEmail);
 
             if (existingAdminOptional.isPresent()) {
-                User existingAdmin = existingAdminOptional.get();
-
-                if (!DemoScenarioCodes.RECRUITER_DEMO_USERS.equals(existingAdmin.getDemoScenarioCode())) {
-                    existingAdmin.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
-                    userRepository.save(existingAdmin);
-                    logger.info("Compte administrateur initial déjà présent et marqué comme compte de démonstration.");
-                    return;
-                }
-
-                logger.info("Compte administrateur initial déjà présent.");
+                handleExistingAdmin(
+                        userRepository,
+                        existingAdminOptional.get(),
+                        demoEnvironment
+                );
                 return;
             }
 
-            // -----------------------------------------------------------------
-            // 3) RÉCUPÉRATION DU MOT DE PASSE ADMIN DEPUIS L'ENVIRONNEMENT
-            // -----------------------------------------------------------------
-            // Le mot de passe initial est un secret.
-            // Il ne doit JAMAIS être hardcodé dans le code source.
-            //
-            // En production Railway :
-            //   ADMIN_PASSWORD doit être défini dans l'onglet Variables.
-            //
-            // Si la variable est absente, l'application échoue volontairement au
-            // démarrage afin d'éviter la création d'un compte administrateur faible
-            // ou prévisible.
-            // -----------------------------------------------------------------
-            String adminPassword = environment.getProperty(ADMIN_PASSWORD_PROPERTY);
+            String adminPassword = resolveRequiredAdminPassword(environment);
+            Role adminRole = resolveAdminRole(roleRepository);
 
-            if (adminPassword == null || adminPassword.isBlank()) {
-                throw new IllegalStateException(
-                        "ADMIN_PASSWORD est manquant. Impossible de créer le compte administrateur initial."
-                );
-            }
+            BCryptPasswordEncoder passwordEncoder =
+                    new BCryptPasswordEncoder();
 
-            // -----------------------------------------------------------------
-            // 4) RÉCUPÉRATION DU ROLE ADMIN
-            // -----------------------------------------------------------------
-            // Ce rôle DOIT exister en base via RoleInitializer.
-            // Sinon → erreur volontaire pour signaler une initialisation DB incomplète.
-            // -----------------------------------------------------------------
-            Role adminRole = roleRepository.findByLabelRole("ADMIN")
-                    .orElseThrow(() ->
-                            new RuntimeException("ROLE ADMIN introuvable en base !")
-                    );
+            String hashedPassword =
+                    passwordEncoder.encode(adminPassword);
 
-            // -----------------------------------------------------------------
-            // 5) HASH DU MOT DE PASSE
-            // -----------------------------------------------------------------
-            // BCrypt = standard sécurité Spring Security.
-            // Le mot de passe brut n'est jamais sauvegardé ni affiché.
-            // -----------------------------------------------------------------
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-            String hashedPassword = encoder.encode(adminPassword);
-
-            // -----------------------------------------------------------------
-            // 6) CRÉATION DE L'UTILISATEUR ADMIN
-            // -----------------------------------------------------------------
-            // Compte technique initial utilisé pour accéder à l'administration.
-            // Les données non sensibles restent volontairement explicites.
-            // -----------------------------------------------------------------
-            User admin = new User(
+            User admin = createAdmin(
                     adminRole,
-                    "M",
-                    "Admin",
-                    "System",
                     adminEmail,
                     hashedPassword,
-                    true,
-                    true,
-                    LocalDateTime.now()
+                    demoEnvironment
             );
 
-            // -----------------------------------------------------------------
-            // 7) FLAGS MÉTIER
-            // -----------------------------------------------------------------
-            // Activation email + dépôt autorisé.
-            // Cela simplifie l'utilisation immédiate en mode démo / production.
-            // -----------------------------------------------------------------
-            admin.setEmailVerifiedUser(true);
-            admin.setDepositUser(true);
-
-            // -----------------------------------------------------------------
-            // 8) MARQUEUR DE DÉMONSTRATION
-            // -----------------------------------------------------------------
-            // Le compte administrateur de démonstration est une donnée socle :
-            // il peut être identifié par demoScenarioCode, mais ne doit jamais
-            // être supprimé automatiquement lors d'une reconstruction.
-            // -----------------------------------------------------------------
-            admin.setDemoScenarioCode(DemoScenarioCodes.RECRUITER_DEMO_USERS);
-
-            // -----------------------------------------------------------------
-            // 9) SAUVEGARDE EN BASE
-            // -----------------------------------------------------------------
-            // Insertion en MariaDB via JPA Repository.
-            // L'opération est exécutée uniquement si le compte n'existe pas déjà.
-            // -----------------------------------------------------------------
             userRepository.save(admin);
 
-            // -----------------------------------------------------------------
-            // 10) LOG DE CONFIRMATION SÉCURISÉ
-            // -----------------------------------------------------------------
-            // Le mot de passe n'est jamais affiché.
-            // L'email n'est pas loggé afin de conserver des logs sobres en production.
-            // -----------------------------------------------------------------
-            logger.info("Compte administrateur initial créé avec succès.");
+            if (demoEnvironment) {
+                logger.info(
+                        "Compte administrateur initial DEMO créé avec succès."
+                );
+            } else {
+                logger.info(
+                        "Compte administrateur initial créé avec succès."
+                );
+            }
         };
+    }
+
+    /**
+     * Résout et normalise l'adresse du compte administrateur.
+     *
+     * @param environment environnement Spring
+     * @return adresse non vide
+     */
+    private String resolveAdminEmail(Environment environment) {
+        String adminEmail = environment.getProperty(
+                ADMIN_EMAIL_PROPERTY,
+                DEFAULT_ADMIN_EMAIL
+        );
+
+        if (adminEmail.isBlank()) {
+            throw new IllegalStateException(
+                    "ADMIN_EMAIL est vide. Impossible d'identifier le compte "
+                            + "administrateur initial."
+            );
+        }
+
+        return adminEmail.trim();
+    }
+
+    /**
+     * Détermine si le marquage DEMO est explicitement autorisé.
+     *
+     * <p>Le profil et la propriété doivent être simultanément présents. Cette
+     * double protection empêche l'activation du marquage sur une instance
+     * CLIENT utilisant le profil {@code prod} seul.</p>
+     *
+     * @param environment environnement Spring
+     * @return {@code true} uniquement pour l'instance DEMO autorisée
+     */
+    private boolean isDemoEnvironment(Environment environment) {
+        boolean demoProfileActive = Arrays.stream(
+                environment.getActiveProfiles()
+        ).anyMatch(DEMO_PROFILE::equals);
+
+        boolean demoResetEnabled = environment.getProperty(
+                DEMO_RESET_ENABLED_PROPERTY,
+                Boolean.class,
+                Boolean.FALSE
+        );
+
+        return demoProfileActive && demoResetEnabled;
+    }
+
+    /**
+     * Traite un administrateur déjà présent sans modifier ses données
+     * fonctionnelles.
+     *
+     * <p>En DEMO, le marqueur officiel est ajouté s'il manque. Dans tous les
+     * autres environnements, le compte reste strictement inchangé.</p>
+     *
+     * @param userRepository repository des utilisateurs
+     * @param existingAdmin compte déjà présent
+     * @param demoEnvironment indique si le marquage DEMO est autorisé
+     */
+    private void handleExistingAdmin(
+            UserRepository userRepository,
+            User existingAdmin,
+            boolean demoEnvironment
+    ) {
+        if (!demoEnvironment) {
+            logger.info(
+                    "Compte administrateur initial déjà présent."
+            );
+            return;
+        }
+
+        if (DemoScenarioCodes.RECRUITER_DEMO_USERS.equals(
+                existingAdmin.getDemoScenarioCode()
+        )) {
+            logger.info(
+                    "Compte administrateur DEMO déjà présent et correctement "
+                            + "marqué."
+            );
+            return;
+        }
+
+        existingAdmin.setDemoScenarioCode(
+                DemoScenarioCodes.RECRUITER_DEMO_USERS
+        );
+
+        userRepository.save(existingAdmin);
+
+        logger.info(
+                "Compte administrateur déjà présent et marqué comme compte "
+                        + "socle DEMO."
+        );
+    }
+
+    /**
+     * Charge le mot de passe administrateur requis pour une création.
+     *
+     * @param environment environnement Spring
+     * @return mot de passe brut non vide, destiné uniquement au hachage immédiat
+     */
+    private String resolveRequiredAdminPassword(
+            Environment environment
+    ) {
+        String adminPassword = environment.getProperty(
+                ADMIN_PASSWORD_PROPERTY
+        );
+
+        if (adminPassword == null || adminPassword.isBlank()) {
+            throw new IllegalStateException(
+                    "ADMIN_PASSWORD est manquant. Impossible de créer le "
+                            + "compte administrateur initial."
+            );
+        }
+
+        return adminPassword;
+    }
+
+    /**
+     * Résout le rôle ADMIN créé préalablement par {@code RoleInitializer}.
+     *
+     * @param roleRepository repository des rôles
+     * @return rôle ADMIN persistant
+     */
+    private Role resolveAdminRole(RoleRepository roleRepository) {
+        return roleRepository.findByLabelRole(ROLE_ADMIN)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Le rôle ADMIN est introuvable. "
+                                + "L'initialisation des rôles est incomplète."
+                ));
+    }
+
+    /**
+     * Construit le compte administrateur initial.
+     *
+     * <p>Le marqueur DEMO est renseigné uniquement lorsque l'environnement
+     * courant a été validé comme instance de démonstration.</p>
+     *
+     * @param adminRole rôle ADMIN
+     * @param adminEmail adresse configurée
+     * @param hashedPassword mot de passe haché
+     * @param demoEnvironment indique si le marqueur DEMO doit être appliqué
+     * @return administrateur prêt à être persisté
+     */
+    private User createAdmin(
+            Role adminRole,
+            String adminEmail,
+            String hashedPassword,
+            boolean demoEnvironment
+    ) {
+        User admin = new User(
+                adminRole,
+                "M",
+                "Admin",
+                "System",
+                adminEmail,
+                hashedPassword,
+                Boolean.TRUE,
+                Boolean.TRUE,
+                LocalDateTime.now()
+        );
+
+        admin.setEmailVerifiedUser(Boolean.TRUE);
+        admin.setDepositUser(Boolean.TRUE);
+
+        if (demoEnvironment) {
+            admin.setDemoScenarioCode(
+                    DemoScenarioCodes.RECRUITER_DEMO_USERS
+            );
+        }
+
+        return admin;
     }
 }

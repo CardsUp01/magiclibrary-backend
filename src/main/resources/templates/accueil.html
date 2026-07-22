@@ -5,6 +5,28 @@
 
     <th:block th:fragment="content">
 
+        <!-- Retour utilisateur après une réinitialisation manuelle DEMO -->
+        <div th:if="${successMessage != null or errorMessage != null}"
+             class="mb-6"
+             role="status"
+             aria-live="polite"
+             aria-atomic="true">
+
+            <div th:if="${successMessage != null}"
+                 class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+                <span th:text="${successMessage}">
+                    Opération réalisée avec succès.
+                </span>
+            </div>
+
+            <div th:if="${errorMessage != null}"
+                 class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                <span th:text="${errorMessage}">
+                    Une erreur est survenue.
+                </span>
+            </div>
+        </div>
+
         <!--
             Page d'accueil de l'application.
             Présente les accès rapides disponibles selon le rôle
@@ -151,6 +173,90 @@
                         </div>
                     </a>
 
+                </div>
+            </section>
+
+            <!--
+                Réinitialisation globale réservée à l'instance DEMO.
+                Ce bloc n'est rendu que lorsque la fonctionnalité est explicitement
+                activée côté serveur et que l'utilisateur possède le rôle ADMIN.
+            -->
+            <section sec:authorize="hasRole('ADMIN')"
+                     th:if="${demoManualResetEnabled}"
+                     aria-labelledby="demoResetSectionTitle"
+                     class="mt-8 rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200">
+
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0 max-w-3xl">
+                        <h2 id="demoResetSectionTitle"
+                            class="text-lg font-semibold text-gray-900">
+                            Démonstration recruteur
+                        </h2>
+
+                        <p class="mt-2 text-sm text-gray-600">
+                            Restaure les comptes, emprunts, notifications, messages de contact
+                            et données associées à leur état initial.
+                        </p>
+                    </div>
+
+                    <form th:action="@{/admin/demo/reset}"
+                          method="post"
+                          class="shrink-0"
+                          data-demo-reset-form>
+
+                        <input th:if="${_csrf != null}"
+                               type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}" />
+
+                        <button type="button"
+                                data-open-demo-reset-modal
+                                class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 lg:w-auto">
+                            Réinitialiser toutes les données DEMO
+                        </button>
+
+                        <!-- Confirmation de la réinitialisation globale DEMO -->
+                        <div data-demo-reset-modal
+                             class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
+                             role="dialog"
+                             aria-modal="true"
+                             aria-labelledby="demoResetModalTitle"
+                             aria-describedby="demoResetModalDescription"
+                             aria-hidden="true">
+
+                            <div data-close-demo-reset-modal
+                                 class="absolute inset-0 bg-gray-900/50 backdrop-blur-[1px]"></div>
+
+                            <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
+                                <div class="space-y-3">
+                                    <h3 id="demoResetModalTitle"
+                                        class="text-lg font-semibold text-gray-900">
+                                        Confirmer la réinitialisation
+                                    </h3>
+
+                                    <p id="demoResetModalDescription"
+                                       class="text-sm text-gray-700">
+                                        Les comptes, emprunts, notifications, messages de contact
+                                        et données associées à la démonstration seront reconstruits
+                                        dans leur état d’origine.
+                                    </p>
+                                </div>
+
+                                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                    <button type="button"
+                                            data-cancel-demo-reset-modal
+                                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Annuler
+                                    </button>
+
+                                    <button type="submit"
+                                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Confirmer la réinitialisation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </section>
 
@@ -374,6 +480,59 @@
             </section>
 
         </section>
+
+        <!-- Gestion de la modale de réinitialisation globale DEMO -->
+        <script>
+            (function () {
+                const form = document.querySelector('[data-demo-reset-form]');
+                if (!form) return;
+
+                const openButton = form.querySelector('[data-open-demo-reset-modal]');
+                const modal = form.querySelector('[data-demo-reset-modal]');
+                const cancelButton = form.querySelector('[data-cancel-demo-reset-modal]');
+                const overlay = modal
+                    ? modal.querySelector('[data-close-demo-reset-modal]')
+                    : null;
+
+                if (!openButton || !modal || !cancelButton || !overlay) {
+                    return;
+                }
+
+                function openModal() {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                function closeModal() {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                openButton.addEventListener('click', openModal);
+                cancelButton.addEventListener('click', closeModal);
+                overlay.addEventListener('click', closeModal);
+
+                document.addEventListener('keydown', function (event) {
+                    if (
+                        modal.getAttribute('aria-hidden') === 'false'
+                        && (event.key === 'Escape' || event.key === 'Esc')
+                    ) {
+                        event.preventDefault();
+                        closeModal();
+                    }
+                }, true);
+
+                window.addEventListener('resize', function () {
+                    if (modal.getAttribute('aria-hidden') === 'false') {
+                        closeModal();
+                    }
+                });
+            })();
+        </script>
 
     </th:block>
 

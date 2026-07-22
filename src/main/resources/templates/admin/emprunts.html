@@ -17,6 +17,7 @@
 
             <div class="flex max-w-full flex-col gap-4">
 
+                <!-- En-tête principal aligné sur les autres pages d'administration -->
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 max-w-full sm:flex-1">
                         <h1 class="break-words text-base font-semibold text-gray-900">Emprunts</h1>
@@ -28,136 +29,191 @@
                         </div>
                     </div>
 
-                    <div class="shrink-0 sm:self-start">
-                        <a th:href="@{/accueil}"
-                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                            Retour à l’accueil
-                        </a>
-                    </div>
+                    <a th:href="@{/accueil}"
+                       class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:self-start">
+                        Retour à l’accueil
+                    </a>
                 </div>
 
-                <div class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <!-- Recherche principale et action DEMO distincte -->
+                <div class="flex max-w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 
-                    <div class="min-w-0 max-w-full flex-1">
+                    <!-- Recherche dynamique avec suggestions d'emprunts -->
+                    <form id="searchForm"
+                          th:action="@{/admin/emprunts}"
+                          method="get"
+                          class="min-w-0 max-w-full flex-1">
+                        <input type="hidden" name="page" value="0" />
+                        <input type="hidden"
+                               name="size"
+                               th:value="${pageSize != null ? pageSize : 9}" />
+                        <input type="hidden"
+                               name="sort"
+                               th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort)) ? sort : 'recent'}" />
 
-                        <div class="flex max-w-full flex-col gap-3">
+                        <div class="relative w-full max-w-full">
 
-                            <!-- Recherche dynamique avec suggestions d'emprunts -->
-                            <form id="searchForm" th:action="@{/admin/emprunts}" method="get" class="max-w-full">
-                                <input type="hidden" name="page" value="0" />
-                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
-                                <input type="hidden" name="sort" th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort)) ? sort : 'recent'}" />
+                            <label for="search" class="sr-only">Rechercher un emprunt</label>
 
-                                <div class="relative w-full max-w-full">
-
-                                    <label for="search" class="sr-only">Rechercher un emprunt</label>
-
-                                    <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
-                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
-                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                        </svg>
-                                    </div>
-
-                                    <input id="search"
-                                           name="q"
-                                           type="text"
-                                           inputmode="search"
-                                           autocomplete="off"
-                                           th:value="${q}"
-                                           placeholder="Rechercher par ID emprunt, ID membre, membre, statut, origine…"
-                                           class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                           aria-describedby="searchHint resultsCount resultsLabel triActive"
-                                           aria-controls="suggestPanel"
-                                           aria-expanded="false" />
-
-                                    <button id="searchClearInline"
-                                            type="button"
-                                            class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                            aria-label="Effacer la recherche">
-                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                        </svg>
-                                    </button>
-
-                                    <button type="submit" class="sr-only">Rechercher</button>
-
-                                    <div id="suggestPanel"
-                                         class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
-                                         role="listbox"
-                                         aria-label="Suggestions">
-                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
-                                    </div>
-
-                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
-                                </div>
-                            </form>
-
-                            <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="min-w-0 max-w-full flex-1">
-
-                                    <!-- Outils de tri des emprunts affichés -->
-                                    <form th:action="@{/admin/emprunts}" method="get" class="max-w-full">
-                                        <input type="hidden" name="page" value="0" />
-                                        <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
-                                        <input type="hidden" name="q" th:value="${q}" />
-
-                                        <div class="flex max-w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-                                            <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                                                <label for="sortSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
-                                                    Trier par
-                                                </label>
-
-                                                <select id="sortSelect"
-                                                        name="sort"
-                                                        class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72"
-                                                        aria-label="Trier les résultats">
-                                                    <option value="recent" th:selected="${sort == 'recent' or sort == null or sort == ''}">Ajout récent</option>
-                                                    <option value="oldest" th:selected="${sort == 'oldest'}">Ajout ancien</option>
-                                                    <option value="dueSoon" th:selected="${sort == 'dueSoon'}">Échéance proche</option>
-                                                    <option value="status" th:selected="${sort == 'status'}">Statut puis date</option>
-                                                    <option value="member" th:selected="${sort == 'member'}">Membre puis date</option>
-                                                    <option value="origin" th:selected="${sort == 'origin'}">Origine puis date</option>
-                                                </select>
-
-                                                <button type="submit" class="sr-only">Appliquer le tri</button>
-                                            </div>
-
-                                            <p id="triActive" class="text-xs font-medium text-gray-600 sm:text-sm">
-                                                <span class="text-gray-500">Tri actif :</span>
-                                                <span class="font-medium text-gray-900" th:switch="${sort}">
-                                                    <span th:case="'recent'">Ajout récent</span>
-                                                    <span th:case="'oldest'">Ajout ancien</span>
-                                                    <span th:case="'dueSoon'">Échéance proche</span>
-                                                    <span th:case="'status'">Statut puis date</span>
-                                                    <span th:case="'member'">Membre puis date</span>
-                                                    <span th:case="'origin'">Origine puis date</span>
-                                                    <span th:case="*">Ajout récent</span>
-                                                </span>
-                                            </p>
-
-                                            <div id="sortAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
-                                        </div>
-                                    </form>
-
-                                    <p id="searchHint" class="mt-2 text-sm text-gray-600">
-                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
-                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
-                                    </p>
-                                </div>
-
-                                <!-- Indicateurs du nombre de résultats et de l'état de la recherche -->
-                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
-                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
-                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
-                                </div>
+                            <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+                                <svg aria-hidden="true"
+                                     class="h-5 w-5 text-gray-500"
+                                     viewBox="0 0 24 24"
+                                     fill="none">
+                                    <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+                                    <path d="M16.5 16.5 21 21"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+                                </svg>
                             </div>
 
+                            <input id="search"
+                                   name="q"
+                                   type="text"
+                                   inputmode="search"
+                                   autocomplete="off"
+                                   th:value="${q}"
+                                   placeholder="Rechercher par ID emprunt, ID membre, membre, statut, origine…"
+                                   class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                   aria-describedby="searchHint resultsCount resultsLabel triActive"
+                                   aria-controls="suggestPanel"
+                                   aria-expanded="false" />
+
+                            <button id="searchClearInline"
+                                    type="button"
+                                    class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                    aria-label="Effacer la recherche">
+                                <svg aria-hidden="true"
+                                     class="h-4 w-4"
+                                     viewBox="0 0 24 24"
+                                     fill="none">
+                                    <path d="M6 6l12 12M18 6L6 18"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+                                </svg>
+                            </button>
+
+                            <button type="submit" class="sr-only">Rechercher</button>
+
+                            <div id="suggestPanel"
+                                 class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                                 role="listbox"
+                                 aria-label="Suggestions">
+                                <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+                            </div>
+
+                            <div id="suggestAnnounce"
+                                 class="sr-only"
+                                 role="status"
+                                 aria-live="polite"
+                                 aria-atomic="true"></div>
                         </div>
-                    </div>
+                    </form>
 
                 </div>
 
+                <!-- Tri, état courant et compteur de résultats -->
+                <div class="flex max-w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0 max-w-full flex-1">
+
+                        <form th:action="@{/admin/emprunts}"
+                              method="get"
+                              class="max-w-full">
+                            <input type="hidden" name="page" value="0" />
+                            <input type="hidden"
+                                   name="size"
+                                   th:value="${pageSize != null ? pageSize : 9}" />
+                            <input type="hidden" name="q" th:value="${q}" />
+
+                            <div class="flex max-w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+                                <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                                    <label for="sortSelect"
+                                           class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                        Trier par
+                                    </label>
+
+                                    <select id="sortSelect"
+                                            name="sort"
+                                            class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72"
+                                            aria-label="Trier les résultats">
+                                        <option value="recent"
+                                                th:selected="${sort == 'recent' or sort == null or sort == ''}">
+                                            Ajout récent
+                                        </option>
+                                        <option value="oldest"
+                                                th:selected="${sort == 'oldest'}">
+                                            Ajout ancien
+                                        </option>
+                                        <option value="dueSoon"
+                                                th:selected="${sort == 'dueSoon'}">
+                                            Échéance proche
+                                        </option>
+                                        <option value="status"
+                                                th:selected="${sort == 'status'}">
+                                            Statut puis date
+                                        </option>
+                                        <option value="member"
+                                                th:selected="${sort == 'member'}">
+                                            Membre puis date
+                                        </option>
+                                        <option value="origin"
+                                                th:selected="${sort == 'origin'}">
+                                            Origine puis date
+                                        </option>
+                                    </select>
+
+                                    <button type="submit" class="sr-only">Appliquer le tri</button>
+                                </div>
+
+                                <p id="triActive"
+                                   class="text-xs font-medium text-gray-600 sm:text-sm">
+                                    <span class="text-gray-500">Tri actif :</span>
+                                    <span class="font-medium text-gray-900"
+                                          th:switch="${sort}">
+                                        <span th:case="'recent'">Ajout récent</span>
+                                        <span th:case="'oldest'">Ajout ancien</span>
+                                        <span th:case="'dueSoon'">Échéance proche</span>
+                                        <span th:case="'status'">Statut puis date</span>
+                                        <span th:case="'member'">Membre puis date</span>
+                                        <span th:case="'origin'">Origine puis date</span>
+                                        <span th:case="*">Ajout récent</span>
+                                    </span>
+                                </p>
+
+                                <div id="sortAnnounce"
+                                     class="sr-only"
+                                     role="status"
+                                     aria-live="polite"
+                                     aria-atomic="true"></div>
+                            </div>
+                        </form>
+
+                        <p id="searchHint"
+                           class="mt-2 text-sm text-gray-600">
+                            <span th:if="${!hasQuery}">
+                                Saisis au moins 2 caractères pour obtenir des suggestions.
+                            </span>
+                            <span th:if="${hasQuery}">
+                                Recherche active : la liste se met à jour automatiquement pendant la saisie.
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="shrink-0 text-sm font-medium text-gray-700 lg:pt-2"
+                         aria-live="polite">
+                        <span id="resultsCount"
+                              th:text="${resultsDisplayCount}">0</span>
+                        <span id="resultsLabel"
+                              th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">
+                            résultats
+                        </span>
+                    </div>
+                </div>
             </div>
 
             <!-- Résumé textuel des emprunts affichés et de la pagination active -->
@@ -625,7 +681,6 @@
                 const modalForms = Array.from(document.querySelectorAll('form')).filter(function (form) {
                     return form.querySelector('[data-open-return-modal]') && form.querySelector('[data-return-modal]');
                 });
-
                 if (!search || !searchForm) return;
 
                 let activeIndex = -1;
@@ -915,12 +970,12 @@
                     modal.classList.remove('flex');
                     modal.setAttribute('aria-hidden', 'true');
 
-                    const anotherOpenModal = modalForms.some(function (form) {
+                    const anotherReturnModalOpen = modalForms.some(function (form) {
                         const currentModal = form.querySelector('[data-return-modal]');
                         return currentModal && currentModal.getAttribute('aria-hidden') === 'false';
                     });
 
-                    if (!anotherOpenModal) {
+                    if (!anotherReturnModalOpen) {
                         document.body.classList.remove('overflow-hidden');
                     }
                 }
@@ -1008,6 +1063,7 @@
                             closeModal(modal);
                         }
                     });
+
                 });
 
                 window.addEventListener('scroll', function () {
@@ -1150,9 +1206,6 @@
     </th:block>
 
 </th:block>
-
-
-
 
 
 

@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import com.magiclibrary.dto.user.UserResponseDTO;
 import com.magiclibrary.dto.user.UserUpdateDTO;
 import com.magiclibrary.entities.Role;
 import com.magiclibrary.entities.User;
+import com.magiclibrary.init.DemoScenarioCodes;
 import com.magiclibrary.mappers.UserMapper;
 import com.magiclibrary.repositories.interfaces.RoleRepository;
 import com.magiclibrary.repositories.interfaces.UserRepository;
@@ -54,17 +56,20 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final Environment environment;
 
     public UserServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
             UserMapper userMapper,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            Environment environment
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
+        this.environment = environment;
     }
 
     @Override
@@ -90,6 +95,12 @@ public class UserServiceImpl implements UserService {
 
         user.setSignupDateUser(LocalDateTime.now());
         user.setUpdatedAtUser(null);
+
+        if (isRecruiterDemoResetEnabled()) {
+            user.setDemoScenarioCode(
+                    DemoScenarioCodes.RECRUITER_DEMO_CREATED_USERS
+            );
+        }
 
         User saved = userRepository.save(user);
         return userMapper.toResponseDTO(saved);
@@ -240,6 +251,29 @@ public class UserServiceImpl implements UserService {
         }
 
         return suggestions;
+    }
+
+    /**
+     * Indique si l'application fonctionne dans l'environnement recruteur DEMO
+     * avec le mécanisme de réinitialisation explicitement activé.
+     *
+     * <p>La double condition évite d'attribuer un marqueur temporaire dans une
+     * instance CLIENT utilisant uniquement le profil {@code prod}, ainsi que
+     * dans un environnement de développement où le reset DEMO serait
+     * désactivé.</p>
+     *
+     * @return {@code true} uniquement lorsque le profil {@code demo} est actif
+     *         et que {@code magiclibrary.demo.reset.enabled=true}
+     */
+    private boolean isRecruiterDemoResetEnabled() {
+        boolean demoProfileActive = environment.matchesProfiles("demo");
+        boolean resetEnabled = environment.getProperty(
+                "magiclibrary.demo.reset.enabled",
+                Boolean.class,
+                Boolean.FALSE
+        );
+
+        return demoProfileActive && resetEnabled;
     }
 
     private void normalizeCreateDTO(UserCreateDTO userCreateDTO) {

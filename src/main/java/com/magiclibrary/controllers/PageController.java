@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -62,6 +64,15 @@ public class PageController {
     private static final int CONTACT_MESSAGES_SUGGEST_LIMIT = 8;
 
     /*
+     * Propriétés cumulatives contrôlant l'affichage de l'action manuelle DEMO.
+     */
+    private static final String DEMO_RESET_ENABLED_PROPERTY =
+            "magiclibrary.demo.reset.enabled";
+
+    private static final String DEMO_MANUAL_RESET_ENABLED_PROPERTY =
+            "magiclibrary.demo.reset.manual-enabled";
+
+    /*
      * Formats d'affichage des dates utilisés dans les pages SSR
      * et les réponses d'autocomplétion.
      */
@@ -82,19 +93,22 @@ public class PageController {
     private final LoanService loanService;
     private final LoanLineService loanLineService;
     private final NotificationService notificationService;
+    private final Environment environment;
 
     public PageController(
             UserRepository userRepository,
             ContactService contactService,
             LoanService loanService,
             LoanLineService loanLineService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            Environment environment
     ) {
         this.userRepository = userRepository;
         this.contactService = contactService;
         this.loanService = loanService;
         this.loanLineService = loanLineService;
         this.notificationService = notificationService;
+        this.environment = environment;
     }
 
     /*
@@ -116,9 +130,18 @@ public class PageController {
         return "login";
     }
 
+    /*
+     * Affiche l'accueil et expose l'action de reset uniquement lorsque les trois
+     * protections cumulatives sont satisfaites : profil DEMO, reset global actif
+     * et reset manuel explicitement autorisé.
+     */
     @GetMapping("/accueil")
     public String accueilPage(Model model) {
         model.addAttribute("activePage", "accueil");
+        model.addAttribute(
+                "demoManualResetEnabled",
+                isDemoManualResetEnabled()
+        );
         return "accueil";
     }
 
@@ -830,6 +853,37 @@ public class PageController {
 
         int lastPage = (contacts.size() - 1) / safePageSize;
         return Math.min(safeRequestedPage, lastPage);
+    }
+
+    /*
+     * Détermine si l'action de réinitialisation manuelle doit être exposée dans
+     * l'interface d'accueil.
+     *
+     * La condition exige simultanément :
+     * - le profil Spring demo ;
+     * - l'activation générale du mécanisme de reset ;
+     * - l'autorisation explicite du déclenchement manuel.
+     *
+     * Le rôle ADMIN reste contrôlé séparément par Spring Security dans la vue et
+     * par le contrôleur dédié au reset.
+     */
+    private boolean isDemoManualResetEnabled() {
+        boolean demoProfileActive = Arrays.stream(environment.getActiveProfiles())
+                .anyMatch("demo"::equals);
+
+        boolean resetEnabled = environment.getProperty(
+                DEMO_RESET_ENABLED_PROPERTY,
+                Boolean.class,
+                false
+        );
+
+        boolean manualResetEnabled = environment.getProperty(
+                DEMO_MANUAL_RESET_ENABLED_PROPERTY,
+                Boolean.class,
+                false
+        );
+
+        return demoProfileActive && resetEnabled && manualResetEnabled;
     }
 
     /*
