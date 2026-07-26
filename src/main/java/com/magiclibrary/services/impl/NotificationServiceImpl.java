@@ -62,8 +62,7 @@ import com.magiclibrary.services.NotificationService;
  *      - marquage d’une notification comme lue.
  *
  * Règles métier :
- *      - seul le propriétaire ou un ADMIN peut marquer une notification comme
- *        lue ;
+ *      - seul le propriétaire peut marquer une notification comme lue ;
  *      - les dates et indicateurs système sont générés côté backend ;
  *      - l’utilisateur destinataire doit exister ;
  *      - les contrôles de rôle sont effectués côté service.
@@ -341,7 +340,9 @@ public class NotificationServiceImpl implements NotificationService {
      * Marque une notification comme lue.
      *
      * Règles métier :
-     *      - seul le propriétaire ou un ADMIN peut effectuer l’action ;
+     *      - seul le propriétaire de la notification peut effectuer l’action ;
+     *      - un ADMIN ne peut pas marquer comme lue la notification d’un autre
+     *        utilisateur ou d’un autre ADMIN ;
      *      - la date de création n’est pas modifiée ;
      *      - le marqueur DEMO éventuellement présent est conservé.
      *
@@ -350,7 +351,7 @@ public class NotificationServiceImpl implements NotificationService {
      * @return notification mise à jour
      * @throws NotificationNotFoundException si la notification n’existe pas
      * @throws UserNotFoundException si le requérant n’existe pas
-     * @throws ForbiddenException si le requérant n’est ni propriétaire ni ADMIN
+     * @throws ForbiddenException si le requérant n’est pas le propriétaire
      */
     @Override
     public NotificationResponseDTO markAsRead(
@@ -366,7 +367,7 @@ public class NotificationServiceImpl implements NotificationService {
                                 )
                         );
 
-        User requester = userRepository.findById(idRequester)
+        userRepository.findById(idRequester)
                 .orElseThrow(() -> new UserNotFoundException(
                         "Utilisateur requérant introuvable avec l'id : "
                                 + idRequester
@@ -382,7 +383,7 @@ public class NotificationServiceImpl implements NotificationService {
             );
         }
 
-        if (!ownerId.equals(idRequester) && !isAdmin(requester)) {
+        if (!ownerId.equals(idRequester)) {
             throw new ForbiddenException(
                     "Accès interdit à cette notification."
             );

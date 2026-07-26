@@ -34,9 +34,10 @@ import com.magiclibrary.services.NotificationService;
 /**
  * Contrôleur SSR réservé à l'administration des notifications.
  *
- * Cette classe gère l'affichage paginé des notifications,
- * la recherche, l'autocomplétion, la consultation du contenu ciblé
- * ainsi que le marquage des notifications comme lues.
+ * Cette classe gère l'affichage paginé des notifications
+ * de l'administrateur authentifié, la recherche, l'autocomplétion,
+ * la consultation du contenu ciblé ainsi que le marquage
+ * des notifications comme lues.
  */
 @Controller
 public class AdminNotificationsPageController {
@@ -74,6 +75,9 @@ public class AdminNotificationsPageController {
      * La méthode gère l'affichage paginé, la recherche, la sélection
      * d'une notification particulière et les indicateurs nécessaires
      * au rendu de la page Thymeleaf.
+     *
+     * Seules les notifications appartenant à l'administrateur
+     * authentifié sont chargées et exposées à l'interface.
      */
     @GetMapping("/admin/notifications")
     @PreAuthorize("hasRole('ADMIN')")
@@ -95,14 +99,24 @@ public class AdminNotificationsPageController {
         Page<NotificationResponseDTO> notificationsPage;
 
         if (selectedNotificationId != null) {
-            NotificationResponseDTO selectedNotification = fetchAllNotifications().stream()
-                    .filter(notification -> Objects.equals(notification.getIdNotification(), selectedNotificationId))
-                    .findFirst()
-                    .orElseThrow(() -> new NotificationNotFoundException(
-                            "Notification introuvable avec l'id : " + selectedNotificationId
-                    ));
+            NotificationResponseDTO selectedNotification =
+                    fetchNotificationsForUser(currentUserId).stream()
+                            .filter(notification ->
+                                    Objects.equals(
+                                            notification.getIdNotification(),
+                                            selectedNotificationId
+                                    )
+                            )
+                            .findFirst()
+                            .orElseThrow(() ->
+                                    new NotificationNotFoundException(
+                                            "Notification introuvable avec l'id : "
+                                                    + selectedNotificationId
+                                    )
+                            );
 
-            List<NotificationResponseDTO> selectedNotifications = List.of(selectedNotification);
+            List<NotificationResponseDTO> selectedNotifications =
+                    List.of(selectedNotification);
 
             notificationsPage = new PageImpl<>(
                     selectedNotifications,
@@ -110,15 +124,35 @@ public class AdminNotificationsPageController {
                     selectedNotifications.size()
             );
         } else if (resolvedQuery.isEmpty()) {
-            notificationsPage = notificationService.getAllNotificationsPaged(safePage, safeSize);
+            notificationsPage =
+                    notificationService.getNotificationsForUserPaged(
+                            currentUserId,
+                            safePage,
+                            safeSize
+                    );
         } else {
-            List<NotificationResponseDTO> filteredNotifications = fetchAllNotifications().stream()
-                    .filter(notification -> matchesNotificationSearch(notification, resolvedQuery))
-                    .toList();
+            List<NotificationResponseDTO> filteredNotifications =
+                    fetchNotificationsForUser(currentUserId).stream()
+                            .filter(notification ->
+                                    matchesNotificationSearch(
+                                            notification,
+                                            resolvedQuery
+                                    )
+                            )
+                            .toList();
 
-            int start = Math.min(safePage * safeSize, filteredNotifications.size());
-            int end = Math.min(start + safeSize, filteredNotifications.size());
-            List<NotificationResponseDTO> pageContent = filteredNotifications.subList(start, end);
+            int start = Math.min(
+                    safePage * safeSize,
+                    filteredNotifications.size()
+            );
+
+            int end = Math.min(
+                    start + safeSize,
+                    filteredNotifications.size()
+            );
+
+            List<NotificationResponseDTO> pageContent =
+                    filteredNotifications.subList(start, end);
 
             notificationsPage = new PageImpl<>(
                     pageContent,
@@ -127,30 +161,82 @@ public class AdminNotificationsPageController {
             );
         }
 
-        List<NotificationResponseDTO> notifications = notificationsPage.getContent();
+        List<NotificationResponseDTO> notifications =
+                notificationsPage.getContent();
 
-        List<Boolean> currentUserNotifications = notifications.stream()
-                .map(notification -> currentUserId != null && Objects.equals(currentUserId, notification.getIdUser()))
-                .toList();
+        /*
+         * Cet indicateur est conservé pour garantir la compatibilité
+         * avec le template Thymeleaf existant.
+         *
+         * Toutes les notifications chargées appartiennent désormais
+         * nécessairement à l'administrateur authentifié.
+         */
+        List<Boolean> currentUserNotifications =
+                notifications.stream()
+                        .map(notification ->
+                                currentUserId != null
+                                        && Objects.equals(
+                                        currentUserId,
+                                        notification.getIdUser()
+                                )
+                        )
+                        .toList();
 
-        boolean paginationEnabled = notificationsPage.getTotalElements() > safeSize;
+        boolean paginationEnabled =
+                notificationsPage.getTotalElements() > safeSize;
 
         model.addAttribute("notifications", notifications);
-        model.addAttribute("currentUserNotifications", currentUserNotifications);
+        model.addAttribute(
+                "currentUserNotifications",
+                currentUserNotifications
+        );
         model.addAttribute("q", resolvedQuery);
-        model.addAttribute("selectedNotificationId", selectedNotificationId);
+        model.addAttribute(
+                "selectedNotificationId",
+                selectedNotificationId
+        );
         model.addAttribute("pageTitle", "Notifications");
-        model.addAttribute("activePage", "admin-notifications");
+        model.addAttribute(
+                "activePage",
+                "admin-notifications"
+        );
 
-        model.addAttribute("currentPage", notificationsPage.getNumber());
-        model.addAttribute("pageSize", notificationsPage.getSize());
-        model.addAttribute("totalPages", notificationsPage.getTotalPages());
-        model.addAttribute("totalElements", notificationsPage.getTotalElements());
-        model.addAttribute("hasPrevious", notificationsPage.hasPrevious());
-        model.addAttribute("hasNext", notificationsPage.hasNext());
-        model.addAttribute("isFirst", notificationsPage.isFirst());
-        model.addAttribute("isLast", notificationsPage.isLast());
-        model.addAttribute("paginationEnabled", paginationEnabled);
+        model.addAttribute(
+                "currentPage",
+                notificationsPage.getNumber()
+        );
+        model.addAttribute(
+                "pageSize",
+                notificationsPage.getSize()
+        );
+        model.addAttribute(
+                "totalPages",
+                notificationsPage.getTotalPages()
+        );
+        model.addAttribute(
+                "totalElements",
+                notificationsPage.getTotalElements()
+        );
+        model.addAttribute(
+                "hasPrevious",
+                notificationsPage.hasPrevious()
+        );
+        model.addAttribute(
+                "hasNext",
+                notificationsPage.hasNext()
+        );
+        model.addAttribute(
+                "isFirst",
+                notificationsPage.isFirst()
+        );
+        model.addAttribute(
+                "isLast",
+                notificationsPage.isLast()
+        );
+        model.addAttribute(
+                "paginationEnabled",
+                paginationEnabled
+        );
 
         return "admin/notifications";
     }
@@ -160,6 +246,9 @@ public class AdminNotificationsPageController {
      *
      * La notification est marquée comme lue avant la redirection
      * afin de refléter immédiatement sa consultation.
+     *
+     * La notification demandée doit obligatoirement appartenir
+     * à l'administrateur authentifié.
      */
     @GetMapping("/admin/notifications/{id}/open")
     @PreAuthorize("hasRole('ADMIN')")
@@ -173,35 +262,73 @@ public class AdminNotificationsPageController {
             RedirectAttributes redirectAttributes
     ) {
         int safePage = Math.max(page, 0);
-        int safeSize = size > 0 ? size : NOTIFICATIONS_PAGE_SIZE;
-        String resolvedQuery = q == null ? "" : q.trim();
+        int safeSize = size > 0
+                ? size
+                : NOTIFICATIONS_PAGE_SIZE;
+
+        String resolvedQuery = q == null
+                ? ""
+                : q.trim();
 
         User currentUser = resolveCurrentUser(authentication);
+        Integer currentUserId = currentUser.getIdUser();
 
-        NotificationResponseDTO notification = fetchAllNotifications().stream()
-                .filter(item -> Objects.equals(item.getIdNotification(), idNotification))
-                .findFirst()
-                .orElseThrow(() -> new NotificationNotFoundException(
-                        "Notification introuvable avec l'id : " + idNotification
-                ));
+        NotificationResponseDTO notification =
+                fetchNotificationsForUser(currentUserId).stream()
+                        .filter(item ->
+                                Objects.equals(
+                                        item.getIdNotification(),
+                                        idNotification
+                                )
+                        )
+                        .findFirst()
+                        .orElseThrow(() ->
+                                new NotificationNotFoundException(
+                                        "Notification introuvable avec l'id : "
+                                                + idNotification
+                                )
+                        );
 
-        notificationService.markAsRead(idNotification, currentUser.getIdUser());
+        notificationService.markAsRead(
+                idNotification,
+                currentUserId
+        );
 
-        String targetLink = notification.getTargetLinkNotification() != null
-                ? notification.getTargetLinkNotification().trim()
-                : "";
+        String targetLink =
+                notification.getTargetLinkNotification() != null
+                        ? notification
+                        .getTargetLinkNotification()
+                        .trim()
+                        : "";
 
         if (targetLink.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Aucun détail disponible pour cette notification.");
-            redirectAttributes.addAttribute("page", safePage);
-            redirectAttributes.addAttribute("size", safeSize);
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Aucun détail disponible pour cette notification."
+            );
+
+            redirectAttributes.addAttribute(
+                    "page",
+                    safePage
+            );
+
+            redirectAttributes.addAttribute(
+                    "size",
+                    safeSize
+            );
 
             if (!resolvedQuery.isEmpty()) {
-                redirectAttributes.addAttribute("q", resolvedQuery);
+                redirectAttributes.addAttribute(
+                        "q",
+                        resolvedQuery
+                );
             }
 
             if (selectedNotificationId != null) {
-                redirectAttributes.addAttribute("selectedNotificationId", selectedNotificationId);
+                redirectAttributes.addAttribute(
+                        "selectedNotificationId",
+                        selectedNotificationId
+                );
             }
 
             return "redirect:/admin/notifications";
@@ -220,12 +347,20 @@ public class AdminNotificationsPageController {
     /*
      * Fournit les suggestions de notifications utilisées
      * par l'autocomplétion de la page d'administration.
+     *
+     * Seules les notifications de l'administrateur authentifié
+     * peuvent être proposées.
      */
-    @GetMapping(value = "/admin/notifications/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(
+            value = "/admin/notifications/suggest",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<NotificationSuggestResponse>> suggestNotifications(
-            @RequestParam(name = "q", required = false) String q
+    public ResponseEntity<List<NotificationSuggestResponse>>
+    suggestNotifications(
+            @RequestParam(name = "q", required = false) String q,
+            Authentication authentication
     ) {
         String normalizedQuery = normalizeSearchValue(q);
 
@@ -233,11 +368,20 @@ public class AdminNotificationsPageController {
             return ResponseEntity.ok(List.of());
         }
 
-        List<NotificationSuggestResponse> suggestions = fetchAllNotifications().stream()
-                .filter(notification -> matchesNotificationSearch(notification, normalizedQuery))
-                .limit(NOTIFICATIONS_SUGGEST_LIMIT)
-                .map(this::toSuggestResponse)
-                .toList();
+        User currentUser = resolveCurrentUser(authentication);
+        Integer currentUserId = currentUser.getIdUser();
+
+        List<NotificationSuggestResponse> suggestions =
+                fetchNotificationsForUser(currentUserId).stream()
+                        .filter(notification ->
+                                matchesNotificationSearch(
+                                        notification,
+                                        normalizedQuery
+                                )
+                        )
+                        .limit(NOTIFICATIONS_SUGGEST_LIMIT)
+                        .map(this::toSuggestResponse)
+                        .toList();
 
         return ResponseEntity.ok(suggestions);
     }
@@ -245,6 +389,9 @@ public class AdminNotificationsPageController {
     /*
      * Marque explicitement une notification comme lue depuis l'interface.
      * Les paramètres de navigation sont conservés après redirection.
+     *
+     * Le service reçoit l'identifiant de l'administrateur authentifié
+     * afin de contrôler l'accès à la notification concernée.
      */
     @PostMapping("/admin/notifications/{id}/read")
     @PreAuthorize("hasRole('ADMIN')")
@@ -259,20 +406,41 @@ public class AdminNotificationsPageController {
     ) {
         User currentUser = resolveCurrentUser(authentication);
 
-        notificationService.markAsRead(idNotification, currentUser.getIdUser());
+        notificationService.markAsRead(
+                idNotification,
+                currentUser.getIdUser()
+        );
 
-        redirectAttributes.addFlashAttribute("successMessage", "Notification marquée comme lue.");
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Notification marquée comme lue."
+        );
 
         if (selectedNotificationId != null) {
-            redirectAttributes.addAttribute("selectedNotificationId", selectedNotificationId);
+            redirectAttributes.addAttribute(
+                    "selectedNotificationId",
+                    selectedNotificationId
+            );
         }
 
         if (q != null && !q.trim().isEmpty()) {
-            redirectAttributes.addAttribute("q", q.trim());
+            redirectAttributes.addAttribute(
+                    "q",
+                    q.trim()
+            );
         }
 
-        redirectAttributes.addAttribute("page", Math.max(page, 0));
-        redirectAttributes.addAttribute("size", size > 0 ? size : NOTIFICATIONS_PAGE_SIZE);
+        redirectAttributes.addAttribute(
+                "page",
+                Math.max(page, 0)
+        );
+
+        redirectAttributes.addAttribute(
+                "size",
+                size > 0
+                        ? size
+                        : NOTIFICATIONS_PAGE_SIZE
+        );
 
         return "redirect:/admin/notifications";
     }
@@ -291,27 +459,57 @@ public class AdminNotificationsPageController {
             String notifQuery,
             Integer notifSelectedNotificationId
     ) {
-        boolean isContactNotification = notification.getTypeNotification() != null
-                && "CONTACT".equalsIgnoreCase(notification.getTypeNotification().name());
+        boolean isContactNotification =
+                notification.getTypeNotification() != null
+                        && "CONTACT".equalsIgnoreCase(
+                        notification
+                                .getTypeNotification()
+                                .name()
+                );
 
         if (isContactNotification) {
-            String selectedContactId = extractQueryParameter(targetLink, "selectedContactId");
+            String selectedContactId =
+                    extractQueryParameter(
+                            targetLink,
+                            "selectedContactId"
+                    );
 
-            UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/admin/messages")
-                    .queryParam("from", "notifications")
-                    .queryParam("notifPage", notifPage)
-                    .queryParam("notifSize", notifSize);
+            UriComponentsBuilder builder =
+                    UriComponentsBuilder
+                            .fromPath("/admin/messages")
+                            .queryParam(
+                                    "from",
+                                    "notifications"
+                            )
+                            .queryParam(
+                                    "notifPage",
+                                    notifPage
+                            )
+                            .queryParam(
+                                    "notifSize",
+                                    notifSize
+                            );
 
             if (!notifQuery.isEmpty()) {
-                builder.queryParam("notifQ", notifQuery);
+                builder.queryParam(
+                        "notifQ",
+                        notifQuery
+                );
             }
 
             if (notifSelectedNotificationId != null) {
-                builder.queryParam("notifSelectedNotificationId", notifSelectedNotificationId);
+                builder.queryParam(
+                        "notifSelectedNotificationId",
+                        notifSelectedNotificationId
+                );
             }
 
-            if (selectedContactId != null && !selectedContactId.isBlank()) {
-                builder.queryParam("selectedContactId", selectedContactId.trim());
+            if (selectedContactId != null
+                    && !selectedContactId.isBlank()) {
+                builder.queryParam(
+                        "selectedContactId",
+                        selectedContactId.trim()
+                );
             }
 
             return "redirect:" + builder.toUriString();
@@ -323,8 +521,14 @@ public class AdminNotificationsPageController {
     /*
      * Extrait la valeur d'un paramètre présent dans une URL.
      */
-    private String extractQueryParameter(String url, String parameterName) {
-        if (url == null || url.isBlank() || parameterName == null || parameterName.isBlank()) {
+    private String extractQueryParameter(
+            String url,
+            String parameterName
+    ) {
+        if (url == null
+                || url.isBlank()
+                || parameterName == null
+                || parameterName.isBlank()) {
             return null;
         }
 
@@ -335,8 +539,11 @@ public class AdminNotificationsPageController {
             return null;
         }
 
-        int valueStart = startIndex + token.length();
-        int valueEnd = url.indexOf('&', valueStart);
+        int valueStart =
+                startIndex + token.length();
+
+        int valueEnd =
+                url.indexOf('&', valueStart);
 
         if (valueEnd < 0) {
             valueEnd = url.length();
@@ -346,86 +553,187 @@ public class AdminNotificationsPageController {
             return null;
         }
 
-        return url.substring(valueStart, valueEnd);
+        return url.substring(
+                valueStart,
+                valueEnd
+        );
     }
 
     /*
-     * Résout l'utilisateur authentifié courant à partir du contexte Spring Security.
+     * Résout l'utilisateur authentifié courant
+     * à partir du contexte Spring Security.
      */
-    private User resolveCurrentUser(Authentication authentication) {
-        String email = authentication != null ? authentication.getName() : null;
+    private User resolveCurrentUser(
+            Authentication authentication
+    ) {
+        String email =
+                authentication != null
+                        ? authentication.getName()
+                        : null;
 
         if (email == null || email.isBlank()) {
-            throw new UserNotFoundException("Utilisateur introuvable.");
+            throw new UserNotFoundException(
+                    "Utilisateur introuvable."
+            );
         }
 
-        return userRepository.findByEmailUser(email)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+        return userRepository
+                .findByEmailUser(email)
+                .orElseThrow(() ->
+                        new UserNotFoundException(
+                                "Utilisateur introuvable."
+                        )
+                );
     }
 
     /*
-     * Charge l'ensemble des notifications en plusieurs lots afin de permettre
-     * les recherches et suggestions sur la totalité des données disponibles.
+     * Charge l'ensemble des notifications d'un utilisateur
+     * en plusieurs lots afin de permettre les recherches
+     * et suggestions sur la totalité de ses données disponibles.
      */
-    private List<NotificationResponseDTO> fetchAllNotifications() {
-        List<NotificationResponseDTO> allNotifications = new ArrayList<>();
+    private List<NotificationResponseDTO>
+    fetchNotificationsForUser(
+            Integer idUser
+    ) {
+        List<NotificationResponseDTO> userNotifications =
+                new ArrayList<>();
 
         int page = 0;
         Page<NotificationResponseDTO> notificationsPage;
 
         do {
-            notificationsPage = notificationService.getAllNotificationsPaged(page, NOTIFICATIONS_FETCH_BATCH_SIZE);
-            allNotifications.addAll(notificationsPage.getContent());
+            notificationsPage =
+                    notificationService
+                            .getNotificationsForUserPaged(
+                                    idUser,
+                                    page,
+                                    NOTIFICATIONS_FETCH_BATCH_SIZE
+                            );
+
+            userNotifications.addAll(
+                    notificationsPage.getContent()
+            );
+
             page++;
         } while (notificationsPage.hasNext());
 
-        return allNotifications;
+        return userNotifications;
     }
 
-    private NotificationSuggestResponse toSuggestResponse(NotificationResponseDTO notification) {
-        String date = notification.getDateNotification() != null
-                ? notification.getDateNotification().format(NOTIFICATION_DATE_DISPLAY_FORMATTER)
-                : null;
+    /*
+     * Transforme une notification en réponse simplifiée
+     * destinée à l'autocomplétion.
+     */
+    private NotificationSuggestResponse toSuggestResponse(
+            NotificationResponseDTO notification
+    ) {
+        String date =
+                notification.getDateNotification() != null
+                        ? notification
+                        .getDateNotification()
+                        .format(
+                                NOTIFICATION_DATE_DISPLAY_FORMATTER
+                        )
+                        : null;
 
         return new NotificationSuggestResponse(
                 notification.getIdNotification(),
                 notification.getIdUser(),
                 notification.getTitleNotification(),
-                notification.getCategoryNotification() != null ? notification.getCategoryNotification().name() : null,
-                notification.getTypeNotification() != null ? notification.getTypeNotification().name() : null,
+                notification.getCategoryNotification() != null
+                        ? notification
+                        .getCategoryNotification()
+                        .name()
+                        : null,
+                notification.getTypeNotification() != null
+                        ? notification
+                        .getTypeNotification()
+                        .name()
+                        : null,
                 notification.getPriorityNotification(),
-                Boolean.TRUE.equals(notification.getReadNotification()) ? "Lue" : "Non lue",
+                Boolean.TRUE.equals(
+                        notification.getReadNotification()
+                )
+                        ? "Lue"
+                        : "Non lue",
                 date
         );
     }
 
-    private boolean matchesNotificationSearch(NotificationResponseDTO notification, String query) {
-        String normalizedQuery = normalizeSearchValue(query);
-        String haystack = buildNotificationSearchHaystack(notification);
+    /*
+     * Vérifie si une notification correspond
+     * à la recherche saisie.
+     */
+    private boolean matchesNotificationSearch(
+            NotificationResponseDTO notification,
+            String query
+    ) {
+        String normalizedQuery =
+                normalizeSearchValue(query);
 
-        return !normalizedQuery.isEmpty() && haystack.contains(normalizedQuery);
+        String haystack =
+                buildNotificationSearchHaystack(
+                        notification
+                );
+
+        return !normalizedQuery.isEmpty()
+                && haystack.contains(normalizedQuery);
     }
 
     /*
      * Construit la chaîne utilisée par le moteur de recherche interne
      * afin de permettre une recherche sur plusieurs attributs simultanément.
      */
-    private String buildNotificationSearchHaystack(NotificationResponseDTO notification) {
-        LocalDateTime dateNotification = notification.getDateNotification();
+    private String buildNotificationSearchHaystack(
+            NotificationResponseDTO notification
+    ) {
+        LocalDateTime dateNotification =
+                notification.getDateNotification();
 
         return normalizeSearchValue(
-                String.join(" ",
-                        safeValue(notification.getIdNotification()),
-                        safeValue(notification.getIdUser()),
-                        safeValue(notification.getTitleNotification()),
-                        safeValue(notification.getMessageNotification()),
-                        safeValue(notification.getTargetLinkNotification()),
-                        notification.getCategoryNotification() != null ? notification.getCategoryNotification().name() : "",
-                        notification.getTypeNotification() != null ? notification.getTypeNotification().name() : "",
-                        safeValue(notification.getPriorityNotification()),
-                        dateNotification != null ? dateNotification.format(NOTIFICATION_DATE_DISPLAY_FORMATTER) : "",
-                        dateNotification != null ? dateNotification.toLocalDate().toString() : "",
-                        Boolean.TRUE.equals(notification.getReadNotification())
+                String.join(
+                        " ",
+                        safeValue(
+                                notification.getIdNotification()
+                        ),
+                        safeValue(
+                                notification.getIdUser()
+                        ),
+                        safeValue(
+                                notification.getTitleNotification()
+                        ),
+                        safeValue(
+                                notification.getMessageNotification()
+                        ),
+                        safeValue(
+                                notification.getTargetLinkNotification()
+                        ),
+                        notification.getCategoryNotification() != null
+                                ? notification
+                                .getCategoryNotification()
+                                .name()
+                                : "",
+                        notification.getTypeNotification() != null
+                                ? notification
+                                .getTypeNotification()
+                                .name()
+                                : "",
+                        safeValue(
+                                notification.getPriorityNotification()
+                        ),
+                        dateNotification != null
+                                ? dateNotification.format(
+                                NOTIFICATION_DATE_DISPLAY_FORMATTER
+                        )
+                                : "",
+                        dateNotification != null
+                                ? dateNotification
+                                .toLocalDate()
+                                .toString()
+                                : "",
+                        Boolean.TRUE.equals(
+                                notification.getReadNotification()
+                        )
                                 ? "lue lu read traitee traitée"
                                 : "non lue non lu unread nouvelle active"
                 )
@@ -433,18 +741,31 @@ public class AdminNotificationsPageController {
     }
 
     /*
-     * Normalise une valeur textuelle avant comparaison dans les recherches.
+     * Normalise une valeur textuelle
+     * avant comparaison dans les recherches.
      */
-    private String normalizeSearchValue(String value) {
+    private String normalizeSearchValue(
+            String value
+    ) {
         if (value == null) {
             return "";
         }
 
-        return value.trim().toLowerCase(Locale.ROOT);
+        return value
+                .trim()
+                .toLowerCase(Locale.ROOT);
     }
 
-    private String safeValue(Object value) {
-        return value == null ? "" : String.valueOf(value);
+    /*
+     * Convertit une valeur nullable
+     * en chaîne exploitable pour la recherche.
+     */
+    private String safeValue(
+            Object value
+    ) {
+        return value == null
+                ? ""
+                : String.valueOf(value);
     }
 
     /*
@@ -489,7 +810,9 @@ public class AdminNotificationsPageController {
             return idNotification;
         }
 
-        public void setIdNotification(Integer idNotification) {
+        public void setIdNotification(
+                Integer idNotification
+        ) {
             this.idNotification = idNotification;
         }
 
@@ -497,7 +820,9 @@ public class AdminNotificationsPageController {
             return idUser;
         }
 
-        public void setIdUser(Integer idUser) {
+        public void setIdUser(
+                Integer idUser
+        ) {
             this.idUser = idUser;
         }
 
@@ -505,7 +830,9 @@ public class AdminNotificationsPageController {
             return title;
         }
 
-        public void setTitle(String title) {
+        public void setTitle(
+                String title
+        ) {
             this.title = title;
         }
 
@@ -513,7 +840,9 @@ public class AdminNotificationsPageController {
             return category;
         }
 
-        public void setCategory(String category) {
+        public void setCategory(
+                String category
+        ) {
             this.category = category;
         }
 
@@ -521,7 +850,9 @@ public class AdminNotificationsPageController {
             return type;
         }
 
-        public void setType(String type) {
+        public void setType(
+                String type
+        ) {
             this.type = type;
         }
 
@@ -529,7 +860,9 @@ public class AdminNotificationsPageController {
             return priority;
         }
 
-        public void setPriority(String priority) {
+        public void setPriority(
+                String priority
+        ) {
             this.priority = priority;
         }
 
@@ -537,7 +870,9 @@ public class AdminNotificationsPageController {
             return readStatus;
         }
 
-        public void setReadStatus(String readStatus) {
+        public void setReadStatus(
+                String readStatus
+        ) {
             this.readStatus = readStatus;
         }
 
@@ -545,7 +880,9 @@ public class AdminNotificationsPageController {
             return date;
         }
 
-        public void setDate(String date) {
+        public void setDate(
+                String date
+        ) {
             this.date = date;
         }
     }
