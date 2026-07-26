@@ -22,20 +22,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -47,30 +42,44 @@ import com.magiclibrary.security.jwt.JwtAuthenticationFilter;
 /**
  * Configuration centrale de la sécurité Spring Security.
  *
- * Cette classe sépare volontairement la sécurité REST basée sur JWT
+ * <p>Cette classe sépare volontairement la sécurité REST basée sur JWT
  * et la sécurité SSR basée sur session afin de conserver deux comportements
- * adaptés aux usages de l'application.
+ * adaptés aux usages de l'application.</p>
  *
- * Elle configure également les règles CORS, les réponses d'erreur de sécurité,
- * la normalisation des URL et la limitation progressive des tentatives
- * de connexion SSR.
+ * <p>Elle configure également :</p>
+ *
+ * <ul>
+ *     <li>les règles CORS appliquées aux endpoints REST ;</li>
+ *     <li>les réponses d'erreur d'authentification et d'autorisation ;</li>
+ *     <li>la normalisation des URL avant leur traitement par Spring Security ;</li>
+ *     <li>la limitation progressive des tentatives de connexion SSR ;</li>
+ *     <li>l'accès public strictement limité au endpoint Actuator de santé.</li>
+ * </ul>
+ *
+ * <p>Le endpoint {@code /actuator/health} est autorisé sans authentification
+ * afin de permettre aux plateformes d'hébergement, notamment Railway, de
+ * vérifier que l'application répond correctement après un déploiement.</p>
+ *
+ * <p>Aucun autre endpoint Actuator n'est rendu public par cette configuration.
+ * Leur exposition effective reste également contrôlée par les propriétés
+ * Spring Boot Actuator.</p>
  */
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CustomUserDetailsService customUserDetailsService;
-    private final PasswordEncoder passwordEncoder;
+    private static final String ACTUATOR_HEALTH_ENDPOINT =
+            "/actuator/health";
 
-    @Value("${app.cors.allowed-origins:http://localhost:8080,https://*.up.railway.app}")
-    private String corsAllowedOrigins;
+    private static final String ACTUATOR_HEALTH_SUBPATHS =
+            "/actuator/health/**";
 
     /*
      * Durée de conservation des tentatives de connexion échouées.
      * Au-delà de cette durée, le compteur associé à une clé est réinitialisé.
      */
-    private static final long LOGIN_ATTEMPTS_TTL_MILLIS = TimeUnit.MINUTES.toMillis(15);
+    private static final long LOGIN_ATTEMPTS_TTL_MILLIS =
+            TimeUnit.MINUTES.toMillis(15);
 
     /*
      * Délais progressifs appliqués après les échecs de connexion SSR.
@@ -94,14 +103,36 @@ public class SecurityConfig {
     private static final int SSR_HARD_THROTTLE_MIN_ATTEMPTS = 6;
     private static final int THROTTLE_JITTER_MAX_MILLIS = 250;
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final PasswordEncoder passwordEncoder;
+
     /*
      * Stockage mémoire des tentatives échouées.
      * La clé combine l'identifiant saisi et l'adresse IP afin de limiter
      * les attaques répétées sur un même compte ou depuis une même origine.
      */
-    private final Map<String, LoginAttemptEntry> loginAttemptsByKey = new ConcurrentHashMap<>();
-    private final AtomicInteger loginAttemptsCleanupCounter = new AtomicInteger(0);
+    private final Map<String, LoginAttemptEntry> loginAttemptsByKey =
+            new ConcurrentHashMap<>();
 
+    private final AtomicInteger loginAttemptsCleanupCounter =
+            new AtomicInteger(0);
+
+    @Value(
+            "${app.cors.allowed-origins:"
+                    + "http://localhost:8080,"
+                    + "https://*.up.railway.app}"
+    )
+    private String corsAllowedOrigins;
+
+    /**
+     * Initialise la configuration de sécurité avec les composants
+     * d'authentification partagés par les chaînes REST et SSR.
+     *
+     * @param jwtAuthenticationFilter filtre d'authentification JWT
+     * @param customUserDetailsService service de chargement des utilisateurs
+     * @param passwordEncoder encodeur de mots de passe applicatif
+     */
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService customUserDetailsService,
@@ -112,48 +143,72 @@ public class SecurityConfig {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /*
+    /**
      * Enregistre le filtre de normalisation des URL avant les filtres Spring.
-     * Cela permet de traiter les chemins entrants de manière homogène
-     * avant leur prise en charge par la chaîne de sécurité.
+     *
+     * <p>Cette exécution précoce garantit un traitement homogène des chemins
+     * entrants avant leur prise en charge par les chaînes de sécurité.</p>
+     *
+     * @return enregistrement servlet du filtre de normalisation
      */
     @Bean
-    public FilterRegistrationBean<UrlNormalizationFilter> urlNormalizationFilterRegistration() {
-        FilterRegistrationBean<UrlNormalizationFilter> registration = new FilterRegistrationBean<>();
+    public FilterRegistrationBean<UrlNormalizationFilter>
+    urlNormalizationFilterRegistration() {
+
+        FilterRegistrationBean<UrlNormalizationFilter> registration =
+                new FilterRegistrationBean<>();
+
         registration.setFilter(new UrlNormalizationFilter());
         registration.addUrlPatterns("/*");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+
         return registration;
     }
 
-    /*
-     * Fournisseur d'authentification basé sur les utilisateurs applicatifs
-     * et le PasswordEncoder configuré dans le projet.
+    /**
+     * Crée le fournisseur d'authentification applicatif basé sur les comptes
+     * persistés et l'encodeur de mots de passe partagé.
+     *
+     * @return fournisseur DAO configuré
      */
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider();
+
         provider.setUserDetailsService(customUserDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
 
         return provider;
     }
 
+    /**
+     * Expose l'AuthenticationManager utilisé par les mécanismes
+     * d'authentification REST et SSR.
+     *
+     * @return gestionnaire d'authentification applicatif
+     */
     @Bean
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(daoAuthenticationProvider());
     }
 
-    /*
-     * Chaîne de sécurité dédiée aux endpoints REST.
+    /**
+     * Configure la chaîne de sécurité dédiée aux endpoints REST.
      *
-     * Elle fonctionne sans session serveur, désactive le formulaire Spring,
-     * utilise le filtre JWT et retourne des réponses JSON pour les erreurs
-     * d'authentification ou d'autorisation.
+     * <p>Cette chaîne fonctionne sans session serveur, désactive le formulaire
+     * Spring, utilise le filtre JWT et retourne des réponses JSON pour les
+     * erreurs d'authentification ou d'autorisation.</p>
+     *
+     * @param http constructeur de configuration Spring Security
+     * @return chaîne de filtres REST
+     * @throws Exception en cas d'échec de construction
      */
     @Bean
     @Order(1)
-    public SecurityFilterChain restJwtSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain restJwtSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
 
         http
                 .securityMatcher(
@@ -165,10 +220,14 @@ public class SecurityConfig {
                         "/notifications/**",
                         "/contacts/**"
                 )
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource())
+                )
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
                 )
                 .authenticationManager(authenticationManager())
                 .authenticationProvider(daoAuthenticationProvider())
@@ -180,49 +239,149 @@ public class SecurityConfig {
                         .accessDeniedHandler(this::handleForbidden)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/items", "/items/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/contacts").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/contacts", "/contacts/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/contacts/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/users/me").hasAnyRole("MEMBRE", "ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/users/me").hasAnyRole("MEMBRE", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/loans/me").hasAnyRole("MEMBRE", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/loans/**").hasAnyRole("MEMBRE", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/loans").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/loans/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/loan-lines").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/notifications", "/notifications/**").hasAnyRole("MEMBRE", "ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/notifications/**").hasAnyRole("MEMBRE", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/notifications").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.TRACE, "/**").denyAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/items",
+                                "/items/**"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/contacts"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/contacts",
+                                "/contacts/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/contacts/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/users"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/users/me"
+                        ).hasAnyRole("MEMBRE", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/users/me"
+                        ).hasAnyRole("MEMBRE", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/loans/me"
+                        ).hasAnyRole("MEMBRE", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/loans/**"
+                        ).hasAnyRole("MEMBRE", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/loans"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/loans/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/loan-lines"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/notifications",
+                                "/notifications/**"
+                        ).hasAnyRole("MEMBRE", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/notifications/**"
+                        ).hasAnyRole("MEMBRE", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/notifications"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.TRACE,
+                                "/**"
+                        ).denyAll()
+
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
 
-    /*
-     * Chaîne de sécurité dédiée aux pages SSR.
+    /**
+     * Configure la chaîne de sécurité dédiée aux pages SSR.
      *
-     * Elle conserve le mécanisme de session Spring Security,
-     * active le formulaire de connexion personnalisé et applique
-     * une protection progressive contre les échecs répétés de connexion.
+     * <p>Cette chaîne conserve les sessions Spring Security, active le
+     * formulaire de connexion personnalisé et applique une protection
+     * progressive contre les échecs répétés de connexion.</p>
+     *
+     * <p>Le endpoint Actuator de santé est explicitement public afin que
+     * Railway puisse obtenir une réponse HTTP sans être redirigé vers la page
+     * de connexion. Aucun autre chemin Actuator n'est autorisé ici.</p>
+     *
+     * @param http constructeur de configuration Spring Security
+     * @return chaîne de filtres SSR
+     * @throws Exception en cas d'échec de construction
      */
     @Bean
     @Order(2)
-    public SecurityFilterChain ssrSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain ssrSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
 
         http
-                .csrf(csrf -> {})
+                .csrf(csrf -> {
+                })
                 .authenticationProvider(daoAuthenticationProvider())
                 .exceptionHandling(ex -> ex
                         .accessDeniedHandler(this::handleSsrForbidden)
                 )
                 .authorizeHttpRequests(auth -> auth
+
+                        /*
+                         * Endpoint public minimal utilisé par le healthcheck
+                         * technique de la plateforme d'hébergement.
+                         *
+                         * Les sous-chemins sont inclus afin de permettre
+                         * ultérieurement les groupes de santé readiness ou
+                         * liveness sans ouvrir l'ensemble d'Actuator.
+                         */
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ACTUATOR_HEALTH_ENDPOINT,
+                                ACTUATOR_HEALTH_SUBPATHS
+                        ).permitAll()
 
                         .requestMatchers(
                                 "/css/**",
@@ -240,7 +399,10 @@ public class SecurityConfig {
                                 "/error/**"
                         ).permitAll()
 
-                        .requestMatchers("/", "/login").permitAll()
+                        .requestMatchers(
+                                "/",
+                                "/login"
+                        ).permitAll()
 
                         .requestMatchers(
                                 "/mentions-legales",
@@ -249,51 +411,118 @@ public class SecurityConfig {
                                 "/cgu"
                         ).permitAll()
 
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers(
+                                "/admin/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.TRACE,
+                                "/**"
+                        ).denyAll()
 
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
-                        .successHandler((request, response, authentication) -> {
+                        .successHandler(
+                                (request, response, authentication) -> {
 
-                            String username = request.getParameter("username");
-                            String ipAddress = resolveClientIpAddress(request);
+                                    String username =
+                                            request.getParameter("username");
 
-                            String keyUserIp = buildLoginAttemptKey(username, ipAddress);
-                            String keyIpOnly = buildLoginAttemptKey("*", ipAddress);
+                                    String ipAddress =
+                                            resolveClientIpAddress(request);
 
-                            resetLoginAttempts(keyUserIp);
-                            resetLoginAttempts(keyIpOnly);
+                                    String keyUserIp =
+                                            buildLoginAttemptKey(
+                                                    username,
+                                                    ipAddress
+                                            );
 
-                            response.sendRedirect(request.getContextPath() + "/accueil");
-                        })
-                        .failureHandler((request, response, exception) -> {
+                                    String keyIpOnly =
+                                            buildLoginAttemptKey(
+                                                    "*",
+                                                    ipAddress
+                                            );
 
-                            String username = request.getParameter("username");
-                            String ipAddress = resolveClientIpAddress(request);
+                                    resetLoginAttempts(keyUserIp);
+                                    resetLoginAttempts(keyIpOnly);
 
-                            String keyUserIp = buildLoginAttemptKey(username, ipAddress);
-                            String keyIpOnly = buildLoginAttemptKey("*", ipAddress);
+                                    response.sendRedirect(
+                                            request.getContextPath()
+                                                    + "/accueil"
+                                    );
+                                }
+                        )
+                        .failureHandler(
+                                (request, response, exception) -> {
 
-                            int attemptsUserIp = registerFailedLoginAttempt(keyUserIp);
-                            int attemptsIpOnly = registerFailedLoginAttempt(keyIpOnly);
+                                    String username =
+                                            request.getParameter("username");
 
-                            int attempts = Math.max(attemptsUserIp, attemptsIpOnly);
+                                    String ipAddress =
+                                            resolveClientIpAddress(request);
 
-                            long delayMillis = computeThrottleDelayMillis(attempts);
+                                    String keyUserIp =
+                                            buildLoginAttemptKey(
+                                                    username,
+                                                    ipAddress
+                                            );
 
-                            if (attempts >= SSR_HARD_THROTTLE_MIN_ATTEMPTS) {
-                                int retryAfterSeconds = computeRetryAfterSeconds(delayMillis);
-                                sendTooManyRequests429(request, response, retryAfterSeconds);
-                                return;
-                            }
+                                    String keyIpOnly =
+                                            buildLoginAttemptKey(
+                                                    "*",
+                                                    ipAddress
+                                            );
 
-                            applyThrottleDelay(withJitter(delayMillis));
+                                    int attemptsUserIp =
+                                            registerFailedLoginAttempt(
+                                                    keyUserIp
+                                            );
 
-                            response.sendRedirect(request.getContextPath() + "/login?error=true");
-                        })
+                                    int attemptsIpOnly =
+                                            registerFailedLoginAttempt(
+                                                    keyIpOnly
+                                            );
+
+                                    int attempts = Math.max(
+                                            attemptsUserIp,
+                                            attemptsIpOnly
+                                    );
+
+                                    long delayMillis =
+                                            computeThrottleDelayMillis(
+                                                    attempts
+                                            );
+
+                                    if (attempts
+                                            >= SSR_HARD_THROTTLE_MIN_ATTEMPTS) {
+
+                                        int retryAfterSeconds =
+                                                computeRetryAfterSeconds(
+                                                        delayMillis
+                                                );
+
+                                        sendTooManyRequests429(
+                                                request,
+                                                response,
+                                                retryAfterSeconds
+                                        );
+
+                                        return;
+                                    }
+
+                                    applyThrottleDelay(
+                                            withJitter(delayMillis)
+                                    );
+
+                                    response.sendRedirect(
+                                            request.getContextPath()
+                                                    + "/login?error=true"
+                                    );
+                                }
+                        )
                         .permitAll()
                 )
                 .logout(logout -> logout
@@ -307,32 +536,70 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /*
+    /**
      * Retourne une réponse HTTP 429 pour les tentatives de connexion SSR
      * trop nombreuses et transmet le délai d'attente à la page d'erreur.
+     *
+     * @param request requête HTTP concernée
+     * @param response réponse HTTP à construire
+     * @param retryAfterSeconds délai minimal avant une nouvelle tentative
+     * @throws IOException en cas d'erreur d'écriture
+     * @throws ServletException en cas d'erreur de transmission
      */
-    private void sendTooManyRequests429(HttpServletRequest request, HttpServletResponse response, int retryAfterSeconds)
-            throws IOException, ServletException {
+    private void sendTooManyRequests429(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            int retryAfterSeconds
+    ) throws IOException, ServletException {
 
         int safeRetryAfter = Math.max(1, retryAfterSeconds);
 
         response.setStatus(429);
-        response.setHeader("Retry-After", String.valueOf(safeRetryAfter));
+        response.setHeader(
+                "Retry-After",
+                String.valueOf(safeRetryAfter)
+        );
 
-        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-        response.setHeader("Pragma", "no-cache");
+        response.setHeader(
+                "Cache-Control",
+                "no-store, no-cache, must-revalidate, max-age=0"
+        );
 
-        request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 429);
-        request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, request.getRequestURI());
-        request.setAttribute("retryAfterSeconds", safeRetryAfter);
+        response.setHeader(
+                "Pragma",
+                "no-cache"
+        );
 
-        RequestDispatcher dispatcher = request.getRequestDispatcher("/error/429");
+        request.setAttribute(
+                RequestDispatcher.ERROR_STATUS_CODE,
+                429
+        );
+
+        request.setAttribute(
+                RequestDispatcher.ERROR_REQUEST_URI,
+                request.getRequestURI()
+        );
+
+        request.setAttribute(
+                "retryAfterSeconds",
+                safeRetryAfter
+        );
+
+        RequestDispatcher dispatcher =
+                request.getRequestDispatcher("/error/429");
+
         dispatcher.forward(request, response);
     }
 
-    /*
-     * Gère les refus d'accès côté SSR en redirigeant vers la page 403
-     * sans exposer de détail technique à l'utilisateur.
+    /**
+     * Gère les refus d'accès côté SSR en transmettant vers la page 403 sans
+     * exposer de détail technique.
+     *
+     * @param request requête HTTP refusée
+     * @param response réponse HTTP
+     * @param ex exception d'accès refusé
+     * @throws IOException en cas d'erreur d'écriture
+     * @throws ServletException en cas d'erreur de transmission
      */
     private void handleSsrForbidden(
             HttpServletRequest request,
@@ -344,36 +611,64 @@ public class SecurityConfig {
         response.setHeader("Cache-Control", "no-store");
         response.setHeader("Pragma", "no-cache");
 
-        request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, HttpServletResponse.SC_FORBIDDEN);
-        request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, request.getRequestURI());
+        request.setAttribute(
+                RequestDispatcher.ERROR_STATUS_CODE,
+                HttpServletResponse.SC_FORBIDDEN
+        );
 
-        RequestDispatcher dispatcher = request.getRequestDispatcher("/error/403");
+        request.setAttribute(
+                RequestDispatcher.ERROR_REQUEST_URI,
+                request.getRequestURI()
+        );
+
+        RequestDispatcher dispatcher =
+                request.getRequestDispatcher("/error/403");
+
         dispatcher.forward(request, response);
     }
 
-    /*
-     * Convertit le délai de throttling en valeur Retry-After.
-     * La valeur retournée reste bornée pour éviter un délai excessif côté client.
+    /**
+     * Convertit le délai de throttling en valeur HTTP Retry-After.
+     *
+     * @param delayMillis délai calculé en millisecondes
+     * @return délai en secondes, borné entre 1 et 60 secondes
      */
     private int computeRetryAfterSeconds(long delayMillis) {
-        long ms = Math.max(1000L, delayMillis);
-        return (int) Math.min(60L, TimeUnit.MILLISECONDS.toSeconds(ms));
+        long milliseconds = Math.max(1000L, delayMillis);
+
+        return (int) Math.min(
+                60L,
+                TimeUnit.MILLISECONDS.toSeconds(milliseconds)
+        );
     }
 
-    /*
-     * Ajoute une variation aléatoire au délai de throttling.
-     * Cette variation rend les tentatives automatisées moins prévisibles.
+    /**
+     * Ajoute une variation aléatoire au délai de throttling afin de rendre les
+     * tentatives automatisées moins prévisibles.
+     *
+     * @param baseDelayMillis délai de base
+     * @return délai complété par une variation aléatoire
      */
     private long withJitter(long baseDelayMillis) {
         if (baseDelayMillis <= 0L) {
             return 0L;
         }
-        int jitter = ThreadLocalRandom.current().nextInt(0, THROTTLE_JITTER_MAX_MILLIS + 1);
+
+        int jitter = ThreadLocalRandom.current().nextInt(
+                0,
+                THROTTLE_JITTER_MAX_MILLIS + 1
+        );
+
         return baseDelayMillis + jitter;
     }
 
-    /*
-     * Gère les appels REST non authentifiés avec une réponse JSON 401.
+    /**
+     * Gère les appels REST non authentifiés avec une réponse JSON HTTP 401.
+     *
+     * @param request requête HTTP
+     * @param response réponse HTTP
+     * @param ex exception d'authentification
+     * @throws IOException en cas d'erreur d'écriture
      */
     private void handleUnauthorized(
             HttpServletRequest request,
@@ -398,8 +693,14 @@ public class SecurityConfig {
         response.getWriter().write(body);
     }
 
-    /*
-     * Gère les appels REST authentifiés mais non autorisés avec une réponse JSON 403.
+    /**
+     * Gère les appels REST authentifiés mais non autorisés avec une réponse
+     * JSON HTTP 403.
+     *
+     * @param request requête HTTP
+     * @param response réponse HTTP
+     * @param ex exception d'accès refusé
+     * @throws IOException en cas d'erreur d'écriture
      */
     private void handleForbidden(
             HttpServletRequest request,
@@ -424,119 +725,187 @@ public class SecurityConfig {
         response.getWriter().write(body);
     }
 
-    /*
+    /**
      * Configure les règles CORS appliquées aux endpoints REST.
-     * Cette configuration limite explicitement les origines, méthodes
-     * et en-têtes acceptés par l'application.
+     *
+     * @return source de configuration CORS
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration =
+                new CorsConfiguration();
 
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(resolveAllowedOriginPatterns());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
+        configuration.setAllowedOriginPatterns(
+                resolveAllowedOriginPatterns()
+        );
+
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
+
+        configuration.setAllowedHeaders(
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept",
+                        "X-Requested-With"
+                )
+        );
+
         configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+                "/**",
+                configuration
+        );
 
         return source;
     }
 
-    /*
-     * Résout les origines CORS autorisées à partir de la configuration.
-     * La valeur par défaut conserve le fonctionnement local et autorise
-     * les domaines Railway utilisés pour le déploiement de production.
+    /**
+     * Résout les origines CORS autorisées depuis la configuration.
+     *
+     * @return liste normalisée des origines ou motifs autorisés
      */
     private List<String> resolveAllowedOriginPatterns() {
-
-        List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isBlank())
-                .toList();
+        List<String> origins =
+                Arrays.stream(corsAllowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(origin -> !origin.isBlank())
+                        .toList();
 
         if (origins.isEmpty()) {
-            return List.of("http://localhost:8080", "https://*.up.railway.app");
+            return List.of(
+                    "http://localhost:8080",
+                    "https://*.up.railway.app"
+            );
         }
 
         return origins;
     }
 
-    /*
-     * Construit une clé de suivi des tentatives de connexion.
-     * L'association utilisateur + IP permet de limiter les attaques ciblées
-     * tout en conservant un suivi global par adresse IP.
+    /**
+     * Construit une clé de suivi combinant l'identifiant saisi et l'adresse IP.
+     *
+     * @param username identifiant de connexion
+     * @param ipAddress adresse IP cliente
+     * @return clé normalisée de suivi
      */
-    private String buildLoginAttemptKey(String username, String ipAddress) {
+    private String buildLoginAttemptKey(
+            String username,
+            String ipAddress
+    ) {
+        String safeUsername =
+                username == null
+                        ? ""
+                        : username.trim().toLowerCase();
 
-        String safeUsername = (username == null) ? "" : username.trim().toLowerCase();
-        String safeIpAddress = (ipAddress == null) ? "" : ipAddress.trim();
+        String safeIpAddress =
+                ipAddress == null
+                        ? ""
+                        : ipAddress.trim();
 
         return safeUsername + "|" + safeIpAddress;
     }
 
-    /*
-     * Résout l'adresse IP du client.
-     * Les en-têtes de proxy sont pris en compte avant l'adresse distante
-     * fournie directement par la requête HTTP.
+    /**
+     * Résout l'adresse IP du client derrière un proxy HTTP.
+     *
+     * @param request requête HTTP
+     * @return adresse IP cliente résolue
      */
-    private String resolveClientIpAddress(HttpServletRequest request) {
+    private String resolveClientIpAddress(
+            HttpServletRequest request
+    ) {
+        String forwardedFor =
+                request.getHeader("X-Forwarded-For");
 
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            String first = xff.split(",")[0].trim();
-            if (!first.isBlank()) {
-                return first;
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            String firstAddress =
+                    forwardedFor.split(",")[0].trim();
+
+            if (!firstAddress.isBlank()) {
+                return firstAddress;
             }
         }
 
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return xRealIp.trim();
+        String realIp =
+                request.getHeader("X-Real-IP");
+
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
         }
 
         return request.getRemoteAddr();
     }
 
-    /*
+    /**
      * Enregistre une tentative de connexion échouée.
-     * Le compteur est réinitialisé automatiquement lorsque la dernière
-     * tentative est plus ancienne que la durée de conservation prévue.
+     *
+     * @param key clé utilisateur et adresse IP
+     * @return nouveau nombre de tentatives
      */
     private int registerFailedLoginAttempt(String key) {
-
         long now = System.currentTimeMillis();
 
-        LoginAttemptEntry entry = loginAttemptsByKey.compute(key, (k, existing) -> {
+        LoginAttemptEntry entry =
+                loginAttemptsByKey.compute(
+                        key,
+                        (entryKey, existing) -> {
 
-            if (existing == null) {
-                return new LoginAttemptEntry(1, now);
-            }
+                            if (existing == null) {
+                                return new LoginAttemptEntry(
+                                        1,
+                                        now
+                                );
+                            }
 
-            if (now - existing.lastAttemptEpochMillis > LOGIN_ATTEMPTS_TTL_MILLIS) {
-                return new LoginAttemptEntry(1, now);
-            }
+                            if (now - existing.lastAttemptEpochMillis
+                                    > LOGIN_ATTEMPTS_TTL_MILLIS) {
 
-            return new LoginAttemptEntry(existing.attempts + 1, now);
-        });
+                                return new LoginAttemptEntry(
+                                        1,
+                                        now
+                                );
+                            }
+
+                            return new LoginAttemptEntry(
+                                    existing.attempts + 1,
+                                    now
+                            );
+                        }
+                );
 
         cleanupExpiredLoginAttemptsIfNeeded(now);
 
         return entry.attempts;
     }
 
+    /**
+     * Supprime l'état de throttling associé à une clé.
+     *
+     * @param key clé de suivi à réinitialiser
+     */
     private void resetLoginAttempts(String key) {
         loginAttemptsByKey.remove(key);
     }
 
-    /*
-     * Détermine le délai à appliquer selon le nombre d'échecs de connexion.
-     * Lorsque le nombre d'échecs dépasse le tableau configuré,
-     * le délai maximal défini est réutilisé.
+    /**
+     * Détermine le délai à appliquer selon le nombre d'échecs.
+     *
+     * @param attempts nombre d'échecs
+     * @return délai en millisecondes
      */
     private long computeThrottleDelayMillis(int attempts) {
-
         int index = attempts - 1;
 
         if (index < 0) {
@@ -544,56 +913,63 @@ public class SecurityConfig {
         }
 
         if (index >= LOGIN_THROTTLE_DELAYS_MILLIS.length) {
-            return LOGIN_THROTTLE_DELAYS_MILLIS[LOGIN_THROTTLE_DELAYS_MILLIS.length - 1];
+            return LOGIN_THROTTLE_DELAYS_MILLIS[
+                    LOGIN_THROTTLE_DELAYS_MILLIS.length - 1
+                    ];
         }
 
         return LOGIN_THROTTLE_DELAYS_MILLIS[index];
     }
 
-    /*
-     * Applique le délai de ralentissement sur le traitement de la requête.
-     * En cas d'interruption, le statut du thread est restauré.
+    /**
+     * Applique le délai de ralentissement au traitement de la requête.
+     *
+     * @param delayMillis délai en millisecondes
      */
     private void applyThrottleDelay(long delayMillis) {
-
         if (delayMillis <= 0L) {
             return;
         }
 
         try {
             Thread.sleep(delayMillis);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
     }
 
-    /*
+    /**
      * Nettoie périodiquement les anciennes tentatives de connexion.
-     * Le nettoyage n'est pas lancé à chaque échec afin d'éviter un coût
-     * inutile sur les tentatives successives.
+     *
+     * @param now instant courant en millisecondes Epoch
      */
     private void cleanupExpiredLoginAttemptsIfNeeded(long now) {
-
-        int count = loginAttemptsCleanupCounter.incrementAndGet();
+        int count =
+                loginAttemptsCleanupCounter.incrementAndGet();
 
         if (count % 50 != 0) {
             return;
         }
 
         loginAttemptsByKey.entrySet().removeIf(entry ->
-                now - entry.getValue().lastAttemptEpochMillis > LOGIN_ATTEMPTS_TTL_MILLIS
+                now - entry.getValue().lastAttemptEpochMillis
+                        > LOGIN_ATTEMPTS_TTL_MILLIS
         );
     }
 
-    /*
-     * Représente l'état minimal conservé pour une clé de tentative de connexion.
+    /**
+     * Représente l'état minimal conservé pour une clé de tentative
+     * de connexion.
      */
     private static final class LoginAttemptEntry {
 
         private final int attempts;
         private final long lastAttemptEpochMillis;
 
-        private LoginAttemptEntry(int attempts, long lastAttemptEpochMillis) {
+        private LoginAttemptEntry(
+                int attempts,
+                long lastAttemptEpochMillis
+        ) {
             this.attempts = attempts;
             this.lastAttemptEpochMillis = lastAttemptEpochMillis;
         }
