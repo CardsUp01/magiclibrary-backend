@@ -32,7 +32,32 @@
                     </div>
                 </div>
 
-                <!-- Synthèse du compte membre et accès à la modification -->
+                <!--
+                    Messages de retour affichés après une action réalisée
+                    depuis la fiche membre, notamment après l'envoi
+                    d'une notification.
+                -->
+                <div th:if="${successMessage}"
+                     class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                     role="status"
+                     aria-live="polite">
+                    <span class="font-semibold">Succès :</span>
+                    <span th:text="${successMessage}">
+                        Opération effectuée avec succès.
+                    </span>
+                </div>
+
+                <div th:if="${errorMessage}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive">
+                    <span class="font-semibold">Erreur :</span>
+                    <span th:text="${errorMessage}">
+                        Une anomalie est survenue.
+                    </span>
+                </div>
+
+                <!-- Synthèse du compte membre et accès aux actions d'administration -->
                 <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
                     <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
 
@@ -90,11 +115,36 @@
                             </div>
                         </div>
 
+                        <!--
+                            Actions disponibles depuis la fiche utilisateur.
+
+                            L'envoi manuel d'une notification est disponible
+                            pour les comptes possédant le rôle MEMBRE ou ADMIN.
+
+                            Les comptes INVITE sont exclus de cette fonctionnalité.
+
+                            Le contrôleur applique également les vérifications
+                            côté serveur et interdit notamment à un administrateur
+                            de s'envoyer une notification à lui-même.
+
+                            La sécurité ne repose donc jamais uniquement
+                            sur l'affichage Thymeleaf.
+                        -->
                         <div class="shrink-0">
-                            <a th:href="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
-                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                                Modifier
-                            </a>
+                            <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-center">
+
+                                <a th:if="${user.roleLabel == 'MEMBRE' or user.roleLabel == 'ADMIN'}"
+                                   th:href="@{/admin/membres/{id}/notification(id=${user.idUser})}"
+                                   class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Envoyer une notification
+                                </a>
+
+                                <a th:href="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
+                                   class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Modifier
+                                </a>
+
+                            </div>
                         </div>
 
                     </div>

@@ -73,6 +73,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
                     OR :search = ''
                     OR LOWER(u.firstNameUser) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(u.lastNameUser) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(CONCAT(CONCAT(u.firstNameUser, ' '), u.lastNameUser))
+                        LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(CONCAT(CONCAT(u.lastNameUser, ' '), u.firstNameUser))
+                        LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(u.emailUser) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(r.labelRole) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR STR(u.idUser) LIKE CONCAT('%', :search, '%')
@@ -108,6 +112,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
                             OR :search = ''
                             OR LOWER(u.firstNameUser) LIKE LOWER(CONCAT('%', :search, '%'))
                             OR LOWER(u.lastNameUser) LIKE LOWER(CONCAT('%', :search, '%'))
+                            OR LOWER(CONCAT(CONCAT(u.firstNameUser, ' '), u.lastNameUser))
+                                LIKE LOWER(CONCAT('%', :search, '%'))
+                            OR LOWER(CONCAT(CONCAT(u.lastNameUser, ' '), u.firstNameUser))
+                                LIKE LOWER(CONCAT('%', :search, '%'))
                             OR LOWER(u.emailUser) LIKE LOWER(CONCAT('%', :search, '%'))
                             OR LOWER(r.labelRole) LIKE LOWER(CONCAT('%', :search, '%'))
                             OR STR(u.idUser) LIKE CONCAT('%', :search, '%')
@@ -131,6 +139,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
                             OR :search = ''
                             OR LOWER(u.firstNameUser) LIKE LOWER(CONCAT('%', :search, '%'))
                             OR LOWER(u.lastNameUser) LIKE LOWER(CONCAT('%', :search, '%'))
+                            OR LOWER(CONCAT(CONCAT(u.firstNameUser, ' '), u.lastNameUser))
+                                LIKE LOWER(CONCAT('%', :search, '%'))
+                            OR LOWER(CONCAT(CONCAT(u.lastNameUser, ' '), u.firstNameUser))
+                                LIKE LOWER(CONCAT('%', :search, '%'))
                             OR LOWER(u.emailUser) LIKE LOWER(CONCAT('%', :search, '%'))
                             OR LOWER(r.labelRole) LIKE LOWER(CONCAT('%', :search, '%'))
                             OR STR(u.idUser) LIKE CONCAT('%', :search, '%')

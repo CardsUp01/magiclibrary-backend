@@ -1,0 +1,327 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Envoyer une notification', activePage='admin-members'">
+
+    <th:block th:fragment="content">
+
+        <!--
+            =========================================================================
+            PAGE ADMIN : ENVOI D'UNE NOTIFICATION À UN UTILISATEUR
+            =========================================================================
+
+            Cette page permet à un administrateur d'envoyer manuellement
+            une notification à un utilisateur autorisé de MagicLibrary.
+
+            Les destinataires actuellement autorisés sont :
+                - les comptes MEMBRE ;
+                - les comptes ADMIN différents de l'administrateur connecté.
+
+            Les comptes INVITE ainsi que l'administrateur connecté lui-même
+            sont refusés côté serveur.
+
+            Le destinataire est déterminé côté serveur à partir de l'identifiant
+            présent dans l'URL.
+
+            Le formulaire ne permet donc de saisir que :
+                - le titre de la notification ;
+                - le message de la notification.
+
+            Les données techniques sont imposées côté backend :
+                - idUser du destinataire ;
+                - type SYSTEM ;
+                - catégorie SYSTEM ;
+                - absence de lien cible ;
+                - absence de priorité spécifique.
+
+            Cette séparation empêche le navigateur de choisir ou modifier
+            les propriétés techniques de la notification.
+        -->
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <!--
+                    -----------------------------------------------------------------
+                    EN-TÊTE
+                    -----------------------------------------------------------------
+
+                    Présente l'objectif de la page et permet un retour immédiat
+                    vers la fiche de l'utilisateur sans effectuer aucune modification.
+                -->
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Envoyer une notification
+                        </h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Envoie une notification directement dans l’espace de notifications de cet utilisateur.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à la fiche
+                        </a>
+                    </div>
+
+                </div>
+
+                <!--
+                    -----------------------------------------------------------------
+                    MESSAGE D'ERREUR GLOBAL
+                    -----------------------------------------------------------------
+
+                    Utilisé notamment lorsqu'une validation globale ou une règle
+                    métier empêche l'envoi de la notification.
+                -->
+                <div th:if="${errorMessage}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive">
+
+                    <span class="font-semibold">Erreur :</span>
+                    <span th:text="${errorMessage}">
+                        Une anomalie est survenue.
+                    </span>
+                </div>
+
+                <!--
+                    -----------------------------------------------------------------
+                    DESTINATAIRE
+                    -----------------------------------------------------------------
+
+                    Les informations affichées ici sont uniquement informatives.
+
+                    Aucun champ permettant de modifier l'identifiant du destinataire
+                    n'est envoyé par le formulaire.
+                -->
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Destinataire
+                    </h2>
+
+                    <div class="mt-4 grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Utilisateur
+                            </p>
+
+                            <p class="mt-2 break-words text-sm font-medium text-gray-900"
+                               th:text="${((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim().isEmpty()
+                                    ? 'Utilisateur inconnu'
+                                    : ((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim()}">
+                                Jean Dupont
+                            </p>
+                        </div>
+
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Email
+                            </p>
+
+                            <p class="mt-2 break-all text-sm text-gray-900"
+                               th:text="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))
+                                    ? user.email
+                                    : 'Email non renseigné'}">
+                                jean.dupont@example.com
+                            </p>
+                        </div>
+
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                ID utilisateur
+                            </p>
+
+                            <p class="mt-2 text-sm text-gray-900"
+                               th:text="${user.idUser}">
+                                12
+                            </p>
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!--
+                    -----------------------------------------------------------------
+                    FORMULAIRE
+                    -----------------------------------------------------------------
+
+                    Le formulaire est lié à AdminUserNotificationForm.
+
+                    Seuls deux champs sont exposés :
+                        - titleNotification ;
+                        - messageNotification.
+
+                    L'identifiant de l'utilisateur n'est volontairement PAS transmis
+                    dans un input hidden : il est récupéré depuis l'URL
+                    et contrôlé de nouveau côté serveur.
+                -->
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Notification
+                    </h2>
+
+                    <div class="mt-2 space-y-2">
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Renseigne un titre clair et un message destiné à cet utilisateur.
+                            La notification apparaîtra ensuite dans son espace de notifications MagicLibrary.
+                        </p>
+                    </div>
+
+                    <form th:action="@{/admin/membres/{id}/notification(id=${user.idUser})}"
+                          th:object="${notificationForm}"
+                          method="post"
+                          class="mt-6 max-w-full">
+
+                        <div class="grid max-w-full grid-cols-1 gap-6">
+
+                            <!--
+                                -----------------------------------------------------
+                                TITRE
+                                -----------------------------------------------------
+
+                                Validation backend :
+                                    - obligatoire ;
+                                    - minimum 2 caractères ;
+                                    - maximum 150 caractères.
+                            -->
+                            <div class="min-w-0 max-w-full">
+
+                                <label for="titleNotification"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Titre
+                                    <span aria-hidden="true">*</span>
+                                </label>
+
+                                <input id="titleNotification"
+                                       th:field="*{titleNotification}"
+                                       type="text"
+                                       required
+                                       aria-required="true"
+                                       minlength="2"
+                                       maxlength="150"
+                                       autocomplete="off"
+                                       placeholder="Ex. Votre emprunt a bien été mis à jour"
+                                       class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                <p class="mt-2 text-xs text-gray-500">
+                                    Entre 2 et 150 caractères.
+                                </p>
+
+                                <p th:if="${#fields.hasErrors('titleNotification')}"
+                                   th:errors="*{titleNotification}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur sur le titre.
+                                </p>
+
+                            </div>
+
+                            <!--
+                                -----------------------------------------------------
+                                MESSAGE
+                                -----------------------------------------------------
+
+                                Validation backend :
+                                    - obligatoire ;
+                                    - minimum 2 caractères ;
+                                    - maximum 10 000 caractères.
+
+                                Le textarea permet de conserver naturellement
+                                plusieurs lignes dans le contenu saisi.
+                            -->
+                            <div class="min-w-0 max-w-full">
+
+                                <label for="messageNotification"
+                                       class="mb-2 block text-sm font-medium text-gray-900">
+                                    Message
+                                    <span aria-hidden="true">*</span>
+                                </label>
+
+                                <textarea id="messageNotification"
+                                          th:field="*{messageNotification}"
+                                          required
+                                          aria-required="true"
+                                          minlength="2"
+                                          maxlength="10000"
+                                          rows="8"
+                                          placeholder="Saisis ici le message destiné à l’utilisateur…"
+                                          class="w-full resize-y rounded-md bg-white px-3 py-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"></textarea>
+
+                                <p class="mt-2 text-xs text-gray-500">
+                                    Entre 2 et 10 000 caractères.
+                                </p>
+
+                                <p th:if="${#fields.hasErrors('messageNotification')}"
+                                   th:errors="*{messageNotification}"
+                                   class="mt-2 text-sm text-gray-900">
+                                    Erreur sur le message.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                        <!--
+                            ---------------------------------------------------------
+                            INFORMATION FONCTIONNELLE
+                            ---------------------------------------------------------
+
+                            Rappelle à l'administrateur la conséquence de l'action
+                            sans introduire de fonctionnalité supplémentaire.
+                        -->
+                        <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+
+                            <p class="break-words text-sm text-gray-700">
+                                Après l’envoi, cette notification apparaîtra comme
+                                <span class="font-medium text-gray-900">non lue</span>
+                                dans l’espace de notifications de l’utilisateur.
+                            </p>
+
+                        </div>
+
+                        <!--
+                            ---------------------------------------------------------
+                            ACTIONS
+                            ---------------------------------------------------------
+
+                            Annuler :
+                                retourne sur la fiche de l'utilisateur sans créer
+                                de notification.
+
+                            Envoyer :
+                                soumet le formulaire au contrôleur SSR.
+                        -->
+                        <div class="mt-6 flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+
+                            <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
+                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Annuler
+                            </a>
+
+                            <button type="submit"
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Envoyer la notification
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </div>
+
+        </section>
+
+    </th:block>
+
+</th:block>
