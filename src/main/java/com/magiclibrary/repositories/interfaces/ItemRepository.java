@@ -86,6 +86,25 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     Page<Item> findByDeletedDateItemIsNull(Pageable pageable);
 
     // -------------------------------------------------------------------------
+    // LECTURE DES OBJETS ARCHIVÉS
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne tous les objets archivés du catalogue.
+     *
+     * Un objet est considéré comme archivé lorsque sa date d'archivage
+     * {@code deletedDateItem} est renseignée.
+     *
+     * L'ordre appliqué permet de présenter en priorité les archivages les plus
+     * récents dans l'interface d'administration. Un tri secondaire par titre
+     * puis identifiant garantit un affichage déterministe lorsque plusieurs
+     * objets ont été archivés à la même date.
+     *
+     * Cette lecture ne restaure ni ne modifie aucune donnée.
+     */
+    List<Item> findByDeletedDateItemIsNotNullOrderByDeletedDateItemDescTitleItemAscIdItemAsc();
+
+    // -------------------------------------------------------------------------
     // RECHERCHE MULTICRITÈRE
     // -------------------------------------------------------------------------
 

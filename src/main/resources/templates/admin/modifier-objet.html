@@ -1,0 +1,762 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Modifier un objet', activePage='bibliotheque-numerique'">
+
+    <th:block th:fragment="content">
+
+        <!--
+            =========================================================================
+            PAGE ADMIN : MODIFICATION D'UN OBJET DU CATALOGUE
+            =========================================================================
+            Cette page permet à un administrateur de modifier les informations
+            fonctionnelles d'un objet actif de la bibliothèque numérique.
+
+            Le formulaire principal est lié à ItemRequestDTO.
+
+            Les données techniques suivantes restent exclusivement gérées par
+            l'application :
+            - identifiant technique ;
+            - date d'ajout ;
+            - date de dernière modification ;
+            - date d'archivage ;
+            - disponibilité booléenne.
+
+            L'archivage est proposé dans une zone séparée et utilise son propre
+            formulaire POST afin d'éviter tout formulaire HTML imbriqué.
+
+            La confirmation d'archivage reprend strictement le composant visuel
+            déjà utilisé pour la restitution des emprunts afin de garantir une
+            interface homogène dans MagicLibrary.
+            =========================================================================
+        -->
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <!-- En-tête de page -->
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+                    <div class="min-w-0 max-w-full sm:flex-1">
+
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Modifier un objet
+                        </h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Modification des informations enregistrées pour cet objet.
+                            </p>
+
+                            <p th:if="${item != null}"
+                               class="break-words text-sm text-gray-500">
+                                Objet :
+                                <span class="font-medium text-gray-700"
+                                      th:text="${item.titleItem}">
+                                    Titre de l’objet
+                                </span>
+                                <span th:if="${item.idItem != null}"
+                                      th:text="' — ID ' + ${item.idItem}">
+                                    — ID 1
+                                </span>
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:self-start">
+
+                        <a th:if="${itemId != null}"
+                           th:href="@{/bibliotheque/item/{id}(id=${itemId})}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Voir la fiche
+                        </a>
+
+                        <a th:href="@{/bibliotheque-numerique}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à la bibliothèque numérique
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <!-- Messages fonctionnels -->
+                <div th:if="${successMessage}"
+                     class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                     role="status"
+                     aria-live="polite"
+                     th:text="'Succès : ' + ${successMessage}">
+                    Succès : opération effectuée.
+                </div>
+
+                <div th:if="${errorMessage}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive"
+                     th:text="'Erreur : ' + ${errorMessage}">
+                    Erreur : une anomalie est survenue.
+                </div>
+
+                <!--
+                    =========================================================================
+                    FORMULAIRE DE MODIFICATION
+                    =========================================================================
+                -->
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Informations de l’objet
+                    </h2>
+
+                    <div class="mt-2 space-y-2">
+
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Modifie uniquement les informations qui doivent être mises à jour.
+                        </p>
+
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            La disponibilité est recalculée automatiquement à partir du statut.
+                        </p>
+
+                    </div>
+
+                    <form th:action="@{/admin/catalogue/{id}/modifier(id=${itemId})}"
+                          th:object="${itemRequestDTO}"
+                          method="post"
+                          class="mt-6 max-w-full">
+
+                        <!-- =========================================================
+                             IDENTIFICATION
+                             ========================================================= -->
+                        <div class="max-w-full">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Identification
+                            </h3>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <div class="min-w-0 max-w-full md:col-span-2">
+
+                                    <label for="titleItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Titre <span aria-hidden="true">*</span>
+                                    </label>
+
+                                    <input id="titleItem"
+                                           th:field="*{titleItem}"
+                                           type="text"
+                                           maxlength="150"
+                                           required
+                                           aria-required="true"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('titleItem')}"
+                                       th:errors="*{titleItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur titre
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="categoryItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Catégorie <span aria-hidden="true">*</span>
+                                    </label>
+
+                                    <input id="categoryItem"
+                                           th:field="*{categoryItem}"
+                                           type="text"
+                                           maxlength="50"
+                                           required
+                                           aria-required="true"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('categoryItem')}"
+                                       th:errors="*{categoryItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur catégorie
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="formatItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Format
+                                    </label>
+
+                                    <input id="formatItem"
+                                           th:field="*{formatItem}"
+                                           type="text"
+                                           maxlength="100"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('formatItem')}"
+                                       th:errors="*{formatItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur format
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================================================
+                             AUTEUR / ÉDITION
+                             ========================================================= -->
+                        <div class="mt-8 border-t border-gray-200 pt-6">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Auteur et édition
+                            </h3>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="authorItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Auteur
+                                    </label>
+
+                                    <input id="authorItem"
+                                           th:field="*{authorItem}"
+                                           type="text"
+                                           maxlength="100"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('authorItem')}"
+                                       th:errors="*{authorItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur auteur
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="publisherItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Éditeur
+                                    </label>
+
+                                    <input id="publisherItem"
+                                           th:field="*{publisherItem}"
+                                           type="text"
+                                           maxlength="100"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('publisherItem')}"
+                                       th:errors="*{publisherItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur éditeur
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="publishYearItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Année de publication
+                                    </label>
+
+                                    <input id="publishYearItem"
+                                           th:field="*{publishYearItem}"
+                                           type="number"
+                                           step="1"
+                                           inputmode="numeric"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('publishYearItem')}"
+                                       th:errors="*{publishYearItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur année
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="editionItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Édition
+                                    </label>
+
+                                    <input id="editionItem"
+                                           th:field="*{editionItem}"
+                                           type="text"
+                                           maxlength="50"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('editionItem')}"
+                                       th:errors="*{editionItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur édition
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="isbnItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        ISBN
+                                    </label>
+
+                                    <input id="isbnItem"
+                                           th:field="*{isbnItem}"
+                                           type="text"
+                                           maxlength="20"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('isbnItem')}"
+                                       th:errors="*{isbnItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur ISBN
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="pageCountItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Nombre de pages
+                                    </label>
+
+                                    <input id="pageCountItem"
+                                           th:field="*{pageCountItem}"
+                                           type="number"
+                                           min="1"
+                                           step="1"
+                                           inputmode="numeric"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                                    <p th:if="${#fields.hasErrors('pageCountItem')}"
+                                       th:errors="*{pageCountItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur nombre de pages
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================================================
+                             ÉTAT / STATUT
+                             ========================================================= -->
+                        <div class="mt-8 border-t border-gray-200 pt-6">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                État et disponibilité
+                            </h3>
+
+                            <div class="mt-2">
+                                <p class="break-words hyphens-auto text-sm text-gray-700">
+                                    Le statut détermine automatiquement si l’objet est considéré comme disponible.
+                                </p>
+                            </div>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="statusItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Statut <span aria-hidden="true">*</span>
+                                    </label>
+
+                                    <select id="statusItem"
+                                            th:field="*{statusItem}"
+                                            required
+                                            aria-required="true"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Sélectionner un statut
+                                        </option>
+
+                                        <option th:each="status : ${itemStatuses}"
+                                                th:value="${status}"
+                                                th:text="${status.label}">
+                                            Statut
+                                        </option>
+
+                                    </select>
+
+                                    <p th:if="${#fields.hasErrors('statusItem')}"
+                                       th:errors="*{statusItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur statut
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="conditionItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        État physique
+                                    </label>
+
+                                    <select id="conditionItem"
+                                            th:field="*{conditionItem}"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Non renseigné
+                                        </option>
+
+                                        <option th:each="condition : ${itemConditions}"
+                                                th:value="${condition}"
+                                                th:text="${condition.label}">
+                                            État
+                                        </option>
+
+                                    </select>
+
+                                    <p th:if="${#fields.hasErrors('conditionItem')}"
+                                       th:errors="*{conditionItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur état
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="languageItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Langue
+                                    </label>
+
+                                    <input id="languageItem"
+                                           th:field="*{languageItem}"
+                                           type="text"
+                                           maxlength="10"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="FR, EN..." />
+
+                                    <p th:if="${#fields.hasErrors('languageItem')}"
+                                       th:errors="*{languageItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur langue
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================================================
+                             INFORMATIONS COMPLÉMENTAIRES
+                             ========================================================= -->
+                        <div class="mt-8 border-t border-gray-200 pt-6">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Informations complémentaires
+                            </h3>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4">
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="descriptionItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Description
+                                    </label>
+
+                                    <textarea id="descriptionItem"
+                                              th:field="*{descriptionItem}"
+                                              rows="5"
+                                              maxlength="10000"
+                                              class="w-full resize-y rounded-md bg-white px-3 py-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"></textarea>
+
+                                    <p th:if="${#fields.hasErrors('descriptionItem')}"
+                                       th:errors="*{descriptionItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur description
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="tagsItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Mots-clés
+                                    </label>
+
+                                    <textarea id="tagsItem"
+                                              th:field="*{tagsItem}"
+                                              rows="3"
+                                              maxlength="10000"
+                                              class="w-full resize-y rounded-md bg-white px-3 py-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"></textarea>
+
+                                    <p th:if="${#fields.hasErrors('tagsItem')}"
+                                       th:errors="*{tagsItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur mots-clés
+                                    </p>
+
+                                </div>
+
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="coverUrlItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        URL de couverture ou d’image
+                                    </label>
+
+                                    <input id="coverUrlItem"
+                                           th:field="*{coverUrlItem}"
+                                           type="url"
+                                           maxlength="300"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="https://..." />
+
+                                    <p th:if="${#fields.hasErrors('coverUrlItem')}"
+                                       th:errors="*{coverUrlItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur URL
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Actions du formulaire principal -->
+                        <div class="mt-8 flex max-w-full flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-end">
+
+                            <a th:if="${itemId != null}"
+                               th:href="@{/bibliotheque/item/{id}(id=${itemId})}"
+                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Annuler
+                            </a>
+
+                            <button type="submit"
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Enregistrer les modifications
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!--
+                    =========================================================================
+                    ARCHIVAGE
+                    =========================================================================
+                    L'archivage est volontairement séparé du formulaire de modification.
+
+                    Il ne supprime pas physiquement l'objet :
+                    deletedDateItem est renseignée côté service.
+
+                    Le service refuse également l'opération lorsqu'une LoanLine ACTIVE
+                    référence encore cet objet.
+
+                    La fenêtre de confirmation reprend exactement le composant utilisé
+                    sur la page des emprunts pour la restitution.
+                    =========================================================================
+                -->
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Retirer l’objet du catalogue
+                    </h2>
+
+                    <div class="mt-2 max-w-full space-y-2">
+
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            L’archivage retire l’objet de la bibliothèque numérique active sans supprimer son historique.
+                        </p>
+
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Les anciens emprunts restent conservés. Un objet actuellement emprunté ne peut pas être archivé.
+                        </p>
+
+                    </div>
+
+                    <!--
+                        Formulaire d'archivage distinct du formulaire principal.
+
+                        Comme pour la restitution des emprunts :
+                        - le premier bouton ouvre la modale ;
+                        - le second bouton, situé dans la modale, soumet réellement le POST.
+                    -->
+                    <form th:if="${itemId != null}"
+                          th:action="@{/admin/catalogue/{id}/archiver(id=${itemId})}"
+                          method="post"
+                          class="mt-6"
+                          data-archive-form>
+
+                        <input th:if="${_csrf != null}"
+                               type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}" />
+
+                        <button type="button"
+                                data-open-archive-modal
+                                class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Archiver l’objet
+                        </button>
+
+                        <!--
+                            =============================================================
+                            CONFIRMATION DE L'ARCHIVAGE
+                            =============================================================
+                            Structure volontairement identique à la modale de restitution.
+                            =============================================================
+                        -->
+                        <div data-archive-modal
+                             class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
+                             aria-hidden="true">
+
+                            <!-- Overlay -->
+                            <div data-close-archive-modal
+                                 class="absolute inset-0 bg-gray-900/50 backdrop-blur-[1px]">
+                            </div>
+
+                            <!-- Carte de confirmation -->
+                            <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
+
+                                <div class="space-y-3">
+
+                                    <h3 class="text-lg font-semibold text-gray-900">
+                                        Confirmer l’archivage
+                                    </h3>
+
+                                    <p class="text-sm text-gray-700">
+                                        Cet objet va être retiré du catalogue actif sans être supprimé. Cette action doit être confirmée avant validation.
+                                    </p>
+
+                                </div>
+
+                                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+                                    <button type="button"
+                                            data-cancel-archive-modal
+                                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Annuler
+                                    </button>
+
+                                    <button type="submit"
+                                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Confirmer l’archivage
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <!--
+            =========================================================================
+            GESTION DE LA MODALE D'ARCHIVAGE
+            =========================================================================
+            Cette logique reprend le fonctionnement de la modale de restitution :
+
+            - ouverture via le bouton Archiver l'objet ;
+            - fermeture via Annuler ;
+            - fermeture en cliquant sur l'overlay ;
+            - fermeture avec la touche Échap ;
+            - blocage du défilement de la page lorsque la modale est ouverte.
+
+            Aucune règle métier n'est exécutée en JavaScript.
+            L'autorisation effective de l'archivage reste contrôlée côté serveur.
+            =========================================================================
+        -->
+        <script>
+            (function () {
+                const archiveForm = document.querySelector('[data-archive-form]');
+
+                if (!archiveForm) {
+                    return;
+                }
+
+                const openButton = archiveForm.querySelector('[data-open-archive-modal]');
+                const modal = archiveForm.querySelector('[data-archive-modal]');
+                const cancelButton = archiveForm.querySelector('[data-cancel-archive-modal]');
+                const overlay = archiveForm.querySelector('[data-close-archive-modal]');
+
+                if (!openButton || !modal || !cancelButton || !overlay) {
+                    return;
+                }
+
+                function closeModal() {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                function openModal() {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.setAttribute('aria-hidden', 'false');
+
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                openButton.addEventListener('click', function () {
+                    openModal();
+                });
+
+                cancelButton.addEventListener('click', function () {
+                    closeModal();
+                });
+
+                overlay.addEventListener('click', function () {
+                    closeModal();
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    const key = event && event.key ? event.key : '';
+
+                    if (modal.getAttribute('aria-hidden') !== 'false') {
+                        return;
+                    }
+
+                    if (key === 'Escape' || key === 'Esc') {
+                        event.preventDefault();
+                        closeModal();
+                    }
+                });
+
+                window.addEventListener('resize', function () {
+                    if (modal.getAttribute('aria-hidden') === 'false') {
+                        closeModal();
+                    }
+                });
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

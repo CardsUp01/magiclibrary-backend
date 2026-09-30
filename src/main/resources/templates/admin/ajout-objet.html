@@ -1,0 +1,563 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Ajouter un objet', activePage='bibliotheque-numerique'">
+
+    <th:block th:fragment="content">
+
+        <!--
+            =========================================================================
+            PAGE ADMIN : AJOUT D'UN OBJET AU CATALOGUE
+            =========================================================================
+            Cette page permet à un administrateur d'ajouter un nouvel objet à la
+            bibliothèque numérique MagicLibrary.
+
+            Le formulaire est lié à ItemRequestDTO.
+
+            Les données techniques ne sont jamais saisies depuis l'interface :
+            - identifiant technique ;
+            - date d'ajout ;
+            - date de mise à jour ;
+            - date d'archivage ;
+            - disponibilité booléenne.
+
+            La disponibilité est calculée automatiquement par la couche métier
+            à partir du statut sélectionné.
+            =========================================================================
+        -->
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <!-- En-tête de page -->
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+                    <div class="min-w-0 max-w-full sm:flex-1">
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Ajouter un objet
+                        </h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Ajout d’un nouvel objet dans la bibliothèque numérique MagicLibrary.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0 sm:self-start">
+                        <a th:href="@{/bibliotheque-numerique}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à la bibliothèque numérique
+                        </a>
+                    </div>
+
+                </div>
+
+                <!--
+                    Messages fonctionnels éventuellement transmis par le contrôleur.
+                -->
+                <div th:if="${successMessage}"
+                     class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                     role="status"
+                     aria-live="polite"
+                     th:text="'Succès : ' + ${successMessage}">
+                    Succès : opération effectuée.
+                </div>
+
+                <div th:if="${errorMessage}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive"
+                     th:text="'Erreur : ' + ${errorMessage}">
+                    Erreur : une anomalie est survenue.
+                </div>
+
+                <!--
+                    =========================================================================
+                    FORMULAIRE DE CRÉATION
+                    =========================================================================
+                -->
+                <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Informations de l’objet
+                    </h2>
+
+                    <div class="mt-2 space-y-2">
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Renseigne les informations connues concernant le nouvel objet.
+                            Seuls le titre, la catégorie et le statut sont obligatoires.
+                        </p>
+                    </div>
+
+                    <form th:action="@{/admin/catalogue/ajouter}"
+                          th:object="${itemRequestDTO}"
+                          method="post"
+                          class="mt-6 max-w-full">
+
+                        <!-- =========================================================
+                             IDENTITÉ DE L'OBJET
+                             ========================================================= -->
+                        <div class="max-w-full">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Identification
+                            </h3>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <!-- Titre -->
+                                <div class="min-w-0 max-w-full md:col-span-2">
+
+                                    <label for="titleItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Titre <span aria-hidden="true">*</span>
+                                    </label>
+
+                                    <input id="titleItem"
+                                           th:field="*{titleItem}"
+                                           type="text"
+                                           maxlength="150"
+                                           required
+                                           aria-required="true"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Titre de l’objet" />
+
+                                    <p th:if="${#fields.hasErrors('titleItem')}"
+                                       th:errors="*{titleItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur titre
+                                    </p>
+
+                                </div>
+
+                                <!-- Catégorie -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="categoryItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Catégorie <span aria-hidden="true">*</span>
+                                    </label>
+
+                                    <input id="categoryItem"
+                                           th:field="*{categoryItem}"
+                                           type="text"
+                                           maxlength="50"
+                                           required
+                                           aria-required="true"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Livre, cartes, scène, accessoire..." />
+
+                                    <p th:if="${#fields.hasErrors('categoryItem')}"
+                                       th:errors="*{categoryItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur catégorie
+                                    </p>
+
+                                </div>
+
+                                <!-- Format -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="formatItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Format
+                                    </label>
+
+                                    <input id="formatItem"
+                                           th:field="*{formatItem}"
+                                           type="text"
+                                           maxlength="100"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Livre, DVD, accessoire..." />
+
+                                    <p th:if="${#fields.hasErrors('formatItem')}"
+                                       th:errors="*{formatItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur format
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================================================
+                             AUTEUR / ÉDITION
+                             ========================================================= -->
+                        <div class="mt-8 border-t border-gray-200 pt-6">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Auteur et édition
+                            </h3>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <!-- Auteur -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="authorItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Auteur
+                                    </label>
+
+                                    <input id="authorItem"
+                                           th:field="*{authorItem}"
+                                           type="text"
+                                           maxlength="100"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Auteur ou créateur" />
+
+                                    <p th:if="${#fields.hasErrors('authorItem')}"
+                                       th:errors="*{authorItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur auteur
+                                    </p>
+
+                                </div>
+
+                                <!-- Éditeur -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="publisherItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Éditeur
+                                    </label>
+
+                                    <input id="publisherItem"
+                                           th:field="*{publisherItem}"
+                                           type="text"
+                                           maxlength="100"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Maison d’édition" />
+
+                                    <p th:if="${#fields.hasErrors('publisherItem')}"
+                                       th:errors="*{publisherItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur éditeur
+                                    </p>
+
+                                </div>
+
+                                <!-- Année de publication -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="publishYearItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Année de publication
+                                    </label>
+
+                                    <input id="publishYearItem"
+                                           th:field="*{publishYearItem}"
+                                           type="number"
+                                           step="1"
+                                           inputmode="numeric"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="2026" />
+
+                                    <p th:if="${#fields.hasErrors('publishYearItem')}"
+                                       th:errors="*{publishYearItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur année
+                                    </p>
+
+                                </div>
+
+                                <!-- Édition -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="editionItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Édition
+                                    </label>
+
+                                    <input id="editionItem"
+                                           th:field="*{editionItem}"
+                                           type="text"
+                                           maxlength="50"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Édition ou version" />
+
+                                    <p th:if="${#fields.hasErrors('editionItem')}"
+                                       th:errors="*{editionItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur édition
+                                    </p>
+
+                                </div>
+
+                                <!-- ISBN -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="isbnItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        ISBN
+                                    </label>
+
+                                    <input id="isbnItem"
+                                           th:field="*{isbnItem}"
+                                           type="text"
+                                           maxlength="20"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="ISBN si applicable" />
+
+                                    <p th:if="${#fields.hasErrors('isbnItem')}"
+                                       th:errors="*{isbnItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur ISBN
+                                    </p>
+
+                                </div>
+
+                                <!-- Nombre de pages -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="pageCountItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Nombre de pages
+                                    </label>
+
+                                    <input id="pageCountItem"
+                                           th:field="*{pageCountItem}"
+                                           type="number"
+                                           min="1"
+                                           step="1"
+                                           inputmode="numeric"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="Nombre de pages" />
+
+                                    <p th:if="${#fields.hasErrors('pageCountItem')}"
+                                       th:errors="*{pageCountItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur nombre de pages
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================================================
+                             ÉTAT / STATUT
+                             ========================================================= -->
+                        <div class="mt-8 border-t border-gray-200 pt-6">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                État et disponibilité
+                            </h3>
+
+                            <div class="mt-2">
+                                <p class="break-words hyphens-auto text-sm text-gray-700">
+                                    La disponibilité est calculée automatiquement à partir du statut sélectionné.
+                                </p>
+                            </div>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
+
+                                <!-- Statut fonctionnel -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="statusItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Statut <span aria-hidden="true">*</span>
+                                    </label>
+
+                                    <select id="statusItem"
+                                            th:field="*{statusItem}"
+                                            required
+                                            aria-required="true"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Sélectionner un statut
+                                        </option>
+
+                                        <option th:each="status : ${itemStatuses}"
+                                                th:value="${status}"
+                                                th:text="${status.label}">
+                                            Statut
+                                        </option>
+
+                                    </select>
+
+                                    <p th:if="${#fields.hasErrors('statusItem')}"
+                                       th:errors="*{statusItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur statut
+                                    </p>
+
+                                </div>
+
+                                <!-- État physique -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="conditionItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        État physique
+                                    </label>
+
+                                    <select id="conditionItem"
+                                            th:field="*{conditionItem}"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Non renseigné
+                                        </option>
+
+                                        <option th:each="condition : ${itemConditions}"
+                                                th:value="${condition}"
+                                                th:text="${condition.label}">
+                                            État
+                                        </option>
+
+                                    </select>
+
+                                    <p th:if="${#fields.hasErrors('conditionItem')}"
+                                       th:errors="*{conditionItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur état
+                                    </p>
+
+                                </div>
+
+                                <!-- Langue -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="languageItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Langue
+                                    </label>
+
+                                    <input id="languageItem"
+                                           th:field="*{languageItem}"
+                                           type="text"
+                                           maxlength="10"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="FR, EN..." />
+
+                                    <p th:if="${#fields.hasErrors('languageItem')}"
+                                       th:errors="*{languageItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur langue
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- =========================================================
+                             DESCRIPTION / TAGS
+                             ========================================================= -->
+                        <div class="mt-8 border-t border-gray-200 pt-6">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Informations complémentaires
+                            </h3>
+
+                            <div class="mt-4 grid max-w-full grid-cols-1 gap-4">
+
+                                <!-- Description -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="descriptionItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Description
+                                    </label>
+
+                                    <textarea id="descriptionItem"
+                                              th:field="*{descriptionItem}"
+                                              rows="5"
+                                              maxlength="10000"
+                                              class="w-full resize-y rounded-md bg-white px-3 py-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                              placeholder="Description de l’objet"></textarea>
+
+                                    <p th:if="${#fields.hasErrors('descriptionItem')}"
+                                       th:errors="*{descriptionItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur description
+                                    </p>
+
+                                </div>
+
+                                <!-- Tags -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="tagsItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        Mots-clés
+                                    </label>
+
+                                    <textarea id="tagsItem"
+                                              th:field="*{tagsItem}"
+                                              rows="3"
+                                              maxlength="10000"
+                                              class="w-full resize-y rounded-md bg-white px-3 py-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                              placeholder="Mots-clés utiles à la recherche"></textarea>
+
+                                    <p th:if="${#fields.hasErrors('tagsItem')}"
+                                       th:errors="*{tagsItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur mots-clés
+                                    </p>
+
+                                </div>
+
+                                <!-- URL de couverture -->
+                                <div class="min-w-0 max-w-full">
+
+                                    <label for="coverUrlItem"
+                                           class="mb-2 block text-sm font-medium text-gray-900">
+                                        URL de couverture ou d’image
+                                    </label>
+
+                                    <input id="coverUrlItem"
+                                           th:field="*{coverUrlItem}"
+                                           type="url"
+                                           maxlength="300"
+                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                           placeholder="https://..." />
+
+                                    <p th:if="${#fields.hasErrors('coverUrlItem')}"
+                                       th:errors="*{coverUrlItem}"
+                                       class="mt-2 text-sm text-gray-900">
+                                        Erreur URL
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!--
+                            Actions du formulaire.
+                            L'annulation ne modifie aucune donnée et ramène
+                            l'administrateur au catalogue.
+                        -->
+                        <div class="mt-8 flex max-w-full flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-end">
+
+                            <a th:href="@{/bibliotheque-numerique}"
+                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Annuler
+                            </a>
+
+                            <button type="submit"
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Ajouter l’objet
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </div>
+
+        </section>
+
+    </th:block>
+</th:block>
