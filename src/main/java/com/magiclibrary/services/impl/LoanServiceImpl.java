@@ -17,8 +17,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.magiclibrary.dto.loan.AdminLoanRequestDTO;
 import com.magiclibrary.dto.loan.LoanRequestDTO;
 import com.magiclibrary.dto.loan.LoanResponseDTO;
+import com.magiclibrary.entities.Item;
 import com.magiclibrary.entities.Loan;
 import com.magiclibrary.entities.LoanLine;
 import com.magiclibrary.entities.User;
@@ -26,6 +28,8 @@ import com.magiclibrary.enums.ItemStatus;
 import com.magiclibrary.enums.LoanLineStatus;
 import com.magiclibrary.enums.LoanOrigin;
 import com.magiclibrary.enums.LoanStatus;
+import com.magiclibrary.exceptions.custom.ItemNotFoundException;
+import com.magiclibrary.exceptions.custom.ItemUnavailableException;
 import com.magiclibrary.exceptions.custom.LoanAlreadyReturnedException;
 import com.magiclibrary.exceptions.custom.LoanNotFoundException;
 import com.magiclibrary.exceptions.custom.UserNotFoundException;
@@ -44,6 +48,19 @@ import com.magiclibrary.services.LoanService;
  *
  * Elle applique également les règles de filtrage des emprunts actifs
  * ainsi que les mécanismes de recherche utilisés par l'interface SSR.
+ *
+ * Deux mécanismes de création coexistent volontairement :
+ *
+ * - createLoan(LoanRequestDTO) :
+ *   fonctionnement historique du MVP permettant de créer un emprunt vide ;
+ *
+ * - createAdminLoan(AdminLoanRequestDTO) :
+ *   workflow administratif complet permettant de créer atomiquement un emprunt,
+ *   ses lignes d'emprunt et la mise à jour de disponibilité des objets.
+ *
+ * La classe étant transactionnelle, le nouveau workflow administratif respecte
+ * une logique "tout ou rien" : si une validation ou une sauvegarde échoue,
+ * l'ensemble de l'opération est annulé.
  */
 @Service
 @Transactional
@@ -60,6 +77,22 @@ public class LoanServiceImpl implements LoanService {
     private static final String SORT_STATUS = "status";
     private static final String SORT_MEMBER = "member";
     private static final String SORT_ORIGIN = "origin";
+
+    /*
+     * Rôles autorisés à recevoir un emprunt depuis le workflow administratif.
+     *
+     * Un compte actif peut être emprunteur s'il possède le rôle :
+     * - MEMBRE ;
+     * - ADMIN.
+     *
+     * Le rôle INVITE reste explicitement exclu.
+     *
+     * Cette règle correspond au fonctionnement réel de MagicLibrary :
+     * un administrateur peut également être membre de l'association et
+     * posséder ses propres emprunts.
+     */
+    private static final String BORROWER_ROLE_MEMBER = "MEMBRE";
+    private static final String BORROWER_ROLE_ADMIN = "ADMIN";
 
     /*
      * Paramètres du moteur de recherche et de suggestion.
@@ -109,6 +142,16 @@ public class LoanServiceImpl implements LoanService {
         this.userRepository = userRepository;
     }
 
+    // =========================================================================
+    // CRÉATION HISTORIQUE MVP
+    // =========================================================================
+
+    /**
+     * Crée un emprunt vide selon le fonctionnement historique du MVP.
+     *
+     * Cette méthode est volontairement conservée sans modification fonctionnelle
+     * afin de préserver le contrat REST existant.
+     */
     @Override
     public LoanResponseDTO createLoan(LoanRequestDTO request) {
         if (request == null || request.getIdUser() == null) {
@@ -146,6 +189,349 @@ public class LoanServiceImpl implements LoanService {
 
         return LoanMapper.toResponseDTO(saved);
     }
+
+    // =========================================================================
+    // CRÉATION ADMINISTRATIVE COMPLÈTE
+    // =========================================================================
+
+    /**
+     * Crée un emprunt complet depuis l'espace d'administration.
+     *
+     * Cette méthode constitue le nouveau workflow fonctionnel permettant de
+     * traiter correctement un emprunt réel en une seule opération.
+     *
+     * L'opération réalise successivement :
+     *
+     * 1. validation de la requête ;
+     * 2. validation de l'emprunteur ;
+     * 3. validation des dates ;
+     * 4. validation exhaustive de tous les objets sélectionnés ;
+     * 5. création de l'emprunt ;
+     * 6. création d'une LoanLine ACTIVE par objet ;
+     * 7. passage de chaque objet à UNAVAILABLE.
+     *
+     * Toutes les validations relatives aux objets sont effectuées AVANT la
+     * première écriture métier afin d'éviter autant que possible la création
+     * d'un état intermédiaire.
+     *
+     * La transaction Spring portée par la classe garantit en complément que
+     * toute exception provoquera le rollback de l'ensemble de l'opération.
+     *
+     * @param request données fonctionnelles saisies par l'administrateur
+     * @return emprunt nouvellement créé
+     */
+    @Override
+    public LoanResponseDTO createAdminLoan(AdminLoanRequestDTO request) {
+
+        // ---------------------------------------------------------------------
+        // 1) VALIDATION MINIMALE DE LA REQUÊTE
+        // ---------------------------------------------------------------------
+
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Les données de création de l'emprunt sont obligatoires."
+            );
+        }
+
+        if (request.getIdUser() == null) {
+            throw new IllegalArgumentException(
+                    "L'emprunteur est obligatoire."
+            );
+        }
+
+        if (request.getItemIds() == null || request.getItemIds().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Au moins un objet doit être sélectionné."
+            );
+        }
+
+        if (request.getStartDateLoan() == null) {
+            throw new IllegalArgumentException(
+                    "La date de début est obligatoire."
+            );
+        }
+
+        if (request.getDueDateLoan() == null) {
+            throw new IllegalArgumentException(
+                    "La date d'échéance est obligatoire."
+            );
+        }
+
+        // ---------------------------------------------------------------------
+        // 2) VALIDATION DE L'EMPRUNTEUR
+        // ---------------------------------------------------------------------
+
+        User user = userRepository.findById(request.getIdUser())
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Utilisateur introuvable avec l'id : "
+                                + request.getIdUser()
+                ));
+
+        if (!Boolean.TRUE.equals(user.getActiveUser())) {
+            throw new IllegalArgumentException(
+                    "Le compte sélectionné n'est pas actif."
+            );
+        }
+
+        /*
+         * La liste affichée dans le formulaire est déjà filtrée côté SSR,
+         * mais cette vérification métier reste indispensable côté serveur.
+         *
+         * Un appel forgé manuellement ne doit jamais permettre de créer
+         * un emprunt pour un rôle non autorisé, notamment INVITE.
+         *
+         * Les rôles autorisés sont :
+         * - MEMBRE ;
+         * - ADMIN.
+         */
+        if (user.getRole() == null
+                || user.getRole().getLabelRole() == null) {
+
+            throw new IllegalArgumentException(
+                    "Le compte sélectionné ne possède pas un rôle autorisé "
+                            + "à recevoir un emprunt."
+            );
+        }
+
+        String borrowerRole =
+                user.getRole()
+                        .getLabelRole()
+                        .trim();
+
+        boolean borrowerRoleAllowed =
+                BORROWER_ROLE_MEMBER.equalsIgnoreCase(borrowerRole)
+                        || BORROWER_ROLE_ADMIN.equalsIgnoreCase(borrowerRole);
+
+        if (!borrowerRoleAllowed) {
+            throw new IllegalArgumentException(
+                    "Un emprunt ne peut être attribué qu'à un membre "
+                            + "ou à un administrateur."
+            );
+        }
+
+        // ---------------------------------------------------------------------
+        // 3) VALIDATION DES DATES
+        // ---------------------------------------------------------------------
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = LocalDate.now();
+
+        LocalDateTime startDate = request.getStartDateLoan();
+        LocalDate dueDate = request.getDueDateLoan();
+
+        if (startDate.isAfter(now)) {
+            throw new IllegalArgumentException(
+                    "La date de début ne peut pas être future."
+            );
+        }
+
+        /*
+         * L'échéance est une LocalDate alors que le début contient également
+         * l'heure. La comparaison métier se fait donc sur la date civile du
+         * début de l'emprunt.
+         */
+        if (dueDate.isBefore(startDate.toLocalDate())) {
+            throw new IllegalArgumentException(
+                    "La date d'échéance ne peut pas être antérieure "
+                            + "à la date de début."
+            );
+        }
+
+        // ---------------------------------------------------------------------
+        // 4) NORMALISATION ET VALIDATION DES NOTES
+        // ---------------------------------------------------------------------
+
+        String normalizedNotes = normalizeAdminLoanNotes(
+                request.getNotesLoan()
+        );
+
+        // ---------------------------------------------------------------------
+        // 5) VALIDATION EXHAUSTIVE DES OBJETS
+        // ---------------------------------------------------------------------
+
+        /*
+         * LinkedHashMap remplit ici deux objectifs :
+         *
+         * - détecter immédiatement les identifiants dupliqués ;
+         * - conserver l'ordre de sélection transmis par le formulaire.
+         *
+         * Aucun objet n'est modifié pendant cette boucle.
+         * Toutes les validations sont terminées avant la première sauvegarde.
+         */
+        Map<Integer, Item> validatedItems = new LinkedHashMap<>();
+
+        for (Integer idItem : request.getItemIds()) {
+
+            if (idItem == null) {
+                throw new IllegalArgumentException(
+                        "Un identifiant d'objet ne peut pas être vide."
+                );
+            }
+
+            if (validatedItems.containsKey(idItem)) {
+                throw new IllegalArgumentException(
+                        "Le même objet ne peut pas être ajouté plusieurs fois "
+                                + "au même emprunt."
+                );
+            }
+
+            Item item = itemRepository.findById(idItem)
+                    .orElseThrow(() -> ItemNotFoundException.forId(idItem));
+
+            /*
+             * Un objet archivé reste physiquement présent en base afin de
+             * préserver l'historique, mais il ne fait plus partie du catalogue
+             * actif et ne peut donc pas être emprunté.
+             */
+            if (item.getDeletedDateItem() != null) {
+                throw ItemNotFoundException.forId(idItem);
+            }
+
+            /*
+             * Les deux informations sont contrôlées volontairement :
+             *
+             * - availableItem représente la disponibilité effective ;
+             * - statusItem représente le statut métier de l'objet.
+             *
+             * Une incohérence éventuelle entre les deux ne doit jamais permettre
+             * à l'objet d'être emprunté.
+             */
+            if (!Boolean.TRUE.equals(item.getAvailableItem())
+                    || item.getStatusItem() != ItemStatus.AVAILABLE) {
+
+                throw ItemUnavailableException.forItem(idItem);
+            }
+
+            /*
+             * Sécurité métier supplémentaire :
+             * même si l'objet est marqué AVAILABLE par erreur, une LoanLine
+             * ACTIVE existante interdit formellement un nouvel emprunt.
+             */
+            boolean activeLoanLineExists =
+                    loanLineRepository.existsByItem_IdItemAndStatusLoanLine(
+                            idItem,
+                            LoanLineStatus.ACTIVE
+                    );
+
+            if (activeLoanLineExists) {
+                throw ItemUnavailableException.forItem(idItem);
+            }
+
+            validatedItems.put(idItem, item);
+        }
+
+        // ---------------------------------------------------------------------
+        // 6) CALCUL DU STATUT INITIAL DE L'EMPRUNT
+        // ---------------------------------------------------------------------
+
+        /*
+         * Une échéance strictement antérieure à aujourd'hui signifie que
+         * l'emprunt est déjà en retard au moment de son enregistrement.
+         *
+         * Ce cas est nécessaire pour permettre une saisie administrative
+         * rétroactive fidèle à la situation réelle.
+         */
+        boolean overdue = dueDate.isBefore(today);
+
+        LoanStatus initialLoanStatus =
+                overdue
+                        ? LoanStatus.LATE
+                        : LoanStatus.ONGOING;
+
+        // ---------------------------------------------------------------------
+        // 7) CRÉATION DU LOAN
+        // ---------------------------------------------------------------------
+
+        Loan loan = new Loan();
+
+        loan.setUser(user);
+        loan.setStartDateLoan(startDate);
+        loan.setDueDateLoan(dueDate);
+
+        loan.setReturnedLoan(Boolean.FALSE);
+        loan.setReturnDateLoan(null);
+
+        loan.setOverdueLoan(overdue);
+        loan.setExtendedLoan(Boolean.FALSE);
+        loan.setExtensionCountLoan(0);
+
+        loan.setStatusLoan(initialLoanStatus);
+        loan.setOriginLoan(LoanOrigin.ADMIN.getCode());
+
+        loan.setDeletedDateLoan(null);
+        loan.setNotesLoan(normalizedNotes);
+
+        /*
+         * Un emprunt créé depuis cette fonctionnalité n'est pas une donnée de
+         * scénario DEMO. Le marqueur reste donc explicitement absent.
+         */
+        loan.setDemoScenarioCode(null);
+
+        Loan savedLoan = loanRepository.save(loan);
+
+        // ---------------------------------------------------------------------
+        // 8) CRÉATION DES LOAN_LINE
+        // ---------------------------------------------------------------------
+
+        LocalDateTime loanLineCreationDate = LocalDateTime.now();
+        List<LoanLine> loanLines = new ArrayList<>(validatedItems.size());
+
+        for (Item item : validatedItems.values()) {
+
+            LoanLine loanLine = new LoanLine();
+
+            loanLine.setLoan(savedLoan);
+            loanLine.setItem(item);
+
+            /*
+             * Dans le modèle actuel, un Item représente un objet physique
+             * identifié individuellement par son idItem.
+             *
+             * Une LoanLine représente donc exactement un exemplaire.
+             */
+            loanLine.setQuantityLoanLine(1);
+
+            loanLine.setStatusLoanLine(LoanLineStatus.ACTIVE);
+            loanLine.setCreatedAtLoanLine(loanLineCreationDate);
+            loanLine.setUpdatedAtLoanLine(null);
+            loanLine.setNotesLoanLine(null);
+
+            loanLines.add(loanLine);
+        }
+
+        loanLineRepository.saveAll(loanLines);
+
+        // ---------------------------------------------------------------------
+        // 9) MISE À JOUR DE LA DISPONIBILITÉ DES OBJETS
+        // ---------------------------------------------------------------------
+
+        /*
+         * La création d'un emprunt doit être parfaitement symétrique avec la
+         * restitution déjà présente dans returnLoan().
+         *
+         * Création :
+         * AVAILABLE -> UNAVAILABLE
+         *
+         * Restitution :
+         * UNAVAILABLE -> AVAILABLE
+         */
+        for (Item item : validatedItems.values()) {
+            item.setAvailableItem(Boolean.FALSE);
+            item.setStatusItem(ItemStatus.UNAVAILABLE);
+        }
+
+        itemRepository.saveAll(validatedItems.values());
+
+        // ---------------------------------------------------------------------
+        // 10) RETOUR DU LOAN CRÉÉ
+        // ---------------------------------------------------------------------
+
+        return LoanMapper.toResponseDTO(savedLoan);
+    }
+
+    // =========================================================================
+    // RESTITUTION
+    // =========================================================================
 
     @Override
     public LoanResponseDTO returnLoan(Integer idLoan)
@@ -185,6 +571,10 @@ public class LoanServiceImpl implements LoanService {
         return LoanMapper.toResponseDTO(updated);
     }
 
+    // =========================================================================
+    // CONSULTATION
+    // =========================================================================
+
     @Override
     public LoanResponseDTO getLoanById(Integer idLoan)
             throws LoanNotFoundException {
@@ -214,12 +604,19 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public Page<LoanResponseDTO> getAllLoansPagedAndSorted(String sort, int page, int size) {
+    public Page<LoanResponseDTO> getAllLoansPagedAndSorted(
+            String sort,
+            int page,
+            int size
+    ) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : 9;
 
-        List<Loan> loans = new ArrayList<>(getActiveLoansSorted(buildLoanSort(sort)));
-        List<LoanResponseDTO> content = paginateAndMap(loans, safePage, safeSize);
+        List<Loan> loans =
+                new ArrayList<>(getActiveLoansSorted(buildLoanSort(sort)));
+
+        List<LoanResponseDTO> content =
+                paginateAndMap(loans, safePage, safeSize);
 
         return new PageImpl<>(
                 content,
@@ -229,15 +626,23 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public Page<LoanResponseDTO> searchLoansPagedAndSorted(String query, String sort, int page, int size) {
+    public Page<LoanResponseDTO> searchLoansPagedAndSorted(
+            String query,
+            String sort,
+            int page,
+            int size
+    ) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : 9;
 
         String normalizedQuery = normalizeQuery(query);
-        List<Loan> loans = new ArrayList<>(getActiveLoansSorted(buildLoanSort(sort)));
+        List<Loan> loans =
+                new ArrayList<>(getActiveLoansSorted(buildLoanSort(sort)));
 
         if (normalizedQuery.isEmpty()) {
-            List<LoanResponseDTO> content = paginateAndMap(loans, safePage, safeSize);
+            List<LoanResponseDTO> content =
+                    paginateAndMap(loans, safePage, safeSize);
+
             return new PageImpl<>(
                     content,
                     PageRequest.of(safePage, safeSize),
@@ -245,7 +650,9 @@ public class LoanServiceImpl implements LoanService {
             );
         }
 
-        if (!thresholdReached(normalizedQuery) || containsForbiddenChars(normalizedQuery)) {
+        if (!thresholdReached(normalizedQuery)
+                || containsForbiddenChars(normalizedQuery)) {
+
             return new PageImpl<>(
                     List.of(),
                     PageRequest.of(safePage, safeSize),
@@ -254,6 +661,7 @@ public class LoanServiceImpl implements LoanService {
         }
 
         List<String> tokens = tokenize(normalizedQuery);
+
         if (tokens.isEmpty()) {
             return new PageImpl<>(
                     List.of(),
@@ -266,7 +674,8 @@ public class LoanServiceImpl implements LoanService {
                 .filter(loan -> matchesLoanTokens(loan, tokens))
                 .toList();
 
-        List<LoanResponseDTO> content = paginateAndMap(filteredLoans, safePage, safeSize);
+        List<LoanResponseDTO> content =
+                paginateAndMap(filteredLoans, safePage, safeSize);
 
         return new PageImpl<>(
                 content,
@@ -274,6 +683,10 @@ public class LoanServiceImpl implements LoanService {
                 filteredLoans.size()
         );
     }
+
+    // =========================================================================
+    // CONSULTATION PAR UTILISATEUR
+    // =========================================================================
 
     @Override
     public List<LoanResponseDTO> getLoansForUser(String email) {
@@ -288,7 +701,12 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public Page<LoanResponseDTO> getLoansForUserPagedAndSorted(String email, String sort, int page, int size) {
+    public Page<LoanResponseDTO> getLoansForUserPagedAndSorted(
+            String email,
+            String sort,
+            int page,
+            int size
+    ) {
         User user = userRepository.findByEmailUser(email)
                 .orElseThrow(() -> new UserNotFoundException(
                         "Utilisateur introuvable avec l'email : " + email
@@ -316,7 +734,11 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public LoanResponseDTO getLoanByIdForUser(Integer idLoan, String email, boolean isAdmin) {
+    public LoanResponseDTO getLoanByIdForUser(
+            Integer idLoan,
+            String email,
+            boolean isAdmin
+    ) {
         Loan loan = loanRepository.findById(idLoan)
                 .orElseThrow(() -> new LoanNotFoundException(
                         "Aucun emprunt trouvé avec l'id : " + idLoan
@@ -324,6 +746,7 @@ public class LoanServiceImpl implements LoanService {
 
         if (!isAdmin) {
             String ownerEmail = loan.getUser().getEmailUser();
+
             if (!ownerEmail.equals(email)) {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "Accès interdit à cet emprunt."
@@ -333,6 +756,10 @@ public class LoanServiceImpl implements LoanService {
 
         return LoanMapper.toResponseDTO(loan);
     }
+
+    // =========================================================================
+    // SUGGESTIONS
+    // =========================================================================
 
     @Override
     public List<LoanResponseDTO> suggestLoans(String query) {
@@ -351,6 +778,7 @@ public class LoanServiceImpl implements LoanService {
         }
 
         List<String> tokens = tokenize(normalizedQuery);
+
         if (tokens.isEmpty()) {
             return List.of();
         }
@@ -364,7 +792,10 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public List<LoanResponseDTO> suggestLoansForUser(String email, String query) {
+    public List<LoanResponseDTO> suggestLoansForUser(
+            String email,
+            String query
+    ) {
         User user = userRepository.findByEmailUser(email)
                 .orElseThrow(() -> new UserNotFoundException(
                         "Utilisateur introuvable avec l'email : " + email
@@ -385,6 +816,7 @@ public class LoanServiceImpl implements LoanService {
         }
 
         List<String> tokens = tokenize(normalizedQuery);
+
         if (tokens.isEmpty()) {
             return List.of();
         }
@@ -401,8 +833,12 @@ public class LoanServiceImpl implements LoanService {
      * Tous les termes recherchés doivent être présents dans les données
      * normalisées de l'emprunt pour qu'il soit retenu.
      */
-    private List<LoanResponseDTO> suggestFromLoans(List<Loan> loans, List<String> tokens) {
-        Map<Integer, LoanResponseDTO> out = new LinkedHashMap<>(SUGGEST_LIMIT * 2);
+    private List<LoanResponseDTO> suggestFromLoans(
+            List<Loan> loans,
+            List<String> tokens
+    ) {
+        Map<Integer, LoanResponseDTO> out =
+                new LinkedHashMap<>(SUGGEST_LIMIT * 2);
 
         for (Loan loan : loans) {
             if (loan == null || loan.getIdLoan() == null) {
@@ -414,6 +850,7 @@ public class LoanServiceImpl implements LoanService {
             }
 
             LoanResponseDTO dto = LoanMapper.toResponseDTO(loan);
+
             if (dto == null) {
                 continue;
             }
@@ -421,11 +858,14 @@ public class LoanServiceImpl implements LoanService {
             String haystack = buildSuggestHaystack(dto);
 
             boolean matchesAll = true;
+
             for (String token : tokens) {
                 String normalizedToken = normalizeTokenForMatch(token);
+
                 if (normalizedToken.isEmpty()) {
                     continue;
                 }
+
                 if (!haystack.contains(normalizedToken)) {
                     matchesAll = false;
                     break;
@@ -446,12 +886,16 @@ public class LoanServiceImpl implements LoanService {
         return new ArrayList<>(out.values());
     }
 
-    private boolean matchesLoanTokens(Loan loan, List<String> tokens) {
+    private boolean matchesLoanTokens(
+            Loan loan,
+            List<String> tokens
+    ) {
         if (loan == null || loan.getDeletedDateLoan() != null) {
             return false;
         }
 
         LoanResponseDTO dto = LoanMapper.toResponseDTO(loan);
+
         if (dto == null) {
             return false;
         }
@@ -460,6 +904,7 @@ public class LoanServiceImpl implements LoanService {
 
         for (String token : tokens) {
             String normalizedToken = normalizeTokenForMatch(token);
+
             if (normalizedToken.isEmpty()) {
                 continue;
             }
@@ -485,10 +930,15 @@ public class LoanServiceImpl implements LoanService {
     }
 
     private boolean isActiveLoan(Loan loan) {
-        return loan != null && loan.getDeletedDateLoan() == null;
+        return loan != null
+                && loan.getDeletedDateLoan() == null;
     }
 
-    private List<LoanResponseDTO> paginateAndMap(List<Loan> loans, int page, int size) {
+    private List<LoanResponseDTO> paginateAndMap(
+            List<Loan> loans,
+            int page,
+            int size
+    ) {
         int total = loans.size();
         int fromIndex = Math.min(page * size, total);
         int toIndex = Math.min(fromIndex + size, total);
@@ -496,6 +946,48 @@ public class LoanServiceImpl implements LoanService {
         return LoanMapper.toResponseDTOList(
                 loans.subList(fromIndex, toIndex)
         );
+    }
+
+    // =========================================================================
+    // VALIDATION / NORMALISATION DU WORKFLOW ADMIN
+    // =========================================================================
+
+    /**
+     * Normalise les notes saisies lors de la création administrative.
+     *
+     * Une chaîne vide ou composée uniquement d'espaces devient null.
+     *
+     * L'entité Loan impose par ailleurs une longueur minimale de deux
+     * caractères lorsqu'une note est présente. Ce contrôle est reproduit ici
+     * afin de fournir une erreur métier explicite avant le flush Hibernate.
+     *
+     * @param notes notes brutes provenant du formulaire
+     * @return notes normalisées ou null
+     */
+    private static String normalizeAdminLoanNotes(String notes) {
+        if (notes == null) {
+            return null;
+        }
+
+        String normalized = notes.trim();
+
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        if (normalized.length() < 2) {
+            throw new IllegalArgumentException(
+                    "Les notes doivent contenir au moins 2 caractères."
+            );
+        }
+
+        if (normalized.length() > 10_000) {
+            throw new IllegalArgumentException(
+                    "Les notes ne peuvent pas dépasser 10 000 caractères."
+            );
+        }
+
+        return normalized;
     }
 
     /*
@@ -510,30 +1002,36 @@ public class LoanServiceImpl implements LoanService {
                     Sort.Order.asc("startDateLoan"),
                     Sort.Order.asc("idLoan")
             );
+
             case SORT_DUE_SOON -> Sort.by(
                     Sort.Order.asc("dueDateLoan"),
                     Sort.Order.desc("startDateLoan"),
                     Sort.Order.desc("idLoan")
             );
+
             case SORT_STATUS -> Sort.by(
                     Sort.Order.asc("statusLoan"),
                     Sort.Order.desc("startDateLoan"),
                     Sort.Order.desc("idLoan")
             );
+
             case SORT_MEMBER -> Sort.by(
                     Sort.Order.asc("user.idUser"),
                     Sort.Order.desc("startDateLoan"),
                     Sort.Order.desc("idLoan")
             );
+
             case SORT_ORIGIN -> Sort.by(
                     Sort.Order.asc("originLoan"),
                     Sort.Order.desc("startDateLoan"),
                     Sort.Order.desc("idLoan")
             );
+
             case SORT_RECENT -> Sort.by(
                     Sort.Order.desc("startDateLoan"),
                     Sort.Order.desc("idLoan")
             );
+
             default -> Sort.by(
                     Sort.Order.desc("startDateLoan"),
                     Sort.Order.desc("idLoan")
@@ -584,18 +1082,41 @@ public class LoanServiceImpl implements LoanService {
         );
 
         Comparator<Loan> byMemberIdAsc = Comparator.comparing(
-                loan -> loan != null && loan.getUser() != null ? loan.getUser().getIdUser() : null,
+                loan -> loan != null && loan.getUser() != null
+                        ? loan.getUser().getIdUser()
+                        : null,
                 Comparator.nullsLast(Comparator.naturalOrder())
         );
 
         return switch (normalizedSort) {
-            case SORT_OLDEST -> byStartDateAsc.thenComparing(byIdAsc);
-            case SORT_DUE_SOON -> byDueDateAsc.thenComparing(byStartDateDesc).thenComparing(byIdDesc);
-            case SORT_STATUS -> byStatusAsc.thenComparing(byStartDateDesc).thenComparing(byIdDesc);
-            case SORT_MEMBER -> byMemberIdAsc.thenComparing(byStartDateDesc).thenComparing(byIdDesc);
-            case SORT_ORIGIN -> byOriginAsc.thenComparing(byStartDateDesc).thenComparing(byIdDesc);
-            case SORT_RECENT -> byStartDateDesc.thenComparing(byIdDesc);
-            default -> byStartDateDesc.thenComparing(byIdDesc);
+            case SORT_OLDEST ->
+                    byStartDateAsc.thenComparing(byIdAsc);
+
+            case SORT_DUE_SOON ->
+                    byDueDateAsc
+                            .thenComparing(byStartDateDesc)
+                            .thenComparing(byIdDesc);
+
+            case SORT_STATUS ->
+                    byStatusAsc
+                            .thenComparing(byStartDateDesc)
+                            .thenComparing(byIdDesc);
+
+            case SORT_MEMBER ->
+                    byMemberIdAsc
+                            .thenComparing(byStartDateDesc)
+                            .thenComparing(byIdDesc);
+
+            case SORT_ORIGIN ->
+                    byOriginAsc
+                            .thenComparing(byStartDateDesc)
+                            .thenComparing(byIdDesc);
+
+            case SORT_RECENT ->
+                    byStartDateDesc.thenComparing(byIdDesc);
+
+            default ->
+                    byStartDateDesc.thenComparing(byIdDesc);
         };
     }
 
@@ -611,30 +1132,63 @@ public class LoanServiceImpl implements LoanService {
         }
 
         return switch (normalized) {
-            case SORT_RECENT, SORT_OLDEST, SORT_DUE_SOON, SORT_STATUS, SORT_MEMBER, SORT_ORIGIN -> normalized;
+            case SORT_RECENT,
+                 SORT_OLDEST,
+                 SORT_DUE_SOON,
+                 SORT_STATUS,
+                 SORT_MEMBER,
+                 SORT_ORIGIN -> normalized;
+
             default -> SORT_RECENT;
         };
     }
 
-    private static String buildSuggestHaystack(LoanResponseDTO dto) {
-        String idLoan = dto.getIdLoan() == null ? "" : normalizeNumericToken(String.valueOf(dto.getIdLoan()));
-        String idUser = dto.getIdUser() == null ? "" : normalizeNumericToken(String.valueOf(dto.getIdUser()));
-        String firstName = normalizeText(dto.getFirstNameUser());
-        String lastName = normalizeText(dto.getLastNameUser());
-        String statusCode = dto.getStatusLoan() == null ? "" : normalizeText(dto.getStatusLoan().name());
-        String statusLabel = normalizeText(dto.getStatusLoanLabel());
-        String originCode = normalizeText(dto.getOriginLoan());
-        String originLabel = normalizeText(dto.getOriginLoanLabel());
+    private static String buildSuggestHaystack(
+            LoanResponseDTO dto
+    ) {
+        String idLoan =
+                dto.getIdLoan() == null
+                        ? ""
+                        : normalizeNumericToken(
+                        String.valueOf(dto.getIdLoan())
+                );
+
+        String idUser =
+                dto.getIdUser() == null
+                        ? ""
+                        : normalizeNumericToken(
+                        String.valueOf(dto.getIdUser())
+                );
+
+        String firstName =
+                normalizeText(dto.getFirstNameUser());
+
+        String lastName =
+                normalizeText(dto.getLastNameUser());
+
+        String statusCode =
+                dto.getStatusLoan() == null
+                        ? ""
+                        : normalizeText(dto.getStatusLoan().name());
+
+        String statusLabel =
+                normalizeText(dto.getStatusLoanLabel());
+
+        String originCode =
+                normalizeText(dto.getOriginLoan());
+
+        String originLabel =
+                normalizeText(dto.getOriginLoanLabel());
 
         return (
-                idLoan + " " +
-                        idUser + " " +
-                        firstName + " " +
-                        lastName + " " +
-                        statusCode + " " +
-                        statusLabel + " " +
-                        originCode + " " +
-                        originLabel
+                idLoan + " "
+                        + idUser + " "
+                        + firstName + " "
+                        + lastName + " "
+                        + statusCode + " "
+                        + statusLabel + " "
+                        + originCode + " "
+                        + originLabel
         ).trim();
     }
 
@@ -648,15 +1202,29 @@ public class LoanServiceImpl implements LoanService {
             return "";
         }
 
-        String lower = value.toLowerCase(Locale.ROOT).trim();
+        String lower =
+                value.toLowerCase(Locale.ROOT).trim();
 
-        String normalized = Normalizer.normalize(lower, Normalizer.Form.NFD);
-        normalized = normalized.replaceAll("\\p{M}+", "");
+        String normalized =
+                Normalizer.normalize(
+                        lower,
+                        Normalizer.Form.NFD
+                );
 
-        normalized = normalized.replace(',', ' ');
-        normalized = normalized.replace(';', ' ');
-        normalized = normalized.replace(':', ' ');
-        normalized = normalized.replaceAll("\\s+", " ").trim();
+        normalized =
+                normalized.replaceAll("\\p{M}+", "");
+
+        normalized =
+                normalized.replace(',', ' ');
+
+        normalized =
+                normalized.replace(';', ' ');
+
+        normalized =
+                normalized.replace(':', ' ');
+
+        normalized =
+                normalized.replaceAll("\\s+", " ").trim();
 
         return normalized;
     }
@@ -667,12 +1235,14 @@ public class LoanServiceImpl implements LoanService {
         }
 
         String cleaned = normalizeText(raw);
+
         if (cleaned.isEmpty()) {
             return List.of();
         }
 
         String[] parts = cleaned.split(" ");
-        List<String> tokens = new ArrayList<>(parts.length);
+        List<String> tokens =
+                new ArrayList<>(parts.length);
 
         for (String part : parts) {
             if (part == null) {
@@ -680,6 +1250,7 @@ public class LoanServiceImpl implements LoanService {
             }
 
             String token = part.trim();
+
             if (token.isEmpty()) {
                 continue;
             }
@@ -689,7 +1260,9 @@ public class LoanServiceImpl implements LoanService {
             }
 
             if (isNumeric(token)) {
-                tokens.add(normalizeNumericToken(token));
+                tokens.add(
+                        normalizeNumericToken(token)
+                );
                 continue;
             }
 
@@ -709,12 +1282,15 @@ public class LoanServiceImpl implements LoanService {
         }
 
         String trimmed = query.trim();
+
         if (trimmed.isEmpty()) {
             return "";
         }
 
         if (trimmed.length() > MAX_QUERY_LENGTH) {
-            return trimmed.substring(0, MAX_QUERY_LENGTH).trim();
+            return trimmed
+                    .substring(0, MAX_QUERY_LENGTH)
+                    .trim();
         }
 
         return trimmed;
@@ -725,12 +1301,15 @@ public class LoanServiceImpl implements LoanService {
             return false;
         }
 
-        return isNumeric(query) ? query.length() >= 1 : query.length() >= 2;
+        return isNumeric(query)
+                ? query.length() >= 1
+                : query.length() >= 2;
     }
 
     private static boolean containsForbiddenChars(String query) {
         for (int i = 0; i < query.length(); i++) {
             char c = query.charAt(i);
+
             if (c == '/' || c == '\\') {
                 return true;
             }
@@ -746,6 +1325,7 @@ public class LoanServiceImpl implements LoanService {
 
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
+
             if (c < '0' || c > '9') {
                 return false;
             }
@@ -760,12 +1340,17 @@ public class LoanServiceImpl implements LoanService {
         }
 
         String trimmed = value.trim();
+
         if (!isNumeric(trimmed)) {
             return trimmed;
         }
 
-        String normalized = trimmed.replaceFirst("^0+", "");
-        return normalized.isEmpty() ? "0" : normalized;
+        String normalized =
+                trimmed.replaceFirst("^0+", "");
+
+        return normalized.isEmpty()
+                ? "0"
+                : normalized;
     }
 
     private static String normalizeTokenForMatch(String token) {
@@ -774,6 +1359,7 @@ public class LoanServiceImpl implements LoanService {
         }
 
         String trimmed = token.trim();
+
         if (isNumeric(trimmed)) {
             return normalizeNumericToken(trimmed);
         }

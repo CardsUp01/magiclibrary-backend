@@ -1,0 +1,1393 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Créer un emprunt', activePage='admin-loans'">
+
+    <th:block th:fragment="content">
+
+        <!--
+            =========================================================================
+            PAGE ADMIN : CRÉATION D'UN EMPRUNT
+            =========================================================================
+
+            Cette page permet à un administrateur de créer un emprunt complet
+            depuis l'interface SSR MagicLibrary.
+
+            Le formulaire transmet uniquement les données fonctionnelles :
+            - emprunteur ;
+            - objet(s) emprunté(s) ;
+            - date réelle de début ;
+            - date d'échéance ;
+            - notes facultatives.
+
+            Un emprunteur autorisé est un compte actif possédant le rôle :
+            - MEMBRE ;
+            - ADMIN.
+
+            Le rôle INVITE reste exclu.
+
+            Les informations techniques telles que le statut, l'origine,
+            les LoanLine, la disponibilité des objets et les indicateurs de retard
+            sont déterminées exclusivement côté serveur.
+
+            La liste des objets disponibles est paginée localement côté navigateur.
+            Cette pagination est purement ergonomique :
+            - aucun appel supplémentaire au serveur ;
+            - aucune modification des données ;
+            - les sélections restent conservées entre les pages ;
+            - la recherche est appliquée avant la pagination.
+
+            La création définitive nécessite une confirmation explicite dans
+            une fenêtre modale. Le premier clic sur "Créer l'emprunt" ne soumet
+            donc jamais directement le formulaire.
+            =========================================================================
+        -->
+
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <!-- ============================================================= -->
+            <!-- EN-TÊTE                                                       -->
+            <!-- ============================================================= -->
+
+            <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                <div class="min-w-0 max-w-full sm:flex-1">
+
+                    <h1 class="break-words text-base font-semibold text-gray-900">
+                        Créer un emprunt
+                    </h1>
+
+                    <div class="mt-2 max-w-full space-y-2">
+
+                        <p class="break-words hyphens-auto text-sm text-gray-700">
+                            Enregistre un nouvel emprunt pour un utilisateur autorisé de MagicLibrary.
+                        </p>
+
+                        <p class="break-words hyphens-auto text-sm text-gray-600">
+                            Sélectionne l’emprunteur, un ou plusieurs objets disponibles,
+                            puis vérifie les dates avant validation.
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <a th:href="@{/admin/emprunts}"
+                   class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:self-start">
+                    Retour aux emprunts
+                </a>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- MESSAGE SI AUCUN EMPRUNTEUR OU AUCUN OBJET DISPONIBLE         -->
+            <!-- ============================================================= -->
+
+            <div th:if="${membersCount == 0 or availableItemsCount == 0}"
+                 class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+
+                <h2 class="text-sm font-semibold text-gray-900">
+                    Création impossible pour le moment
+                </h2>
+
+                <div class="mt-2 space-y-2 text-sm text-gray-700">
+
+                    <p th:if="${membersCount == 0}">
+                        Aucun compte actif possédant le rôle MEMBRE ou ADMIN n’est actuellement disponible pour recevoir un emprunt.
+                    </p>
+
+                    <p th:if="${availableItemsCount == 0}">
+                        Aucun objet disponible n’est actuellement empruntable.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- FORMULAIRE                                                    -->
+            <!-- ============================================================= -->
+
+            <form id="createLoanForm"
+                  th:action="@{/admin/emprunts/ajouter}"
+                  th:object="${adminLoanRequest}"
+                  method="post"
+                  class="mt-6 max-w-full space-y-8">
+
+                <!-- CSRF explicite pour rester cohérent avec les autres actions ADMIN -->
+                <input th:if="${_csrf != null}"
+                       type="hidden"
+                       th:name="${_csrf.parameterName}"
+                       th:value="${_csrf.token}" />
+
+                <!-- ========================================================= -->
+                <!-- ERREURS GLOBALES                                         -->
+                <!-- ========================================================= -->
+
+                <div th:if="${#fields.hasGlobalErrors()}"
+                     class="rounded-lg border border-gray-300 bg-gray-50 p-4"
+                     role="alert">
+
+                    <h2 class="text-sm font-semibold text-gray-900">
+                        L’emprunt n’a pas pu être créé
+                    </h2>
+
+                    <ul class="mt-2 space-y-1 text-sm text-gray-700">
+
+                        <li th:each="error : ${#fields.globalErrors()}"
+                            th:text="${error}">
+                            Une erreur est survenue.
+                        </li>
+
+                    </ul>
+
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- EMPRUNTEUR                                                -->
+                <!-- ========================================================= -->
+
+                <fieldset class="max-w-full">
+
+                    <legend class="text-base font-semibold text-gray-900">
+                        Emprunteur
+                    </legend>
+
+                    <p class="mt-1 text-sm text-gray-600">
+                        Les comptes actifs possédant le rôle MEMBRE ou ADMIN sont proposés.
+                    </p>
+
+                    <div class="mt-4">
+
+                        <label for="idUser"
+                               class="block text-sm font-medium text-gray-700">
+                            Emprunteur
+                        </label>
+
+                        <select id="idUser"
+                                th:field="*{idUser}"
+                                class="mt-2 h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                th:classappend="${#fields.hasErrors('idUser')} ? ' ring-gray-900' : ''">
+
+                            <option value="">
+                                Sélectionner un emprunteur
+                            </option>
+
+                            <option th:each="member : ${members}"
+                                    th:value="${member.idUser}"
+                                    th:text="${((member.firstName ?: '') + ' ' + (member.lastName ?: '')).trim()
+                                              + ' — '
+                                              + (member.email ?: 'Email non renseigné')}">
+                                Prénom NOM — email
+                            </option>
+
+                        </select>
+
+                        <p th:if="${#fields.hasErrors('idUser')}"
+                           th:errors="*{idUser}"
+                           class="mt-2 text-sm font-medium text-gray-900">
+                            L’emprunteur est obligatoire.
+                        </p>
+
+                    </div>
+
+                </fieldset>
+
+                <!-- ========================================================= -->
+                <!-- OBJETS                                                    -->
+                <!-- ========================================================= -->
+
+                <fieldset class="max-w-full">
+
+                    <legend class="text-base font-semibold text-gray-900">
+                        Objets empruntés
+                    </legend>
+
+                    <p class="mt-1 text-sm text-gray-600">
+                        Sélectionne un ou plusieurs objets actuellement disponibles.
+                    </p>
+
+                    <!-- Recherche locale parmi tous les objets disponibles -->
+                    <div class="mt-4">
+
+                        <label for="itemSearch"
+                               class="sr-only">
+                            Rechercher un objet disponible
+                        </label>
+
+                        <div class="relative">
+
+                            <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+
+                                <svg aria-hidden="true"
+                                     class="h-5 w-5 text-gray-500"
+                                     viewBox="0 0 24 24"
+                                     fill="none">
+
+                                    <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+
+                                    <path d="M16.5 16.5 21 21"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+
+                                </svg>
+
+                            </div>
+
+                            <input id="itemSearch"
+                                   type="search"
+                                   autocomplete="off"
+                                   placeholder="Rechercher par titre, catégorie ou ID…"
+                                   class="h-11 w-full rounded-md bg-white py-2 pl-11 pr-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                        </div>
+
+                        <p class="mt-2 text-xs text-gray-500">
+                            La recherche filtre uniquement cette liste et ne modifie pas les données.
+                        </p>
+
+                    </div>
+
+                    <!-- Compteurs -->
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+
+                        <p class="text-sm text-gray-700">
+                            <span class="font-medium text-gray-900"
+                                  th:text="${availableItemsCount}">
+                                0
+                            </span>
+
+                            <span th:text="${availableItemsCount == 1 ? ' objet disponible' : ' objets disponibles'}">
+                                objets disponibles
+                            </span>
+                        </p>
+
+                        <p class="text-sm font-medium text-gray-700"
+                           aria-live="polite">
+                            <span id="selectedItemsCount">0</span>
+                            <span id="selectedItemsLabel">objet sélectionné</span>
+                        </p>
+
+                    </div>
+
+                    <!-- ===================================================== -->
+                    <!-- LISTE DES OBJETS                                     -->
+                    <!-- ===================================================== -->
+
+                    <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+
+                        <div th:if="${availableItemsCount == 0}"
+                             class="p-4 text-sm text-gray-700">
+                            Aucun objet disponible.
+                        </div>
+
+                        <div id="availableItemsList"
+                             th:if="${availableItemsCount > 0}"
+                             class="divide-y divide-gray-100">
+
+                            <label th:each="item : ${availableItems}"
+                                   data-item-row
+                                   th:attr="data-search=${#strings.toLowerCase(
+                                       (item.titleItem ?: '') + ' ' +
+                                       (item.categoryItem ?: '') + ' ' +
+                                       (item.idItem ?: '')
+                                   )}"
+                                   class="flex cursor-pointer items-start gap-3 p-4 transition hover:bg-gray-50">
+
+                                <input type="checkbox"
+                                       th:field="*{itemIds}"
+                                       th:value="${item.idItem}"
+                                       data-item-checkbox
+                                       class="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-gray-900 focus:ring-gray-900" />
+
+                                <span class="min-w-0 flex-1">
+
+                                    <span class="block break-words text-sm font-semibold text-gray-900"
+                                          th:text="${item.titleItem ?: 'Objet sans titre'}">
+                                        Objet
+                                    </span>
+
+                                    <span class="mt-1 block break-words text-xs text-gray-600">
+
+                                        <span th:text="${item.categoryItem ?: 'Catégorie non renseignée'}">
+                                            Catégorie
+                                        </span>
+
+                                        <span> • ID </span>
+
+                                        <span th:text="${item.idItem}">
+                                            0
+                                        </span>
+
+                                    </span>
+
+                                </span>
+
+                                <span class="inline-flex shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-900">
+                                    Disponible
+                                </span>
+
+                            </label>
+
+                        </div>
+
+                        <div id="noFilteredItems"
+                             class="hidden p-4 text-sm text-gray-700">
+                            Aucun objet ne correspond à cette recherche.
+                        </div>
+
+                    </div>
+
+                    <!-- ===================================================== -->
+                    <!-- PAGINATION LOCALE                                    -->
+                    <!-- ===================================================== -->
+
+                    <nav id="itemPagination"
+                         class="mt-4 hidden border-t border-gray-100 pt-4"
+                         aria-label="Pagination des objets disponibles">
+
+                        <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                            <p id="itemPaginationSummary"
+                               class="text-sm text-gray-600"
+                               aria-live="polite">
+                                Page 1 sur 1
+                            </p>
+
+                            <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+
+                                <button id="itemPreviousPage"
+                                        type="button"
+                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400">
+                                    Précédent
+                                </button>
+
+                                <div id="itemPageNumbers"
+                                     class="flex max-w-full flex-wrap items-center gap-2">
+                                </div>
+
+                                <button id="itemNextPage"
+                                        type="button"
+                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400">
+                                    Suivant
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </nav>
+
+                    <p th:if="${#fields.hasErrors('itemIds')}"
+                       th:errors="*{itemIds}"
+                       class="mt-2 text-sm font-medium text-gray-900">
+                        Au moins un objet doit être sélectionné.
+                    </p>
+
+                </fieldset>
+
+                <!-- ========================================================= -->
+                <!-- DATES                                                     -->
+                <!-- ========================================================= -->
+
+                <fieldset class="max-w-full">
+
+                    <legend class="text-base font-semibold text-gray-900">
+                        Dates de l’emprunt
+                    </legend>
+
+                    <p class="mt-1 text-sm text-gray-600">
+                        La date de début peut être antérieure à aujourd’hui afin
+                        d’enregistrer un emprunt déjà commencé.
+                    </p>
+
+                    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+
+                        <div>
+
+                            <label for="startDateLoan"
+                                   class="block text-sm font-medium text-gray-700">
+                                Date et heure de début
+                            </label>
+
+                            <input id="startDateLoan"
+                                   type="datetime-local"
+                                   th:field="*{startDateLoan}"
+                                   step="60"
+                                   class="mt-2 h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                   th:classappend="${#fields.hasErrors('startDateLoan')} ? ' ring-gray-900' : ''" />
+
+                            <p th:if="${#fields.hasErrors('startDateLoan')}"
+                               th:errors="*{startDateLoan}"
+                               class="mt-2 text-sm font-medium text-gray-900">
+                                Date de début invalide.
+                            </p>
+
+                        </div>
+
+                        <div>
+
+                            <label for="dueDateLoan"
+                                   class="block text-sm font-medium text-gray-700">
+                                Date d’échéance
+                            </label>
+
+                            <input id="dueDateLoan"
+                                   type="date"
+                                   th:field="*{dueDateLoan}"
+                                   class="mt-2 h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                   th:classappend="${#fields.hasErrors('dueDateLoan')} ? ' ring-gray-900' : ''" />
+
+                            <p th:if="${#fields.hasErrors('dueDateLoan')}"
+                               th:errors="*{dueDateLoan}"
+                               class="mt-2 text-sm font-medium text-gray-900">
+                                Date d’échéance invalide.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </fieldset>
+
+                <!-- ========================================================= -->
+                <!-- NOTES                                                     -->
+                <!-- ========================================================= -->
+
+                <fieldset class="max-w-full">
+
+                    <legend class="text-base font-semibold text-gray-900">
+                        Notes
+                    </legend>
+
+                    <p class="mt-1 text-sm text-gray-600">
+                        Facultatif. Ces notes sont destinées au suivi interne de l’emprunt.
+                    </p>
+
+                    <div class="mt-4">
+
+                        <label for="notesLoan"
+                               class="sr-only">
+                            Notes concernant l’emprunt
+                        </label>
+
+                        <textarea id="notesLoan"
+                                  th:field="*{notesLoan}"
+                                  rows="5"
+                                  maxlength="10000"
+                                  placeholder="Ex. : objet déjà remis à l’emprunteur avant son référencement numérique."
+                                  class="w-full resize-y rounded-md bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                  th:classappend="${#fields.hasErrors('notesLoan')} ? ' ring-gray-900' : ''"></textarea>
+
+                        <div class="mt-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+
+                            <p th:if="${#fields.hasErrors('notesLoan')}"
+                               th:errors="*{notesLoan}"
+                               class="text-sm font-medium text-gray-900">
+                                Notes invalides.
+                            </p>
+
+                            <p class="text-xs text-gray-500 sm:ml-auto">
+                                10 000 caractères maximum.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </fieldset>
+
+                <!-- ========================================================= -->
+                <!-- RAPPEL MÉTIER                                             -->
+                <!-- ========================================================= -->
+
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+
+                    <h2 class="text-sm font-semibold text-gray-900">
+                        Après validation
+                    </h2>
+
+                    <p class="mt-2 text-sm text-gray-700">
+                        L’emprunt sera enregistré et les objets sélectionnés
+                        deviendront automatiquement indisponibles jusqu’à leur restitution.
+                    </p>
+
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- ACTIONS                                                   -->
+                <!-- ========================================================= -->
+
+                <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
+
+                    <a th:href="@{/admin/emprunts}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                        Annuler
+                    </a>
+
+                    <!--
+                        IMPORTANT :
+                        ce bouton ne soumet plus directement le formulaire.
+                        Il ouvre uniquement la fenêtre de confirmation.
+                    -->
+                    <button type="button"
+                            id="openCreateLoanModal"
+                            data-open-create-loan-modal
+                            th:disabled="${membersCount == 0 or availableItemsCount == 0}"
+                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-300 disabled:text-gray-600">
+                        Créer l’emprunt
+                    </button>
+
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- MODALE DE CONFIRMATION                                   -->
+                <!-- ========================================================= -->
+
+                <div id="createLoanModal"
+                     data-create-loan-modal
+                     class="fixed inset-0 z-50 hidden items-start justify-center p-4 pt-24 sm:pt-28"
+                     aria-hidden="true"
+                     role="dialog"
+                     aria-modal="true"
+                     aria-labelledby="createLoanModalTitle"
+                     aria-describedby="createLoanModalDescription">
+
+                    <!-- Arrière-plan cliquable -->
+                    <div data-close-create-loan-modal
+                         class="absolute inset-0 bg-gray-900/50 backdrop-blur-[1px]">
+                    </div>
+
+                    <!-- Fenêtre -->
+                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
+
+                        <div class="space-y-3">
+
+                            <h2 id="createLoanModalTitle"
+                                class="text-lg font-semibold text-gray-900">
+                                Confirmer la création
+                            </h2>
+
+                            <p id="createLoanModalDescription"
+                               class="text-sm text-gray-700">
+                                L’emprunt va être enregistré et les objets sélectionnés
+                                deviendront indisponibles jusqu’à leur restitution.
+                            </p>
+
+                        </div>
+
+                        <!-- Résumé de ce qui va être créé -->
+                        <div class="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
+
+                            <dl class="space-y-3 text-sm">
+
+                                <div>
+                                    <dt class="font-medium text-gray-600">
+                                        Emprunteur
+                                    </dt>
+
+                                    <dd id="createLoanModalBorrower"
+                                        class="mt-1 break-words font-semibold text-gray-900">
+                                        —
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt class="font-medium text-gray-600">
+                                        Objets sélectionnés
+                                    </dt>
+
+                                    <dd id="createLoanModalItems"
+                                        class="mt-1 font-semibold text-gray-900">
+                                        0 objet
+                                    </dd>
+                                </div>
+
+                            </dl>
+
+                        </div>
+
+                        <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+                            <button type="button"
+                                    id="cancelCreateLoanModal"
+                                    data-cancel-create-loan-modal
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Annuler
+                            </button>
+
+                            <!--
+                                SEUL ce bouton soumet réellement le formulaire.
+                            -->
+                            <button type="submit"
+                                    id="confirmCreateLoan"
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                Confirmer la création
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <!--
+            =========================================================================
+            JAVASCRIPT LOCAL À LA PAGE
+            =========================================================================
+
+            Fonctions uniquement ergonomiques :
+            - recherche locale ;
+            - pagination locale ;
+            - compteur global d'objets sélectionnés ;
+            - ouverture / fermeture de la modale de confirmation.
+
+            IMPORTANT :
+            tous les objets restent présents dans le DOM.
+
+            La pagination ne supprime donc aucune checkbox :
+            une sélection réalisée sur une page reste conservée lorsque
+            l'administrateur navigue vers une autre page ou effectue une recherche.
+
+            Le premier clic sur "Créer l'emprunt" ne déclenche aucune écriture.
+            Le formulaire n'est envoyé qu'après clic explicite sur
+            "Confirmer la création".
+
+            Aucune règle métier ou décision de disponibilité n'est confiée
+            au JavaScript : le serveur reste la source de vérité.
+            =========================================================================
+        -->
+        <script>
+            (function () {
+
+                /*
+                 * Nombre d'objets affichés par page.
+                 *
+                 * 129 objets disponibles produisent par exemple 13 pages :
+                 * 12 pages de 10 objets puis une dernière page de 9 objets.
+                 */
+                const ITEMS_PER_PAGE = 10;
+
+                let currentPage = 1;
+
+                // -----------------------------------------------------------------
+                // FORMULAIRE
+                // -----------------------------------------------------------------
+
+                const createLoanForm =
+                    document.getElementById('createLoanForm');
+
+                const borrowerSelect =
+                    document.getElementById('idUser');
+
+                // -----------------------------------------------------------------
+                // RECHERCHE / OBJETS
+                // -----------------------------------------------------------------
+
+                const searchInput =
+                    document.getElementById('itemSearch');
+
+                const availableItemsList =
+                    document.getElementById('availableItemsList');
+
+                const itemRows =
+                    Array.from(
+                        document.querySelectorAll('[data-item-row]')
+                    );
+
+                const itemCheckboxes =
+                    Array.from(
+                        document.querySelectorAll('[data-item-checkbox]')
+                    );
+
+                const selectedCount =
+                    document.getElementById('selectedItemsCount');
+
+                const selectedLabel =
+                    document.getElementById('selectedItemsLabel');
+
+                const noFilteredItems =
+                    document.getElementById('noFilteredItems');
+
+                // -----------------------------------------------------------------
+                // PAGINATION
+                // -----------------------------------------------------------------
+
+                const pagination =
+                    document.getElementById('itemPagination');
+
+                const paginationSummary =
+                    document.getElementById('itemPaginationSummary');
+
+                const pageNumbers =
+                    document.getElementById('itemPageNumbers');
+
+                const previousPageButton =
+                    document.getElementById('itemPreviousPage');
+
+                const nextPageButton =
+                    document.getElementById('itemNextPage');
+
+                // -----------------------------------------------------------------
+                // MODALE DE CONFIRMATION
+                // -----------------------------------------------------------------
+
+                const openCreateLoanModalButton =
+                    document.querySelector('[data-open-create-loan-modal]');
+
+                const createLoanModal =
+                    document.querySelector('[data-create-loan-modal]');
+
+                const createLoanModalOverlay =
+                    document.querySelector('[data-close-create-loan-modal]');
+
+                const cancelCreateLoanModalButton =
+                    document.querySelector('[data-cancel-create-loan-modal]');
+
+                const confirmCreateLoanButton =
+                    document.getElementById('confirmCreateLoan');
+
+                const createLoanModalBorrower =
+                    document.getElementById('createLoanModalBorrower');
+
+                const createLoanModalItems =
+                    document.getElementById('createLoanModalItems');
+
+                /**
+                 * Normalise un texte afin de rendre la recherche locale
+                 * insensible à la casse et plus tolérante aux accents.
+                 */
+                function normalize(value) {
+
+                    return String(value || '')
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .toLowerCase()
+                        .trim();
+                }
+
+                /**
+                 * Retourne uniquement les objets correspondant à la recherche
+                 * actuellement saisie.
+                 *
+                 * La pagination est appliquée APRES ce filtrage.
+                 */
+                function getFilteredRows() {
+
+                    const query =
+                        normalize(
+                            searchInput
+                                ? searchInput.value
+                                : ''
+                        );
+
+                    if (!query) {
+                        return itemRows;
+                    }
+
+                    return itemRows.filter(function (row) {
+
+                        const searchable =
+                            normalize(
+                                row.getAttribute('data-search')
+                            );
+
+                        return searchable.includes(query);
+                    });
+                }
+
+                /**
+                 * Retourne le nombre GLOBAL d'objets cochés.
+                 */
+                function getSelectedItemsCount() {
+
+                    return itemCheckboxes.filter(function (checkbox) {
+                        return checkbox.checked;
+                    }).length;
+                }
+
+                /**
+                 * Met à jour le compteur GLOBAL de sélection.
+                 *
+                 * Toutes les checkboxes restent présentes dans le DOM,
+                 * y compris celles appartenant à d'autres pages.
+                 */
+                function updateSelectedCount() {
+
+                    const count =
+                        getSelectedItemsCount();
+
+                    if (selectedCount) {
+                        selectedCount.textContent =
+                            String(count);
+                    }
+
+                    if (selectedLabel) {
+                        selectedLabel.textContent =
+                            count === 1
+                                ? 'objet sélectionné'
+                                : 'objets sélectionnés';
+                    }
+                }
+
+                /**
+                 * Crée un bouton numérique de pagination.
+                 */
+                function createPageButton(
+                    pageNumber,
+                    active
+                ) {
+
+                    const button =
+                        document.createElement('button');
+
+                    button.type = 'button';
+                    button.textContent =
+                        String(pageNumber);
+
+                    button.setAttribute(
+                        'aria-label',
+                        'Aller à la page ' + pageNumber
+                    );
+
+                    if (active) {
+
+                        button.setAttribute(
+                            'aria-current',
+                            'page'
+                        );
+
+                        button.className =
+                            'inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm';
+
+                    } else {
+
+                        button.className =
+                            'inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900';
+
+                        button.addEventListener(
+                            'click',
+                            function () {
+
+                                currentPage =
+                                    pageNumber;
+
+                                renderItems();
+                            }
+                        );
+                    }
+
+                    return button;
+                }
+
+                /**
+                 * Met à jour les boutons et le résumé de pagination.
+                 */
+                function renderPagination(
+                    totalItems,
+                    totalPages
+                ) {
+
+                    if (!pagination
+                        || !pageNumbers
+                        || !previousPageButton
+                        || !nextPageButton) {
+
+                        return;
+                    }
+
+                    /*
+                     * Pas de pagination inutile lorsque tous les résultats
+                     * tiennent sur une seule page.
+                     */
+                    const paginationNeeded =
+                        totalItems > ITEMS_PER_PAGE;
+
+                    pagination.classList.toggle(
+                        'hidden',
+                        !paginationNeeded
+                    );
+
+                    if (paginationSummary) {
+
+                        if (totalItems === 0) {
+
+                            paginationSummary.textContent =
+                                'Aucun objet trouvé';
+
+                        } else {
+
+                            paginationSummary.textContent =
+                                'Page '
+                                + currentPage
+                                + ' sur '
+                                + totalPages
+                                + ' · '
+                                + totalItems
+                                + (totalItems === 1
+                                    ? ' objet'
+                                    : ' objets');
+                        }
+                    }
+
+                    previousPageButton.disabled =
+                        currentPage <= 1;
+
+                    nextPageButton.disabled =
+                        currentPage >= totalPages;
+
+                    pageNumbers.innerHTML =
+                        '';
+
+                    /*
+                     * Le catalogue actuel génère seulement 13 pages avec
+                     * 129 objets. Afficher tous les numéros reste donc simple,
+                     * lisible et cohérent avec la pagination de MagicLibrary.
+                     */
+                    for (
+                        let pageNumber = 1;
+                        pageNumber <= totalPages;
+                        pageNumber++
+                    ) {
+
+                        pageNumbers.appendChild(
+                            createPageButton(
+                                pageNumber,
+                                pageNumber === currentPage
+                            )
+                        );
+                    }
+                }
+
+                /**
+                 * Applique conjointement :
+                 *
+                 * 1. la recherche ;
+                 * 2. la pagination ;
+                 * 3. l'affichage des objets correspondants.
+                 *
+                 * Les éléments non affichés sont uniquement masqués.
+                 * Ils restent présents dans le formulaire et conservent
+                 * donc leur état coché / décoché.
+                 */
+                function renderItems() {
+
+                    const filteredRows =
+                        getFilteredRows();
+
+                    const totalItems =
+                        filteredRows.length;
+
+                    const totalPages =
+                        Math.max(
+                            1,
+                            Math.ceil(
+                                totalItems / ITEMS_PER_PAGE
+                            )
+                        );
+
+                    if (currentPage > totalPages) {
+                        currentPage =
+                            totalPages;
+                    }
+
+                    if (currentPage < 1) {
+                        currentPage =
+                            1;
+                    }
+
+                    itemRows.forEach(function (row) {
+
+                        row.classList.add(
+                            'hidden'
+                        );
+                    });
+
+                    const startIndex =
+                        (currentPage - 1)
+                        * ITEMS_PER_PAGE;
+
+                    const endIndex =
+                        startIndex
+                        + ITEMS_PER_PAGE;
+
+                    filteredRows
+                        .slice(
+                            startIndex,
+                            endIndex
+                        )
+                        .forEach(function (row) {
+
+                            row.classList.remove(
+                                'hidden'
+                            );
+                        });
+
+                    if (noFilteredItems) {
+
+                        noFilteredItems.classList.toggle(
+                            'hidden',
+                            totalItems > 0
+                        );
+                    }
+
+                    renderPagination(
+                        totalItems,
+                        totalPages
+                    );
+                }
+
+                /**
+                 * Lorsqu'une recherche change, la navigation repart
+                 * systématiquement à la première page des nouveaux résultats.
+                 */
+                function handleSearch() {
+
+                    currentPage =
+                        1;
+
+                    renderItems();
+                }
+
+                // -----------------------------------------------------------------
+                // MODALE : RÉSUMÉ
+                // -----------------------------------------------------------------
+
+                /**
+                 * Prépare les informations affichées dans la fenêtre
+                 * de confirmation.
+                 */
+                function updateCreateLoanModalSummary() {
+
+                    let borrowerText =
+                        'Aucun emprunteur sélectionné';
+
+                    if (borrowerSelect
+                        && borrowerSelect.selectedIndex >= 0) {
+
+                        const selectedOption =
+                            borrowerSelect.options[
+                                borrowerSelect.selectedIndex
+                            ];
+
+                        if (selectedOption
+                            && selectedOption.value) {
+
+                            borrowerText =
+                                selectedOption.textContent.trim();
+                        }
+                    }
+
+                    const selectedItems =
+                        getSelectedItemsCount();
+
+                    if (createLoanModalBorrower) {
+                        createLoanModalBorrower.textContent =
+                            borrowerText;
+                    }
+
+                    if (createLoanModalItems) {
+                        createLoanModalItems.textContent =
+                            selectedItems
+                            + (selectedItems === 1
+                                ? ' objet'
+                                : ' objets');
+                    }
+                }
+
+                // -----------------------------------------------------------------
+                // MODALE : OUVERTURE / FERMETURE
+                // -----------------------------------------------------------------
+
+                /**
+                 * Ouvre la fenêtre de confirmation.
+                 *
+                 * Aucune soumission HTTP n'est déclenchée ici.
+                 */
+                function openCreateLoanModal() {
+
+                    if (!createLoanModal) {
+                        return;
+                    }
+
+                    updateCreateLoanModalSummary();
+
+                    createLoanModal.classList.remove(
+                        'hidden'
+                    );
+
+                    createLoanModal.classList.add(
+                        'flex'
+                    );
+
+                    createLoanModal.setAttribute(
+                        'aria-hidden',
+                        'false'
+                    );
+
+                    document.body.classList.add(
+                        'overflow-hidden'
+                    );
+
+                    if (confirmCreateLoanButton) {
+
+                        window.setTimeout(
+                            function () {
+                                confirmCreateLoanButton.focus();
+                            },
+                            0
+                        );
+                    }
+                }
+
+                /**
+                 * Ferme la fenêtre sans modifier ni soumettre le formulaire.
+                 */
+                function closeCreateLoanModal() {
+
+                    if (!createLoanModal) {
+                        return;
+                    }
+
+                    createLoanModal.classList.add(
+                        'hidden'
+                    );
+
+                    createLoanModal.classList.remove(
+                        'flex'
+                    );
+
+                    createLoanModal.setAttribute(
+                        'aria-hidden',
+                        'true'
+                    );
+
+                    document.body.classList.remove(
+                        'overflow-hidden'
+                    );
+
+                    if (openCreateLoanModalButton) {
+
+                        window.setTimeout(
+                            function () {
+                                openCreateLoanModalButton.focus();
+                            },
+                            0
+                        );
+                    }
+                }
+
+                // -----------------------------------------------------------------
+                // SÉLECTION DES OBJETS
+                // -----------------------------------------------------------------
+
+                itemCheckboxes.forEach(function (checkbox) {
+
+                    checkbox.addEventListener(
+                        'change',
+                        updateSelectedCount
+                    );
+                });
+
+                // -----------------------------------------------------------------
+                // RECHERCHE
+                // -----------------------------------------------------------------
+
+                if (searchInput) {
+
+                    searchInput.addEventListener(
+                        'input',
+                        handleSearch
+                    );
+
+                    /*
+                     * L'événement "search" est notamment émis lorsque
+                     * l'utilisateur efface un input type="search".
+                     */
+                    searchInput.addEventListener(
+                        'search',
+                        handleSearch
+                    );
+                }
+
+                // -----------------------------------------------------------------
+                // PAGINATION : PRÉCÉDENT / SUIVANT
+                // -----------------------------------------------------------------
+
+                if (previousPageButton) {
+
+                    previousPageButton.addEventListener(
+                        'click',
+                        function () {
+
+                            if (currentPage <= 1) {
+                                return;
+                            }
+
+                            currentPage--;
+
+                            renderItems();
+                        }
+                    );
+                }
+
+                if (nextPageButton) {
+
+                    nextPageButton.addEventListener(
+                        'click',
+                        function () {
+
+                            const filteredRows =
+                                getFilteredRows();
+
+                            const totalPages =
+                                Math.max(
+                                    1,
+                                    Math.ceil(
+                                        filteredRows.length
+                                        / ITEMS_PER_PAGE
+                                    )
+                                );
+
+                            if (currentPage >= totalPages) {
+                                return;
+                            }
+
+                            currentPage++;
+
+                            renderItems();
+                        }
+                    );
+                }
+
+                // -----------------------------------------------------------------
+                // MODALE : ÉVÉNEMENTS
+                // -----------------------------------------------------------------
+
+                if (openCreateLoanModalButton) {
+
+                    openCreateLoanModalButton.addEventListener(
+                        'click',
+                        function () {
+
+                            openCreateLoanModal();
+                        }
+                    );
+                }
+
+                if (cancelCreateLoanModalButton) {
+
+                    cancelCreateLoanModalButton.addEventListener(
+                        'click',
+                        function () {
+
+                            closeCreateLoanModal();
+                        }
+                    );
+                }
+
+                if (createLoanModalOverlay) {
+
+                    createLoanModalOverlay.addEventListener(
+                        'click',
+                        function () {
+
+                            closeCreateLoanModal();
+                        }
+                    );
+                }
+
+                /*
+                 * Échap ferme uniquement la modale lorsqu'elle est ouverte.
+                 */
+                document.addEventListener(
+                    'keydown',
+                    function (event) {
+
+                        if (!createLoanModal) {
+                            return;
+                        }
+
+                        const modalOpen =
+                            createLoanModal.getAttribute(
+                                'aria-hidden'
+                            ) === 'false';
+
+                        if (!modalOpen) {
+                            return;
+                        }
+
+                        if (event.key === 'Escape'
+                            || event.key === 'Esc') {
+
+                            event.preventDefault();
+
+                            closeCreateLoanModal();
+                        }
+                    }
+                );
+
+                /*
+                 * Sécurité ergonomique supplémentaire :
+                 *
+                 * si le navigateur déclenche réellement la soumission du
+                 * formulaire, on masque immédiatement le bouton de confirmation
+                 * derrière son état désactivé afin de limiter les doubles clics.
+                 *
+                 * Cela ne remplace évidemment pas les contrôles transactionnels
+                 * et métier du backend.
+                 */
+                if (createLoanForm) {
+
+                    createLoanForm.addEventListener(
+                        'submit',
+                        function () {
+
+                            if (confirmCreateLoanButton) {
+
+                                confirmCreateLoanButton.disabled =
+                                    true;
+
+                                confirmCreateLoanButton.textContent =
+                                    'Création en cours…';
+                            }
+                        }
+                    );
+                }
+
+                // -----------------------------------------------------------------
+                // INITIALISATION
+                // -----------------------------------------------------------------
+
+                /*
+                 * Important en cas de retour après une erreur de validation :
+                 *
+                 * Thymeleaf peut réafficher plusieurs cases déjà cochées.
+                 * Le compteur doit donc être recalculé à partir de l'état
+                 * réel du formulaire.
+                 */
+                updateSelectedCount();
+
+                /*
+                 * Affichage initial de la première page.
+                 */
+                renderItems();
+
+                /*
+                 * La modale doit toujours commencer fermée.
+                 */
+                closeCreateLoanModal();
+
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

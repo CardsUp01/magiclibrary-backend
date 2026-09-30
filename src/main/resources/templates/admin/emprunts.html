@@ -10,7 +10,7 @@
 
         <!--
             Page d'administration des emprunts.
-            Permet la consultation, la recherche, le tri,
+            Permet la création, la consultation, la recherche, le tri,
             la pagination et la restitution des prêts.
         -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
@@ -29,10 +29,26 @@
                         </div>
                     </div>
 
-                    <a th:href="@{/accueil}"
-                       class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:self-start">
-                        Retour à l’accueil
-                    </a>
+                    <!--
+                        Actions principales de la page.
+
+                        "Créer un emprunt" ouvre le nouveau workflow SSR ADMIN.
+                        "Retour à l'accueil" conserve strictement le comportement
+                        déjà présent avant l'ajout de cette fonctionnalité.
+                    -->
+                    <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:self-start">
+
+                        <a th:href="@{/admin/emprunts/ajouter}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Créer un emprunt
+                        </a>
+
+                        <a th:href="@{/accueil}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à l’accueil
+                        </a>
+
+                    </div>
                 </div>
 
                 <!-- Recherche principale et action DEMO distincte -->
@@ -450,6 +466,7 @@
 
                             </li>
                         </ul>
+
                         <!-- Variante en grille utilisée lorsque plusieurs emprunts sont affichés -->
                         <ul th:if="${!isSingle}"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
@@ -1206,11 +1223,3 @@
     </th:block>
 
 </th:block>
-
-
-
-
-
-
-
-
