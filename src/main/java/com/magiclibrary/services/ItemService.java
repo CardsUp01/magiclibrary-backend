@@ -27,6 +27,7 @@ import com.magiclibrary.dto.item.ItemResponseDTO;
  * - la consultation d'un objet actif ;
  * - la consultation complète du catalogue actif ;
  * - la recherche, le tri et la pagination des objets ;
+ * - la consultation des catégories disponibles pour l'administration ;
  * - la création administrative d'un nouvel objet ;
  * - la modification administrative d'un objet existant ;
  * - l'archivage logique d'un objet ;
@@ -128,6 +129,31 @@ public interface ItemService {
      * @return liste des objets archivés
      */
     List<ItemResponseDTO> getArchivedItems();
+
+    // -------------------------------------------------------------------------
+    // CATÉGORIES DISPONIBLES POUR L'ADMINISTRATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne les catégories pouvant être proposées dans les formulaires
+     * administratifs d'ajout et de modification d'un objet.
+     *
+     * La couche service reste responsable de la préparation fonctionnelle
+     * de cette liste avant exposition à l'interface :
+     * - suppression éventuelle de valeurs non exploitables ;
+     * - normalisation ;
+     * - déduplication ;
+     * - tri.
+     *
+     * Le contrôleur n'accède ainsi jamais directement au repository pour
+     * construire les choix proposés à l'administrateur.
+     *
+     * Une nouvelle catégorie peut ensuite être créée explicitement à partir
+     * du formulaire selon les règles métier définies par l'implémentation.
+     *
+     * @return liste des catégories utilisables dans l'administration
+     */
+    List<String> getAvailableCategories();
 
     // -------------------------------------------------------------------------
     // RECHERCHE, TRI ET PAGINATION

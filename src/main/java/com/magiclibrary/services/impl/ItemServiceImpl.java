@@ -6,6 +6,8 @@ package com.magiclibrary.services.impl;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 // -----------------------------------------------------------------------------
@@ -25,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.magiclibrary.dto.item.ItemRequestDTO;
 import com.magiclibrary.dto.item.ItemResponseDTO;
 import com.magiclibrary.entities.Item;
+import com.magiclibrary.enums.ItemFormat;
 import com.magiclibrary.enums.ItemStatus;
+import com.magiclibrary.enums.LanguageCode;
 import com.magiclibrary.enums.LoanLineStatus;
 import com.magiclibrary.exceptions.custom.ItemNotFoundException;
 import com.magiclibrary.mappers.ItemMapper;
@@ -46,6 +50,8 @@ import com.magiclibrary.services.ItemService;
  * - la recherche multicritère ;
  * - les différents tris métier ;
  * - la pagination ;
+ * - la préparation des catégories proposées dans les formulaires ;
+ * - la validation et la normalisation des données de classification ;
  * - la création administrative d'un objet ;
  * - la modification administrative d'un objet ;
  * - l'archivage logique d'un objet ;
@@ -76,6 +82,41 @@ import com.magiclibrary.services.ItemService;
  * - son état matériel ;
  * - ses données fonctionnelles ;
  * - ses relations historiques.
+ *
+ * CLASSIFICATION
+ * -----------------------------------------------------------------------------
+ * La catégorie reste une donnée thématique stockée sous forme de texte.
+ *
+ * Le formulaire doit privilégier une catégorie déjà connue du catalogue.
+ * Lorsqu'une nouvelle catégorie doit réellement être créée, le formulaire
+ * utilise la valeur technique __NEW__ et transmet la nouvelle catégorie dans
+ * newCategoryItem.
+ *
+ * Les valeurs manifestement impropres à une catégorie thématique, notamment
+ * "???" ou une valeur correspondant à un format documentaire tel que LIVRE
+ * ou DVD, ne sont jamais proposées comme catégories disponibles.
+ *
+ * FORMAT
+ * -----------------------------------------------------------------------------
+ * Le format reste stocké sous forme de String dans Item, mais sa valeur est
+ * désormais contrôlée à partir du référentiel ItemFormat.
+ *
+ * Une variante reconnue est toujours convertie vers son code canonique :
+ *
+ *     Livre / livre / LIVRE -> LIVRE
+ *
+ * Une valeur inconnue est refusée.
+ *
+ * Le format reste facultatif.
+ *
+ * LANGUE
+ * -----------------------------------------------------------------------------
+ * La langue reste stockée sous forme de String.
+ *
+ * Lorsqu'elle est renseignée, elle doit correspondre à l'un des codes définis
+ * dans LanguageCode. La valeur est enregistrée en majuscules.
+ *
+ * La langue reste facultative.
  *
  * DISPONIBILITÉ
  * -----------------------------------------------------------------------------
@@ -117,6 +158,25 @@ public class ItemServiceImpl implements ItemService {
     private static final String SORT_STATUS_THEN_TITLE = "statusThenTitle";
     private static final String SORT_CONDITION_THEN_TITLE = "conditionThenTitle";
     private static final String SORT_NEWEST = "newest";
+
+    // -------------------------------------------------------------------------
+    // VALEURS TECHNIQUES DU FORMULAIRE DE CLASSIFICATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Valeur technique utilisée par le futur select de catégorie lorsque
+     * l'administrateur choisit explicitement de créer une nouvelle catégorie.
+     *
+     * Cette valeur ne doit jamais être persistée dans Item.categoryItem.
+     */
+    private static final String NEW_CATEGORY_SENTINEL = "__NEW__";
+
+    /**
+     * Valeur historique identifiée comme anomalie dans le catalogue importé.
+     *
+     * Elle ne doit pas être proposée comme une catégorie fonctionnelle.
+     */
+    private static final String UNKNOWN_CATEGORY_VALUE = "???";
 
     // -------------------------------------------------------------------------
     // DÉPENDANCES
@@ -235,6 +295,47 @@ public class ItemServiceImpl implements ItemService {
     }
 
     // -------------------------------------------------------------------------
+    // CATÉGORIES DISPONIBLES POUR L'ADMINISTRATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne les catégories pouvant être proposées dans les formulaires
+     * administratifs.
+     *
+     * La liste brute provenant du repository est nettoyée avant exposition :
+     * - suppression des valeurs nulles ou vides ;
+     * - suppression de la valeur historique "???" ;
+     * - suppression des valeurs correspondant à un format connu ;
+     * - suppression des doublons sans tenir compte de la casse ;
+     * - tri alphabétique sans tenir compte de la casse.
+     *
+     * Exemple :
+     *
+     *     cartes
+     *     close-up
+     *     histoire
+     *     magie générale
+     *
+     * Une valeur telle que "Livre" ne peut donc plus devenir automatiquement
+     * une catégorie proposée par l'interface.
+     */
+    @Override
+    public List<String> getAvailableCategories() {
+
+        TreeSet<String> categories =
+                new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+
+        itemRepository.findDistinctCategoryItems()
+                .stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .filter(value -> !isInvalidCategoryValue(value))
+                .forEach(categories::add);
+
+        return List.copyOf(categories);
+    }
+
+    // -------------------------------------------------------------------------
     // RECHERCHE, TRI ET PAGINATION
     // -------------------------------------------------------------------------
 
@@ -304,6 +405,11 @@ public class ItemServiceImpl implements ItemService {
      * Les informations techniques sont déterminées ici et ne proviennent jamais
      * du formulaire administrateur.
      *
+     * Avant le mapping :
+     * - la catégorie est résolue et contrôlée ;
+     * - le format est validé puis converti vers sa valeur canonique ;
+     * - la langue est validée puis normalisée.
+     *
      * Lors de la création :
      * - l'identifiant sera généré automatiquement par la base ;
      * - addedDateItem prend la date et l'heure courantes ;
@@ -314,6 +420,8 @@ public class ItemServiceImpl implements ItemService {
     @Override
     @Transactional
     public ItemResponseDTO createItem(ItemRequestDTO request) {
+
+        prepareRequestForPersistence(request);
 
         Item item = itemMapper.toEntity(request);
 
@@ -340,6 +448,11 @@ public class ItemServiceImpl implements ItemService {
      * - la date d'ajout ne change pas ;
      * - la date d'archivage ne peut pas être manipulée par ce traitement.
      *
+     * Avant le mapping :
+     * - la catégorie est résolue et contrôlée ;
+     * - le format est validé puis converti vers sa valeur canonique ;
+     * - la langue est validée puis normalisée.
+     *
      * La date de dernière modification est actualisée automatiquement.
      */
     @Override
@@ -350,6 +463,8 @@ public class ItemServiceImpl implements ItemService {
     ) {
 
         Item item = getActiveItemEntity(id);
+
+        prepareRequestForPersistence(request);
 
         itemMapper.updateEntity(request, item);
 
@@ -434,6 +549,299 @@ public class ItemServiceImpl implements ItemService {
         item.setUpdatedAtItem(LocalDateTime.now());
 
         itemRepository.save(item);
+    }
+
+    // -------------------------------------------------------------------------
+    // PRÉPARATION DES DONNÉES SAISIES AVANT PERSISTANCE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Prépare les données administratives avant leur transmission au mapper.
+     *
+     * Cette méthode constitue la frontière métier empêchant un POST manuel ou
+     * altéré de contourner les listes proposées par l'interface.
+     *
+     * Les trois données contrôlées ici sont :
+     * - catégorie ;
+     * - format ;
+     * - langue.
+     *
+     * Les valeurs ne sont injectées dans le DTO qu'après validation complète
+     * afin d'éviter de modifier partiellement la requête lorsqu'une erreur est
+     * détectée.
+     *
+     * @param request données reçues depuis le formulaire
+     */
+    private void prepareRequestForPersistence(ItemRequestDTO request) {
+
+        if (request == null) {
+            throw new IllegalStateException(
+                    "Les données de l'objet sont absentes."
+            );
+        }
+
+        String resolvedCategory = resolveCategory(request);
+
+        String normalizedFormat =
+                normalizeAndValidateFormat(request.getFormatItem());
+
+        String normalizedLanguage =
+                normalizeAndValidateLanguage(request.getLanguageItem());
+
+        request.setCategoryItem(resolvedCategory);
+        request.setFormatItem(normalizedFormat);
+        request.setLanguageItem(normalizedLanguage);
+    }
+
+    // -------------------------------------------------------------------------
+    // RÉSOLUTION DE LA CATÉGORIE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Détermine la catégorie finale à enregistrer.
+     *
+     * Deux parcours sont supportés.
+     *
+     * 1. Catégorie existante :
+     *    categoryItem contient directement une catégorie proposée par
+     *    l'application.
+     *
+     * 2. Nouvelle catégorie :
+     *    categoryItem vaut "__NEW__" et la véritable valeur est reçue dans
+     *    newCategoryItem.
+     *
+     * Une catégorie existante est réutilisée avec son écriture canonique déjà
+     * présente en base.
+     *
+     * Une nouvelle catégorie portant le même nom qu'une catégorie existante,
+     * mais avec une casse différente, est également ramenée à la valeur déjà
+     * existante afin d'éviter :
+     *
+     *     cartes
+     *     Cartes
+     *     CARTES
+     *
+     * @param request données du formulaire
+     * @return catégorie finale à stocker
+     */
+    private String resolveCategory(ItemRequestDTO request) {
+
+        String selectedCategory = request.getCategoryItem();
+
+        if (selectedCategory == null || selectedCategory.isBlank()) {
+            throw new IllegalStateException(
+                    "La catégorie est obligatoire."
+            );
+        }
+
+        selectedCategory = selectedCategory.trim();
+
+        List<String> availableCategories = getAvailableCategories();
+
+        if (NEW_CATEGORY_SENTINEL.equals(selectedCategory)) {
+
+            String newCategory = request.getNewCategoryItem();
+
+            if (newCategory == null || newCategory.isBlank()) {
+                throw new IllegalStateException(
+                        "Veuillez renseigner la nouvelle catégorie."
+                );
+            }
+
+            newCategory = newCategory.trim();
+
+            validateCategoryValue(newCategory);
+
+            return findExistingCategoryIgnoreCase(
+                    availableCategories,
+                    newCategory
+            ).orElse(newCategory);
+        }
+
+        if (isInvalidCategoryValue(selectedCategory)) {
+            throw new IllegalStateException(
+                    "La catégorie sélectionnée n'est pas valide."
+            );
+        }
+
+        return findExistingCategoryIgnoreCase(
+                availableCategories,
+                selectedCategory
+        ).orElseThrow(() -> new IllegalStateException(
+                "La catégorie sélectionnée n'est pas reconnue. "
+                        + "Utilisez une catégorie existante ou choisissez "
+                        + "explicitement « Nouvelle catégorie »."
+        ));
+    }
+
+    // -------------------------------------------------------------------------
+    // VALIDATION D'UNE NOUVELLE CATÉGORIE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Contrôle une nouvelle catégorie avant son utilisation.
+     *
+     * La longueur est également contrôlée dans le DTO, mais le contrôle métier
+     * est volontairement répété ici afin de protéger le service lorsqu'il est
+     * appelé autrement que depuis un formulaire validé par Spring MVC.
+     *
+     * @param category catégorie à contrôler
+     */
+    private static void validateCategoryValue(String category) {
+
+        if (category.length() < 2 || category.length() > 50) {
+            throw new IllegalStateException(
+                    "La catégorie doit contenir entre 2 et 50 caractères."
+            );
+        }
+
+        if (isInvalidCategoryValue(category)) {
+            throw new IllegalStateException(
+                    "Cette valeur ne peut pas être utilisée comme catégorie."
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // DÉTECTION D'UNE VALEUR DE CATÉGORIE INVALIDE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Identifie les valeurs qui ne doivent jamais être utilisées comme
+     * catégories thématiques.
+     *
+     * Sont actuellement refusées :
+     * - la valeur historique "???" ;
+     * - la sentinelle technique "__NEW__" ;
+     * - toute valeur reconnue comme un format ItemFormat.
+     *
+     * Cela empêche notamment de recréer l'anomalie :
+     *
+     *     categoryItem = "Livre"
+     *
+     * @param value valeur à contrôler
+     * @return true lorsque la valeur ne doit pas être utilisée comme catégorie
+     */
+    private static boolean isInvalidCategoryValue(String value) {
+
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+
+        String normalized = value.trim();
+
+        if (UNKNOWN_CATEGORY_VALUE.equalsIgnoreCase(normalized)) {
+            return true;
+        }
+
+        if (NEW_CATEGORY_SENTINEL.equalsIgnoreCase(normalized)) {
+            return true;
+        }
+
+        return ItemFormat.fromValue(normalized) != null;
+    }
+
+    // -------------------------------------------------------------------------
+    // RECHERCHE D'UNE CATÉGORIE EXISTANTE SANS TENIR COMPTE DE LA CASSE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Recherche une catégorie existante en ignorant la casse.
+     *
+     * La valeur originale déjà présente dans le catalogue est retournée afin
+     * de conserver une écriture cohérente.
+     *
+     * @param categories catégories disponibles
+     * @param expected valeur recherchée
+     * @return catégorie correspondante éventuelle
+     */
+    private static java.util.Optional<String> findExistingCategoryIgnoreCase(
+            List<String> categories,
+            String expected
+    ) {
+
+        return categories.stream()
+                .filter(category -> category.equalsIgnoreCase(expected))
+                .findFirst();
+    }
+
+    // -------------------------------------------------------------------------
+    // NORMALISATION ET VALIDATION DU FORMAT
+    // -------------------------------------------------------------------------
+
+    /**
+     * Contrôle et normalise le format.
+     *
+     * Le format reste facultatif.
+     *
+     * Une valeur reconnue est convertie vers son code canonique :
+     *
+     *     Livre -> LIVRE
+     *     livre -> LIVRE
+     *     dvd   -> DVD
+     *
+     * Une valeur non supportée est refusée, y compris lorsqu'elle provient
+     * d'un POST modifié manuellement.
+     *
+     * @param format valeur reçue
+     * @return code canonique ou null lorsque le format n'est pas renseigné
+     */
+    private static String normalizeAndValidateFormat(String format) {
+
+        if (format == null || format.isBlank()) {
+            return null;
+        }
+
+        if (!ItemFormat.isSupported(format)) {
+            throw new IllegalStateException(
+                    "Le format sélectionné n'est pas reconnu."
+            );
+        }
+
+        return ItemFormat.canonicalCodeOf(format);
+    }
+
+    // -------------------------------------------------------------------------
+    // NORMALISATION ET VALIDATION DE LA LANGUE
+    // -------------------------------------------------------------------------
+
+    /**
+     * Contrôle et normalise le code langue.
+     *
+     * La langue reste facultative.
+     *
+     * Lorsqu'une valeur est renseignée :
+     * - les espaces périphériques sont supprimés ;
+     * - la valeur est convertie en majuscules ;
+     * - elle doit correspondre à une constante de LanguageCode.
+     *
+     * Exemples :
+     *
+     *     fr -> FR
+     *     En -> EN
+     *
+     * @param language valeur reçue
+     * @return code normalisé ou null lorsque la langue n'est pas renseignée
+     */
+    private static String normalizeAndValidateLanguage(String language) {
+
+        if (language == null || language.isBlank()) {
+            return null;
+        }
+
+        String normalized =
+                language.trim().toUpperCase(Locale.ROOT);
+
+        for (LanguageCode languageCode : LanguageCode.values()) {
+
+            if (languageCode.name().equals(normalized)) {
+                return normalized;
+            }
+        }
+
+        throw new IllegalStateException(
+                "La langue sélectionnée n'est pas reconnue."
+        );
     }
 
     // -------------------------------------------------------------------------

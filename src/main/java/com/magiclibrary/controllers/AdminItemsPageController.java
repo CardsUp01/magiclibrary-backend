@@ -19,7 +19,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.magiclibrary.dto.item.ItemRequestDTO;
 import com.magiclibrary.dto.item.ItemResponseDTO;
 import com.magiclibrary.enums.ItemCondition;
+import com.magiclibrary.enums.ItemFormat;
 import com.magiclibrary.enums.ItemStatus;
+import com.magiclibrary.enums.LanguageCode;
 import com.magiclibrary.exceptions.custom.ItemNotFoundException;
 import com.magiclibrary.services.ItemService;
 
@@ -43,6 +45,14 @@ import jakarta.validation.Valid;
  * - l'archivage logique d'un objet ;
  * - la consultation administrative des objets archivés ;
  * - la restauration d'un objet archivé.
+ *
+ * Les formulaires de création et de modification reçoivent également les
+ * référentiels nécessaires à une saisie contrôlée :
+ * - catégories métier disponibles ;
+ * - formats supportés ;
+ * - langues supportées ;
+ * - statuts ;
+ * - états matériels.
  *
  * IMPORTANT :
  * aucune suppression physique d'un Item n'est exposée depuis l'interface
@@ -250,6 +260,9 @@ public class AdminItemsPageController {
      * - updatedAtItem ;
      * - availableItem selon le statut sélectionné.
      *
+     * En cas d'erreur de validation ou d'erreur métier, le contexte complet
+     * nécessaire au template de modification est réinjecté dans le modèle.
+     *
      * @param id identifiant technique de l'objet
      * @param itemRequestDTO nouvelles données fonctionnelles
      * @param bindingResult résultat de validation
@@ -268,12 +281,22 @@ public class AdminItemsPageController {
 
         if (bindingResult.hasErrors()) {
 
-            populateFormModel(
-                    model,
-                    "Modifier un objet",
-                    true,
-                    id
-            );
+            try {
+
+                populateEditFormModel(
+                        model,
+                        id
+                );
+
+            } catch (ItemNotFoundException e) {
+
+                redirectAttributes.addFlashAttribute(
+                        "errorMessage",
+                        "L’objet demandé n’existe pas ou a déjà été archivé."
+                );
+
+                return "redirect:/bibliotheque-numerique";
+            }
 
             model.addAttribute(
                     "errorMessage",
@@ -306,12 +329,22 @@ public class AdminItemsPageController {
 
         } catch (IllegalStateException e) {
 
-            populateFormModel(
-                    model,
-                    "Modifier un objet",
-                    true,
-                    id
-            );
+            try {
+
+                populateEditFormModel(
+                        model,
+                        id
+                );
+
+            } catch (ItemNotFoundException notFoundException) {
+
+                redirectAttributes.addFlashAttribute(
+                        "errorMessage",
+                        "L’objet demandé n’existe pas ou a déjà été archivé."
+                );
+
+                return "redirect:/bibliotheque-numerique";
+            }
 
             model.addAttribute("errorMessage", e.getMessage());
 
@@ -466,8 +499,23 @@ public class AdminItemsPageController {
      * Centralise les données communes nécessaires aux formulaires de création
      * et de modification.
      *
-     * Les listes des statuts et états proviennent directement des ENUM métier
-     * afin d'éviter toute duplication dans les templates.
+     * Les référentiels sont fournis par leur source métier appropriée :
+     *
+     * - catégories :
+     *   récupérées depuis le service afin que la liste soit nettoyée et
+     *   contrôlée avant son exposition à l'interface ;
+     *
+     * - formats :
+     *   issus de ItemFormat ;
+     *
+     * - langues :
+     *   issues de LanguageCode ;
+     *
+     * - statuts et états :
+     *   issus directement de leurs ENUM métier.
+     *
+     * Cette centralisation garantit également que les listes sont à nouveau
+     * présentes lorsque le formulaire est réaffiché après une erreur.
      *
      * @param model modèle Thymeleaf
      * @param pageTitle titre de la page
@@ -486,6 +534,21 @@ public class AdminItemsPageController {
         model.addAttribute("itemId", itemId);
 
         model.addAttribute(
+                "itemCategories",
+                itemService.getAvailableCategories()
+        );
+
+        model.addAttribute(
+                "itemFormats",
+                ItemFormat.values()
+        );
+
+        model.addAttribute(
+                "languageCodes",
+                LanguageCode.values()
+        );
+
+        model.addAttribute(
                 "itemStatuses",
                 ItemStatus.values()
         );
@@ -493,6 +556,45 @@ public class AdminItemsPageController {
         model.addAttribute(
                 "itemConditions",
                 ItemCondition.values()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // PRÉPARATION DU CONTEXTE SPÉCIFIQUE AU FORMULAIRE DE MODIFICATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Réinjecte dans le modèle toutes les données nécessaires au template
+     * modifier-objet.html lorsqu'une modification doit être réaffichée après
+     * une erreur.
+     *
+     * Le DTO soumis par l'utilisateur reste déjà présent dans le modèle grâce
+     * au binding Spring MVC.
+     *
+     * Cette méthode recharge donc uniquement :
+     * - les référentiels communs du formulaire ;
+     * - l'objet actuellement enregistré utilisé notamment par l'en-tête et les
+     *   actions contextuelles du template.
+     *
+     * @param model modèle Thymeleaf
+     * @param id identifiant de l'objet en cours de modification
+     * @throws ItemNotFoundException si l'objet n'existe plus ou a été archivé
+     */
+    private void populateEditFormModel(
+            Model model,
+            Integer id
+    ) {
+
+        populateFormModel(
+                model,
+                "Modifier un objet",
+                true,
+                id
+        );
+
+        model.addAttribute(
+                "item",
+                itemService.getItemById(id)
         );
     }
 
@@ -508,6 +610,10 @@ public class AdminItemsPageController {
      *
      * Les données techniques telles que l'identifiant ou les dates ne sont
      * volontairement pas copiées dans le DTO de saisie.
+     *
+     * newCategoryItem n'est pas prérempli :
+     * il ne sert que lorsqu'un administrateur choisit explicitement de créer
+     * une nouvelle catégorie.
      *
      * @param item objet actuellement enregistré
      * @return DTO prêt à être utilisé par le formulaire

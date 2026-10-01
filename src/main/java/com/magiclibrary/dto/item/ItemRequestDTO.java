@@ -30,6 +30,23 @@ import jakarta.validation.constraints.Size;
  * - UNAVAILABLE -> indisponible ;
  * - DAMAGED     -> indisponible ;
  * - LOST        -> indisponible.
+ *
+ * CLASSIFICATION
+ * -----------------------------------------------------------------------------
+ * categoryItem reste la valeur principale utilisée pour représenter la
+ * catégorie sélectionnée dans le formulaire.
+ *
+ * newCategoryItem est un champ exclusivement destiné au formulaire
+ * d'administration. Il permet de saisir explicitement une nouvelle catégorie
+ * lorsque l'administrateur choisit l'option correspondante.
+ *
+ * Ce champ complémentaire :
+ * - n'existe pas dans l'entité Item ;
+ * - n'est pas persisté directement ;
+ * - sera interprété par la couche métier avant le mapping vers l'entité.
+ *
+ * Cette séparation permet de conserver le modèle Item actuel tout en évitant
+ * que la saisie libre soit le fonctionnement normal du champ Catégorie.
  * =============================================================================
  */
 public class ItemRequestDTO {
@@ -43,10 +60,31 @@ public class ItemRequestDTO {
             message = "Le titre doit contenir entre 2 et 150 caractères.")
     private String titleItem;
 
+    /**
+     * Catégorie sélectionnée dans la liste proposée par l'application.
+     *
+     * La catégorie reste obligatoire.
+     *
+     * Lorsque l'administrateur choisira explicitement de créer une nouvelle
+     * catégorie, la couche métier utilisera newCategoryItem pour déterminer
+     * la valeur finale à enregistrer.
+     */
     @NotBlank(message = "La catégorie est obligatoire.")
     @Size(min = 2, max = 50,
             message = "La catégorie doit contenir entre 2 et 50 caractères.")
     private String categoryItem;
+
+    /**
+     * Nouvelle catégorie saisie explicitement par l'administrateur.
+     *
+     * Ce champ est facultatif et n'est utilisé que lorsque le formulaire
+     * indique qu'une nouvelle catégorie doit être créée.
+     *
+     * Il ne correspond à aucune colonne de l'entité Item.
+     */
+    @Size(max = 50,
+            message = "La nouvelle catégorie ne doit pas dépasser 50 caractères.")
+    private String newCategoryItem;
 
     @Size(max = 100,
             message = "Le nom de l’auteur ne doit pas dépasser 100 caractères.")
@@ -82,10 +120,28 @@ public class ItemRequestDTO {
             message = "Les mots-clés ne doivent pas dépasser 10 000 caractères.")
     private String tagsItem;
 
+    /**
+     * Format fonctionnel de l'objet.
+     *
+     * Le type reste volontairement String dans le DTO afin de conserver
+     * la compatibilité avec l'entité et le schéma SQL existants.
+     *
+     * Les valeurs réellement autorisées seront contrôlées par la couche
+     * métier à partir du référentiel ItemFormat.
+     */
     @Size(max = 100,
             message = "Le format ne doit pas dépasser 100 caractères.")
     private String formatItem;
 
+    /**
+     * Code langue éventuellement renseigné pour l'objet.
+     *
+     * Le champ reste facultatif et utilise une String pour rester compatible
+     * avec le stockage actuel.
+     *
+     * Les valeurs autorisées seront contrôlées à partir du référentiel
+     * LanguageCode existant.
+     */
     @Size(max = 10,
             message = "La langue ne doit pas dépasser 10 caractères.")
     private String languageItem;
@@ -138,6 +194,14 @@ public class ItemRequestDTO {
 
     public void setCategoryItem(String categoryItem) {
         this.categoryItem = categoryItem;
+    }
+
+    public String getNewCategoryItem() {
+        return newCategoryItem;
+    }
+
+    public void setNewCategoryItem(String newCategoryItem) {
+        this.newCategoryItem = newCategoryItem;
     }
 
     public String getAuthorItem() {

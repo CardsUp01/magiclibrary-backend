@@ -21,6 +21,23 @@
             - date d'archivage ;
             - disponibilité booléenne.
 
+            QUALITÉ DES DONNÉES
+            -------------------------------------------------------------------------
+            La catégorie, le format et la langue utilisent des valeurs contrôlées.
+
+            Catégorie :
+            - sélection d'une catégorie métier existante ;
+            - création explicite possible via "Nouvelle catégorie…" ;
+            - la sentinelle "__NEW__" n'est jamais persistée.
+
+            Format :
+            - facultatif ;
+            - sélection parmi les formats définis par ItemFormat.
+
+            Langue :
+            - facultative ;
+            - sélection parmi les langues définies par LanguageCode.
+
             L'archivage est proposé dans une zone séparée et utilise son propre
             formulaire POST afin d'éviter tout formulaire HTML imbriqué.
 
@@ -138,6 +155,7 @@
 
                             <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
 
+                                <!-- Titre -->
                                 <div class="min-w-0 max-w-full md:col-span-2">
 
                                     <label for="titleItem"
@@ -161,6 +179,7 @@
 
                                 </div>
 
+                                <!-- Catégorie -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="categoryItem"
@@ -168,13 +187,32 @@
                                         Catégorie <span aria-hidden="true">*</span>
                                     </label>
 
-                                    <input id="categoryItem"
-                                           th:field="*{categoryItem}"
-                                           type="text"
-                                           maxlength="50"
-                                           required
-                                           aria-required="true"
-                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+                                    <select id="categoryItem"
+                                            th:field="*{categoryItem}"
+                                            required
+                                            aria-required="true"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Sélectionner une catégorie
+                                        </option>
+
+                                        <option th:each="category : ${itemCategories}"
+                                                th:value="${category}"
+                                                th:text="${category}">
+                                            Catégorie
+                                        </option>
+
+                                        <option value="__NEW__">
+                                            Nouvelle catégorie…
+                                        </option>
+
+                                    </select>
+
+                                    <p class="mt-2 text-xs text-gray-600">
+                                        La catégorie correspond au thème de l’objet :
+                                        cartes, close-up, scène, mentalisme…
+                                    </p>
 
                                     <p th:if="${#fields.hasErrors('categoryItem')}"
                                        th:errors="*{categoryItem}"
@@ -182,8 +220,45 @@
                                         Erreur catégorie
                                     </p>
 
+                                    <!--
+                                        Champ utilisé uniquement lorsqu'une nouvelle
+                                        catégorie doit réellement être créée.
+
+                                        La valeur "__NEW__" est une sentinelle technique
+                                        du formulaire et ne peut pas être enregistrée
+                                        comme catégorie d'un objet.
+                                    -->
+                                    <div id="newCategoryContainer"
+                                         class="mt-4 hidden">
+
+                                        <label for="newCategoryItem"
+                                               class="mb-2 block text-sm font-medium text-gray-900">
+                                            Nouvelle catégorie
+                                            <span aria-hidden="true">*</span>
+                                        </label>
+
+                                        <input id="newCategoryItem"
+                                               th:field="*{newCategoryItem}"
+                                               type="text"
+                                               maxlength="50"
+                                               class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                               placeholder="Nom de la nouvelle catégorie" />
+
+                                        <p class="mt-2 text-xs text-gray-600">
+                                            Utilise cette option uniquement si aucune catégorie existante ne convient.
+                                        </p>
+
+                                        <p th:if="${#fields.hasErrors('newCategoryItem')}"
+                                           th:errors="*{newCategoryItem}"
+                                           class="mt-2 text-sm text-gray-900">
+                                            Erreur nouvelle catégorie
+                                        </p>
+
+                                    </div>
+
                                 </div>
 
+                                <!-- Format -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="formatItem"
@@ -191,11 +266,25 @@
                                         Format
                                     </label>
 
-                                    <input id="formatItem"
-                                           th:field="*{formatItem}"
-                                           type="text"
-                                           maxlength="100"
-                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+                                    <select id="formatItem"
+                                            th:field="*{formatItem}"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Non renseigné
+                                        </option>
+
+                                        <option th:each="format : ${itemFormats}"
+                                                th:value="${format.code}"
+                                                th:text="${format.label}">
+                                            Format
+                                        </option>
+
+                                    </select>
+
+                                    <p class="mt-2 text-xs text-gray-600">
+                                        Le format correspond au support de l’objet : livre, DVD…
+                                    </p>
 
                                     <p th:if="${#fields.hasErrors('formatItem')}"
                                        th:errors="*{formatItem}"
@@ -220,6 +309,7 @@
 
                             <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
 
+                                <!-- Auteur -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="authorItem"
@@ -241,6 +331,7 @@
 
                                 </div>
 
+                                <!-- Éditeur -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="publisherItem"
@@ -262,6 +353,7 @@
 
                                 </div>
 
+                                <!-- Année de publication -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="publishYearItem"
@@ -284,6 +376,7 @@
 
                                 </div>
 
+                                <!-- Édition -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="editionItem"
@@ -305,6 +398,7 @@
 
                                 </div>
 
+                                <!-- ISBN -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="isbnItem"
@@ -326,6 +420,7 @@
 
                                 </div>
 
+                                <!-- Nombre de pages -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="pageCountItem"
@@ -370,6 +465,7 @@
 
                             <div class="mt-4 grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
 
+                                <!-- Statut fonctionnel -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="statusItem"
@@ -403,6 +499,7 @@
 
                                 </div>
 
+                                <!-- État physique -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="conditionItem"
@@ -434,6 +531,7 @@
 
                                 </div>
 
+                                <!-- Langue -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="languageItem"
@@ -441,12 +539,21 @@
                                         Langue
                                     </label>
 
-                                    <input id="languageItem"
-                                           th:field="*{languageItem}"
-                                           type="text"
-                                           maxlength="10"
-                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                           placeholder="FR, EN..." />
+                                    <select id="languageItem"
+                                            th:field="*{languageItem}"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Non renseignée
+                                        </option>
+
+                                        <option th:each="language : ${languageCodes}"
+                                                th:value="${language.code}"
+                                                th:text="${language.label}">
+                                            Langue
+                                        </option>
+
+                                    </select>
 
                                     <p th:if="${#fields.hasErrors('languageItem')}"
                                        th:errors="*{languageItem}"
@@ -471,6 +578,7 @@
 
                             <div class="mt-4 grid max-w-full grid-cols-1 gap-4">
 
+                                <!-- Description -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="descriptionItem"
@@ -492,6 +600,7 @@
 
                                 </div>
 
+                                <!-- Tags -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="tagsItem"
@@ -513,6 +622,7 @@
 
                                 </div>
 
+                                <!-- URL de couverture -->
                                 <div class="min-w-0 max-w-full">
 
                                     <label for="coverUrlItem"
@@ -539,7 +649,14 @@
 
                         </div>
 
-                        <!-- Actions du formulaire principal -->
+                        <!--
+                            Actions du formulaire principal.
+
+                            "Enregistrer les modifications" est l'action principale
+                            de la page et utilise donc le style sombre.
+
+                            L'annulation reste une action secondaire.
+                        -->
                         <div class="mt-8 flex max-w-full flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-end">
 
                             <a th:if="${itemId != null}"
@@ -549,7 +666,7 @@
                             </a>
 
                             <button type="submit"
-                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">
                                 Enregistrer les modifications
                             </button>
 
@@ -570,6 +687,14 @@
 
                     Le service refuse également l'opération lorsqu'une LoanLine ACTIVE
                     référence encore cet objet.
+
+                    IMPORTANT UX :
+                    "Archiver l'objet" reste volontairement une action secondaire blanche.
+                    Il ne doit pas concurrencer visuellement l'action principale
+                    "Enregistrer les modifications".
+
+                    Dans la modale, "Confirmer l'archivage" devient en revanche
+                    l'action principale du contexte et reste donc sombre.
 
                     La fenêtre de confirmation reprend exactement le composant utilisé
                     sur la page des emprunts pour la restitution.
@@ -674,6 +799,73 @@
             </div>
 
         </section>
+
+        <!--
+            =========================================================================
+            GESTION DU CHAMP "NOUVELLE CATÉGORIE"
+            =========================================================================
+            Le champ newCategoryItem est uniquement actif lorsque l'administrateur
+            choisit explicitement "Nouvelle catégorie…".
+
+            Le traitement est exécuté au chargement afin de conserver correctement
+            cet état lorsque le serveur réaffiche le formulaire après une erreur.
+
+            Le champ n'est volontairement pas vidé lorsqu'il devient masqué :
+            une saisie temporaire n'est donc pas perdue si l'administrateur change
+            accidentellement de sélection puis revient à "Nouvelle catégorie…".
+            =========================================================================
+        -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+
+                const categorySelect =
+                    document.getElementById("categoryItem");
+
+                const newCategoryContainer =
+                    document.getElementById("newCategoryContainer");
+
+                const newCategoryInput =
+                    document.getElementById("newCategoryItem");
+
+                if (!categorySelect
+                    || !newCategoryContainer
+                    || !newCategoryInput) {
+                    return;
+                }
+
+                function updateNewCategoryState() {
+
+                    const isNewCategory =
+                        categorySelect.value === "__NEW__";
+
+                    newCategoryContainer.classList.toggle(
+                        "hidden",
+                        !isNewCategory
+                    );
+
+                    newCategoryInput.disabled = !isNewCategory;
+                    newCategoryInput.required = isNewCategory;
+
+                    if (isNewCategory) {
+                        newCategoryInput.setAttribute(
+                            "aria-required",
+                            "true"
+                        );
+                    } else {
+                        newCategoryInput.removeAttribute(
+                            "aria-required"
+                        );
+                    }
+                }
+
+                categorySelect.addEventListener(
+                    "change",
+                    updateNewCategoryState
+                );
+
+                updateNewCategoryState();
+            });
+        </script>
 
         <!--
             =========================================================================

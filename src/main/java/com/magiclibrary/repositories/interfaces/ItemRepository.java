@@ -50,6 +50,39 @@ public interface ItemRepository extends JpaRepository<Item, Integer> {
     List<Item> findTop8ByDeletedDateItemIsNullAndIsbnItemContainingIgnoreCaseOrderByIsbnItemAsc(String isbnPart);
 
     // -------------------------------------------------------------------------
+    // RÉFÉRENTIEL DYNAMIQUE DES CATÉGORIES
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retourne les catégories distinctes actuellement présentes dans le catalogue.
+     *
+     * Cette lecture alimente les formulaires administratifs d'ajout et de
+     * modification afin que la sélection d'une catégorie existante devienne
+     * le comportement normal.
+     *
+     * Toutes les lignes du catalogue sont volontairement prises en compte,
+     * y compris les objets archivés :
+     *
+     * une catégorie utilisée uniquement par un ancien objet reste une catégorie
+     * métier légitime et peut être réutilisée ultérieurement.
+     *
+     * Les valeurs nulles ou vides sont exclues.
+     *
+     * La création éventuelle d'une nouvelle catégorie reste gérée explicitement
+     * par la couche métier et ne dépend pas de cette requête.
+     *
+     * @return catégories distinctes triées alphabétiquement
+     */
+    @Query("""
+            SELECT DISTINCT i.categoryItem
+            FROM Item i
+            WHERE i.categoryItem IS NOT NULL
+              AND TRIM(i.categoryItem) <> ''
+            ORDER BY i.categoryItem ASC
+            """)
+    List<String> findDistinctCategoryItems();
+
+    // -------------------------------------------------------------------------
     // RECHERCHE TECHNIQUE PAR RÉFÉRENCE SOURCE
     // -------------------------------------------------------------------------
 

@@ -22,6 +22,24 @@
 
             La disponibilité est calculée automatiquement par la couche métier
             à partir du statut sélectionné.
+
+            QUALITÉ DES DONNÉES
+            -------------------------------------------------------------------------
+            La catégorie, le format et la langue utilisent désormais des choix
+            contrôlés afin d'éviter les variantes ou incohérences de saisie.
+
+            Catégorie :
+            - une catégorie existante est sélectionnée dans la liste ;
+            - une nouvelle catégorie peut être créée explicitement ;
+            - la valeur technique "__NEW__" n'est jamais persistée.
+
+            Format :
+            - le format reste facultatif ;
+            - seules les valeurs définies dans ItemFormat sont proposées.
+
+            Langue :
+            - la langue reste facultative ;
+            - seules les valeurs définies dans LanguageCode sont proposées.
             =========================================================================
         -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
@@ -138,20 +156,74 @@
                                         Catégorie <span aria-hidden="true">*</span>
                                     </label>
 
-                                    <input id="categoryItem"
-                                           th:field="*{categoryItem}"
-                                           type="text"
-                                           maxlength="50"
-                                           required
-                                           aria-required="true"
-                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                           placeholder="Livre, cartes, scène, accessoire..." />
+                                    <select id="categoryItem"
+                                            th:field="*{categoryItem}"
+                                            required
+                                            aria-required="true"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Sélectionner une catégorie
+                                        </option>
+
+                                        <option th:each="category : ${itemCategories}"
+                                                th:value="${category}"
+                                                th:text="${category}">
+                                            Catégorie
+                                        </option>
+
+                                        <option value="__NEW__">
+                                            Nouvelle catégorie…
+                                        </option>
+
+                                    </select>
+
+                                    <p class="mt-2 text-xs text-gray-600">
+                                        La catégorie correspond au thème de l’objet :
+                                        cartes, close-up, scène, mentalisme…
+                                    </p>
 
                                     <p th:if="${#fields.hasErrors('categoryItem')}"
                                        th:errors="*{categoryItem}"
                                        class="mt-2 text-sm text-gray-900">
                                         Erreur catégorie
                                     </p>
+
+                                    <!--
+                                        Champ affiché uniquement lorsque l'administrateur
+                                        choisit explicitement "Nouvelle catégorie…".
+
+                                        La valeur "__NEW__" reste uniquement une sentinelle
+                                        technique du formulaire et n'est jamais enregistrée
+                                        dans Item.categoryItem.
+                                    -->
+                                    <div id="newCategoryContainer"
+                                         class="mt-4 hidden">
+
+                                        <label for="newCategoryItem"
+                                               class="mb-2 block text-sm font-medium text-gray-900">
+                                            Nouvelle catégorie
+                                            <span aria-hidden="true">*</span>
+                                        </label>
+
+                                        <input id="newCategoryItem"
+                                               th:field="*{newCategoryItem}"
+                                               type="text"
+                                               maxlength="50"
+                                               class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                               placeholder="Nom de la nouvelle catégorie" />
+
+                                        <p class="mt-2 text-xs text-gray-600">
+                                            Utilise cette option uniquement si aucune catégorie existante ne convient.
+                                        </p>
+
+                                        <p th:if="${#fields.hasErrors('newCategoryItem')}"
+                                           th:errors="*{newCategoryItem}"
+                                           class="mt-2 text-sm text-gray-900">
+                                            Erreur nouvelle catégorie
+                                        </p>
+
+                                    </div>
 
                                 </div>
 
@@ -163,12 +235,25 @@
                                         Format
                                     </label>
 
-                                    <input id="formatItem"
-                                           th:field="*{formatItem}"
-                                           type="text"
-                                           maxlength="100"
-                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                           placeholder="Livre, DVD, accessoire..." />
+                                    <select id="formatItem"
+                                            th:field="*{formatItem}"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Non renseigné
+                                        </option>
+
+                                        <option th:each="format : ${itemFormats}"
+                                                th:value="${format.code}"
+                                                th:text="${format.label}">
+                                            Format
+                                        </option>
+
+                                    </select>
+
+                                    <p class="mt-2 text-xs text-gray-600">
+                                        Le format correspond au support de l’objet : livre, DVD…
+                                    </p>
 
                                     <p th:if="${#fields.hasErrors('formatItem')}"
                                        th:errors="*{formatItem}"
@@ -429,12 +514,21 @@
                                         Langue
                                     </label>
 
-                                    <input id="languageItem"
-                                           th:field="*{languageItem}"
-                                           type="text"
-                                           maxlength="10"
-                                           class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                           placeholder="FR, EN..." />
+                                    <select id="languageItem"
+                                            th:field="*{languageItem}"
+                                            class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+
+                                        <option value="">
+                                            Non renseignée
+                                        </option>
+
+                                        <option th:each="language : ${languageCodes}"
+                                                th:value="${language.code}"
+                                                th:text="${language.label}">
+                                            Langue
+                                        </option>
+
+                                    </select>
 
                                     <p th:if="${#fields.hasErrors('languageItem')}"
                                        th:errors="*{languageItem}"
@@ -536,6 +630,9 @@
                             Actions du formulaire.
                             L'annulation ne modifie aucune donnée et ramène
                             l'administrateur au catalogue.
+
+                            "Ajouter l'objet" constitue l'action principale de la
+                            page et utilise donc le style principal sombre.
                         -->
                         <div class="mt-8 flex max-w-full flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-end">
 
@@ -545,7 +642,7 @@
                             </a>
 
                             <button type="submit"
-                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2">
                                 Ajouter l’objet
                             </button>
 
@@ -558,6 +655,69 @@
             </div>
 
         </section>
+
+        <!--
+            =========================================================================
+            GESTION DU CHAMP "NOUVELLE CATÉGORIE"
+            =========================================================================
+            Le champ newCategoryItem n'est visible et actif que lorsque la valeur
+            technique "__NEW__" est sélectionnée dans categoryItem.
+
+            L'état est également recalculé au chargement de la page afin de
+            conserver correctement le formulaire après une erreur serveur.
+            =========================================================================
+        -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+
+                const categorySelect =
+                    document.getElementById("categoryItem");
+
+                const newCategoryContainer =
+                    document.getElementById("newCategoryContainer");
+
+                const newCategoryInput =
+                    document.getElementById("newCategoryItem");
+
+                if (!categorySelect
+                    || !newCategoryContainer
+                    || !newCategoryInput) {
+                    return;
+                }
+
+                function updateNewCategoryState() {
+
+                    const isNewCategory =
+                        categorySelect.value === "__NEW__";
+
+                    newCategoryContainer.classList.toggle(
+                        "hidden",
+                        !isNewCategory
+                    );
+
+                    newCategoryInput.disabled = !isNewCategory;
+                    newCategoryInput.required = isNewCategory;
+
+                    if (isNewCategory) {
+                        newCategoryInput.setAttribute(
+                            "aria-required",
+                            "true"
+                        );
+                    } else {
+                        newCategoryInput.removeAttribute(
+                            "aria-required"
+                        );
+                    }
+                }
+
+                categorySelect.addEventListener(
+                    "change",
+                    updateNewCategoryState
+                );
+
+                updateNewCategoryState();
+            });
+        </script>
 
     </th:block>
 </th:block>
