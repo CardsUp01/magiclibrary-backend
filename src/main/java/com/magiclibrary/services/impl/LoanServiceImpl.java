@@ -210,6 +210,13 @@ public class LoanServiceImpl implements LoanService {
      * 6. création d'une LoanLine ACTIVE par objet ;
      * 7. passage de chaque objet à UNAVAILABLE.
      *
+     * La date d'échéance est facultative.
+     *
+     * Lorsqu'elle est absente :
+     * - l'emprunt reste valide ;
+     * - il n'est pas considéré comme en retard ;
+     * - son statut initial reste ONGOING.
+     *
      * Toutes les validations relatives aux objets sont effectuées AVANT la
      * première écriture métier afin d'éviter autant que possible la création
      * d'un état intermédiaire.
@@ -248,12 +255,6 @@ public class LoanServiceImpl implements LoanService {
         if (request.getStartDateLoan() == null) {
             throw new IllegalArgumentException(
                     "La date de début est obligatoire."
-            );
-        }
-
-        if (request.getDueDateLoan() == null) {
-            throw new IllegalArgumentException(
-                    "La date d'échéance est obligatoire."
             );
         }
 
@@ -326,11 +327,17 @@ public class LoanServiceImpl implements LoanService {
         }
 
         /*
-         * L'échéance est une LocalDate alors que le début contient également
-         * l'heure. La comparaison métier se fait donc sur la date civile du
-         * début de l'emprunt.
+         * L'échéance est facultative.
+         *
+         * Lorsqu'elle est renseignée, elle reste une LocalDate alors que
+         * le début contient également l'heure. La comparaison métier se fait
+         * donc sur la date civile du début de l'emprunt.
+         *
+         * Lorsqu'elle est absente, aucune comparaison n'est nécessaire.
          */
-        if (dueDate.isBefore(startDate.toLocalDate())) {
+        if (dueDate != null
+                && dueDate.isBefore(startDate.toLocalDate())) {
+
             throw new IllegalArgumentException(
                     "La date d'échéance ne peut pas être antérieure "
                             + "à la date de début."
@@ -425,13 +432,19 @@ public class LoanServiceImpl implements LoanService {
         // ---------------------------------------------------------------------
 
         /*
-         * Une échéance strictement antérieure à aujourd'hui signifie que
-         * l'emprunt est déjà en retard au moment de son enregistrement.
+         * Une échéance renseignée et strictement antérieure à aujourd'hui
+         * signifie que l'emprunt est déjà en retard au moment de son
+         * enregistrement.
          *
-         * Ce cas est nécessaire pour permettre une saisie administrative
-         * rétroactive fidèle à la situation réelle.
+         * En revanche, l'absence d'échéance ne constitue jamais un retard :
+         * overdue reste false et le statut initial reste ONGOING.
+         *
+         * Ce comportement permet notamment une saisie administrative
+         * rétroactive fidèle lorsque la date limite réelle n'est pas connue.
          */
-        boolean overdue = dueDate.isBefore(today);
+        boolean overdue =
+                dueDate != null
+                        && dueDate.isBefore(today);
 
         LoanStatus initialLoanStatus =
                 overdue
@@ -598,8 +611,9 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     public List<LoanResponseDTO> getAllLoansSorted(String sort) {
-        Sort resolvedSort = buildLoanSort(sort);
-        List<Loan> loans = getActiveLoansSorted(resolvedSort);
+        List<Loan> loans =
+                getActiveLoansSortedForRequestedSort(sort);
+
         return LoanMapper.toResponseDTOList(loans);
     }
 
@@ -613,7 +627,7 @@ public class LoanServiceImpl implements LoanService {
         int safeSize = size > 0 ? size : 9;
 
         List<Loan> loans =
-                new ArrayList<>(getActiveLoansSorted(buildLoanSort(sort)));
+                getActiveLoansSortedForRequestedSort(sort);
 
         List<LoanResponseDTO> content =
                 paginateAndMap(loans, safePage, safeSize);
@@ -636,8 +650,9 @@ public class LoanServiceImpl implements LoanService {
         int safeSize = size > 0 ? size : 9;
 
         String normalizedQuery = normalizeQuery(query);
+
         List<Loan> loans =
-                new ArrayList<>(getActiveLoansSorted(buildLoanSort(sort)));
+                getActiveLoansSortedForRequestedSort(sort);
 
         if (normalizedQuery.isEmpty()) {
             List<LoanResponseDTO> content =
@@ -923,6 +938,46 @@ public class LoanServiceImpl implements LoanService {
                 .toList();
     }
 
+    /**
+     * Charge les emprunts actifs selon le tri demandé par l'interface.
+     *
+     * Le tri "Échéance proche" nécessite un traitement complémentaire
+     * en mémoire afin de garantir explicitement que les emprunts sans
+     * échéance apparaissent après ceux possédant une date.
+     *
+     * Cette étape évite de dépendre du comportement propre au moteur SQL
+     * concernant le positionnement des valeurs NULL lors d'un ORDER BY ASC.
+     *
+     * Pour les autres tris, le tri Spring Data / SQL reste utilisé tel quel.
+     *
+     * @param sort valeur de tri demandée par l'interface
+     * @return emprunts actifs dans l'ordre attendu
+     */
+    private List<Loan> getActiveLoansSortedForRequestedSort(String sort) {
+        String normalizedSort = normalizeSort(sort);
+
+        List<Loan> loans = new ArrayList<>(
+                getActiveLoansSorted(
+                        buildLoanSort(normalizedSort)
+                )
+        );
+
+        /*
+         * Le comparateur Java utilise explicitement Comparator.nullsLast(...)
+         * pour dueDateLoan.
+         *
+         * Les emprunts possédant une échéance sont donc classés par date
+         * croissante, puis les emprunts sans échéance sont placés à la fin.
+         */
+        if (SORT_DUE_SOON.equals(normalizedSort)) {
+            loans.sort(
+                    buildLoanComparator(normalizedSort)
+            );
+        }
+
+        return loans;
+    }
+
     private List<Loan> getActiveLoansForUser(User user) {
         return loanRepository.findByUser(user).stream()
                 .filter(this::isActiveLoan)
@@ -1042,6 +1097,9 @@ public class LoanServiceImpl implements LoanService {
     /*
      * Reproduit côté mémoire les mêmes règles de tri que celles utilisées
      * par Spring Data lorsque les données sont déjà chargées.
+     *
+     * Pour dueSoon, Comparator.nullsLast garantit que les emprunts sans
+     * échéance apparaissent après ceux dont l'échéance est renseignée.
      */
     private Comparator<Loan> buildLoanComparator(String sort) {
         String normalizedSort = normalizeSort(sort);

@@ -40,7 +40,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * - le membre concerné ;
  * - un ou plusieurs objets du catalogue ;
  * - la date réelle de début de l'emprunt ;
- * - la date d'échéance ;
+ * - une date d'échéance facultative ;
  * - une note facultative.
  *
  * Les données techniques et les statuts métier ne sont jamais fournis par
@@ -60,7 +60,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * - LoanLine.quantityLoanLine = 1.
  *
  * La cohérence entre startDateLoan et dueDateLoan est une règle métier
- * inter-champs et sera contrôlée dans LoanServiceImpl.
+ * inter-champs contrôlée dans LoanServiceImpl lorsqu'une échéance est renseignée.
+ *
+ * Une échéance absente signifie qu'aucune date limite n'est actuellement connue
+ * ou définie pour l'emprunt. Dans ce cas, le prêt peut rester ONGOING jusqu'à
+ * sa restitution et ne doit pas être considéré comme en retard uniquement
+ * parce qu'aucune échéance n'a été renseignée.
  *
  * Les annotations DateTimeFormat garantissent également la conversion
  * explicite des valeurs provenant des champs HTML :
@@ -154,14 +159,25 @@ public class AdminLoanRequestDTO {
     private LocalDateTime startDateLoan;
 
     // -------------------------------------------------------------------------
-    // DATE D'ÉCHÉANCE
+    // DATE D'ÉCHÉANCE FACULTATIVE
     // -------------------------------------------------------------------------
 
     /**
      * Date prévue de restitution.
      *
-     * La validation de cohérence avec startDateLoan est volontairement portée
-     * par le service métier, car elle implique deux champs différents.
+     * Ce champ est facultatif.
+     *
+     * Une valeur null signifie qu'aucune échéance n'est actuellement connue
+     * ou définie pour cet emprunt.
+     *
+     * Lorsqu'une échéance est renseignée, la validation de cohérence avec
+     * startDateLoan est volontairement portée par le service métier, car elle
+     * implique deux champs différents.
+     *
+     * Lorsqu'aucune échéance n'est renseignée :
+     * - le prêt reste valide ;
+     * - il ne doit pas être considéré automatiquement comme en retard ;
+     * - il peut rester au statut ONGOING jusqu'à sa restitution.
      *
      * Le format ISO DATE correspond directement à la valeur transmise
      * par un champ HTML de type date, par exemple :
@@ -169,11 +185,10 @@ public class AdminLoanRequestDTO {
      * 2026-10-30
      */
     @Schema(
-            description = "Date d'échéance prévue de l'emprunt.",
+            description = "Date d'échéance facultative de l'emprunt.",
             example = "2026-10-30",
-            requiredMode = Schema.RequiredMode.REQUIRED
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
     )
-    @NotNull(message = "La date d'échéance est obligatoire.")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate dueDateLoan;
 

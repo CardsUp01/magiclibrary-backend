@@ -16,7 +16,7 @@
             - emprunteur ;
             - objet(s) emprunté(s) ;
             - date réelle de début ;
-            - date d'échéance ;
+            - date d'échéance facultative ;
             - notes facultatives.
 
             Un emprunteur autorisé est un compte actif possédant le rôle :
@@ -24,6 +24,12 @@
             - ADMIN.
 
             Le rôle INVITE reste exclu.
+
+            La date d'échéance peut être laissée vide lorsque l'association
+            ne connaît pas ou n'a pas défini de date limite de restitution.
+
+            Dans ce cas, l'emprunt reste en cours jusqu'à sa restitution et
+            l'absence d'échéance ne constitue pas, à elle seule, un retard.
 
             Les informations techniques telles que le statut, l'origine,
             les LoanLine, la disponibilité des objets et les indicateurs de retard
@@ -64,7 +70,7 @@
 
                         <p class="break-words hyphens-auto text-sm text-gray-600">
                             Sélectionne l’emprunteur, un ou plusieurs objets disponibles,
-                            puis vérifie les dates avant validation.
+                            puis renseigne les informations connues avant validation.
                         </p>
 
                     </div>
@@ -399,10 +405,19 @@
                         Dates de l’emprunt
                     </legend>
 
-                    <p class="mt-1 text-sm text-gray-600">
-                        La date de début peut être antérieure à aujourd’hui afin
-                        d’enregistrer un emprunt déjà commencé.
-                    </p>
+                    <div class="mt-1 space-y-1 text-sm text-gray-600">
+
+                        <p>
+                            La date de début peut être antérieure à aujourd’hui afin
+                            d’enregistrer un emprunt déjà commencé.
+                        </p>
+
+                        <p>
+                            La date d’échéance est facultative : laisse-la vide si
+                            aucune date limite n’est connue ou définie.
+                        </p>
+
+                    </div>
 
                     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 
@@ -433,13 +448,23 @@
                             <label for="dueDateLoan"
                                    class="block text-sm font-medium text-gray-700">
                                 Date d’échéance
+                                <span class="font-normal text-gray-500">
+                                    — facultative
+                                </span>
                             </label>
 
                             <input id="dueDateLoan"
                                    type="date"
                                    th:field="*{dueDateLoan}"
+                                   aria-describedby="dueDateLoanHelp"
                                    class="mt-2 h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
                                    th:classappend="${#fields.hasErrors('dueDateLoan')} ? ' ring-gray-900' : ''" />
+
+                            <p id="dueDateLoanHelp"
+                               class="mt-2 text-xs text-gray-500">
+                                Sans échéance, l’emprunt reste en cours jusqu’à sa restitution
+                                et n’est pas considéré automatiquement comme en retard.
+                            </p>
 
                             <p th:if="${#fields.hasErrors('dueDateLoan')}"
                                th:errors="*{dueDateLoan}"

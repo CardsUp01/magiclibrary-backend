@@ -75,7 +75,7 @@ import com.magiclibrary.services.UserService;
  * - un emprunteur actif possédant le rôle MEMBRE ou ADMIN ;
  * - un ou plusieurs objets disponibles ;
  * - la date réelle de début ;
- * - la date d'échéance ;
+ * - une date d'échéance facultative ;
  * - une note facultative.
  *
  * La validation métier définitive reste volontairement confiée à LoanService.
@@ -124,14 +124,6 @@ public class AdminLoansPageController {
      * Statut technique correspondant à un objet empruntable.
      */
     private static final String AVAILABLE_ITEM_STATUS = "AVAILABLE";
-
-    /**
-     * Durée par défaut proposée lors de la création d'un emprunt.
-     *
-     * Cette valeur correspond au comportement historique du MVP :
-     * échéance proposée à trente jours.
-     */
-    private static final long DEFAULT_LOAN_DURATION_DAYS = 30L;
 
     // -------------------------------------------------------------------------
     // CONSTANTES DEMO
@@ -505,12 +497,13 @@ public class AdminLoansPageController {
     /**
      * Affiche le formulaire de création administrative d'un emprunt.
      *
-     * Les valeurs proposées par défaut sont :
+     * La date de début est préremplie avec la date et l'heure actuelles.
      *
-     * - date de début : date et heure actuelles ;
-     * - date d'échéance : trente jours après la date actuelle.
+     * La date d'échéance n'est volontairement pas préremplie :
+     * elle est facultative et doit correspondre à une échéance réellement
+     * connue ou définie par l'association.
      *
-     * Ces valeurs restent modifiables par l'administrateur afin de permettre
+     * L'administrateur peut modifier la date de début afin de permettre
      * notamment l'enregistrement rétroactif d'un emprunt déjà commencé.
      *
      * @param model modèle Thymeleaf
@@ -539,11 +532,13 @@ public class AdminLoansPageController {
                 defaultStartDate
         );
 
-        request.setDueDateLoan(
-                defaultStartDate
-                        .toLocalDate()
-                        .plusDays(DEFAULT_LOAN_DURATION_DAYS)
-        );
+        /*
+         * Aucune échéance par défaut n'est créée artificiellement.
+         *
+         * Le champ dueDateLoan reste donc null tant que l'administrateur
+         * ne renseigne pas explicitement une date réelle ou connue.
+         */
+        request.setDueDateLoan(null);
 
         model.addAttribute(
                 "adminLoanRequest",

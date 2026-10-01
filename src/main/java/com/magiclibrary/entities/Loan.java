@@ -35,22 +35,22 @@ import com.magiclibrary.enums.LoanStatus;
 
 /**
  * =============================================================================
- *  ENTITY : LOAN
+ * ENTITY : LOAN
  * =============================================================================
- *  Représente un emprunt réalisé dans l’application MagicLibrary.
+ * Représente un emprunt réalisé dans l’application MagicLibrary.
  *
- *  Cette entité matérialise le lien fonctionnel entre :
- *      - un utilisateur (obligatoire) ;
- *      - une ou plusieurs lignes d'emprunt (LOAN_LINE) ;
- *      - les règles métier associées au suivi d'un emprunt.
+ * Cette entité matérialise le lien fonctionnel entre :
+ *     - un utilisateur (obligatoire) ;
+ *     - une ou plusieurs lignes d'emprunt (LOAN_LINE) ;
+ *     - les règles métier associées au suivi d'un emprunt.
  *
- *  Conformité stricte :
- *      - Dictionnaire de données LOAN (MVP final) ;
- *      - MCD / MLD / MPD validés ;
- *      - Contraintes JPA & Bean Validation ;
- *      - Règles de cohérence MagicLibrary (CDA 30/20).
+ * Conformité stricte :
+ *     - Dictionnaire de données LOAN (MVP final) ;
+ *     - MCD / MLD / MPD validés ;
+ *     - Contraintes JPA & Bean Validation ;
+ *     - Règles de cohérence MagicLibrary (CDA 30/20).
  *
- *  Aucun attribut n’est inventé. Aucune logique métier n’est présente.
+ * Aucun attribut n’est inventé. Aucune logique métier n’est présente.
  * =============================================================================
  */
 @Entity
@@ -81,10 +81,10 @@ public class Loan {
      * Clé étrangère : id_user → USER(id_user).
      *
      * NOTE IMPORTANTE :
-     *      - Loan et User se trouvent dans le même package (com.magiclibrary.entities) ;
-     *      - dans ce cas, aucun import explicite n’est nécessaire pour le type User ;
-     *      - l’absence d’import ou sa présence n’a aucun impact sur Hibernate
-     *        ni sur les erreurs 500 : c’est purement une question de style.
+     *     - Loan et User se trouvent dans le même package (com.magiclibrary.entities) ;
+     *     - dans ce cas, aucun import explicite n’est nécessaire pour le type User ;
+     *     - l’absence d’import ou sa présence n’a aucun impact sur Hibernate
+     *       ni sur les erreurs 500 : c’est purement une question de style.
      */
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_user", nullable = false)
@@ -107,10 +107,16 @@ public class Loan {
 
     /**
      * Date d’échéance théorique de l’emprunt.
-     * Type SQL : DATE NOT NULL.
+     *
+     * Champ optionnel :
+     *     - une date peut être renseignée lorsqu'une échéance est connue ;
+     *     - une valeur null signifie qu'aucune échéance n'est connue ou définie.
+     *
+     * L'absence d'échéance ne doit pas, à elle seule, rendre un emprunt en retard.
+     *
+     * Type SQL attendu : DATE NULL.
      */
-    @Column(name = "due_date_loan", nullable = false)
-    @NotNull(message = "La date d'échéance est obligatoire.")
+    @Column(name = "due_date_loan")
     private LocalDate dueDateLoan;
 
     /**
@@ -173,9 +179,9 @@ public class Loan {
     /**
      * Statut métier de l’emprunt.
      * Liste fermée définie par LoanStatus :
-     *      - ONGOING  : emprunt en cours ;
-     *      - RETURNED : emprunt restitué ;
-     *      - LATE     : emprunt en retard.
+     *     - ONGOING  : emprunt en cours ;
+     *     - RETURNED : emprunt restitué ;
+     *     - LATE     : emprunt en retard.
      * Type SQL : VARCHAR(50) NOT NULL.
      */
     @Enumerated(EnumType.STRING)
@@ -189,9 +195,9 @@ public class Loan {
 
     /**
      * Origine de création de l’emprunt :
-     *      - USER   : créé par le membre lui-même ;
-     *      - ADMIN  : créé par un administrateur ;
-     *      - SYSTEM : créé automatiquement.
+     *     - USER   : créé par le membre lui-même ;
+     *     - ADMIN  : créé par un administrateur ;
+     *     - SYSTEM : créé automatiquement.
      * Type SQL : VARCHAR(50) NOT NULL.
      */
     @Column(name = "origin_loan", length = 50, nullable = false)
@@ -238,11 +244,11 @@ public class Loan {
      * d'un contenu textuel.
      *
      * Important :
-     *      Les lignes d'emprunt ne possèdent pas leur propre marqueur.
-     *      Une LoanLine est considérée comme donnée de démonstration uniquement
-     *      par rattachement à son emprunt parent :
+     *     Les lignes d'emprunt ne possèdent pas leur propre marqueur.
+     *     Une LoanLine est considérée comme donnée de démonstration uniquement
+     *     par rattachement à son emprunt parent :
      *
-     *          LoanLine -> Loan -> demoScenarioCode
+     *         LoanLine -> Loan -> demoScenarioCode
      */
     @Column(name = "demo_scenario_code", length = 150)
     private String demoScenarioCode;
@@ -351,7 +357,9 @@ public class Loan {
     /**
      * Retourne la date d’échéance théorique.
      *
-     * @return date de fin prévue.
+     * L'échéance étant facultative, cette méthode peut retourner null.
+     *
+     * @return date de fin prévue ou null si aucune échéance n'est renseignée.
      */
     public LocalDate getDueDateLoan() {
         return dueDateLoan;
@@ -360,7 +368,10 @@ public class Loan {
     /**
      * Définit la date d’échéance planifiée de l’emprunt.
      *
-     * @param dueDateLoan date d’échéance à enregistrer.
+     * Une valeur null est autorisée et signifie qu'aucune échéance n'est
+     * actuellement connue ou définie pour cet emprunt.
+     *
+     * @param dueDateLoan date d’échéance à enregistrer ou null.
      */
     public void setDueDateLoan(LocalDate dueDateLoan) {
         this.dueDateLoan = dueDateLoan;
