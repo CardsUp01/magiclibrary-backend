@@ -117,16 +117,28 @@ public class PageController {
      * vers l'accueil de l'application.
      */
     @GetMapping({"/", "/login"})
-    public String loginPage(Authentication authentication, HttpServletResponse response) {
+    public String loginPage(
+            Authentication authentication,
+            HttpServletResponse response
+    ) {
         if (authentication != null
                 && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken)) {
             return "redirect:/accueil";
         }
 
-        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-        response.setHeader("Pragma", "no-cache");
-        response.setDateHeader("Expires", 0);
+        response.setHeader(
+                "Cache-Control",
+                "no-store, no-cache, must-revalidate, max-age=0"
+        );
+        response.setHeader(
+                "Pragma",
+                "no-cache"
+        );
+        response.setDateHeader(
+                "Expires",
+                0
+        );
 
         return "login";
     }
@@ -138,37 +150,66 @@ public class PageController {
      */
     @GetMapping("/accueil")
     public String accueilPage(Model model) {
-        model.addAttribute("activePage", "accueil");
+        model.addAttribute(
+                "activePage",
+                "accueil"
+        );
+
         model.addAttribute(
                 "demoManualResetEnabled",
                 isDemoManualResetEnabled()
         );
+
         return "accueil";
     }
 
     @GetMapping("/mentions-legales")
     public String legalNoticePage(Model model) {
-        model.addAttribute("activePage", "mentions-legales");
+        model.addAttribute(
+                "activePage",
+                "mentions-legales"
+        );
+
         return "mentions-legales";
     }
 
     @GetMapping("/confidentialite")
     public String confidentialitePage(Model model) {
-        model.addAttribute("activePage", "confidentialite");
+        model.addAttribute(
+                "activePage",
+                "confidentialite"
+        );
+
         return "confidentialite";
     }
 
     @GetMapping("/accessibilite")
     public String accessibilitePage(Model model) {
-        model.addAttribute("activePage", "accessibilite");
-        model.addAttribute("pageTitle", "Accessibilité");
+        model.addAttribute(
+                "activePage",
+                "accessibilite"
+        );
+
+        model.addAttribute(
+                "pageTitle",
+                "Accessibilité"
+        );
+
         return "accessibilite";
     }
 
     @GetMapping("/cgu")
     public String cguPage(Model model) {
-        model.addAttribute("activePage", "cgu");
-        model.addAttribute("pageTitle", "Conditions générales d’utilisation (CGU)");
+        model.addAttribute(
+                "activePage",
+                "cgu"
+        );
+
+        model.addAttribute(
+                "pageTitle",
+                "Conditions générales d’utilisation (CGU)"
+        );
+
         return "cgu";
     }
 
@@ -181,15 +222,28 @@ public class PageController {
      * contacter l'équipe d'administration.
      */
     @GetMapping("/contact")
-    public String contactPage(Authentication authentication, Model model) {
+    public String contactPage(
+            Authentication authentication,
+            Model model
+    ) {
         if (isAdmin(authentication)) {
             return "redirect:/admin/messages";
         }
 
-        model.addAttribute("activePage", "contact");
+        model.addAttribute(
+                "activePage",
+                "contact"
+        );
 
-        String email = authentication != null ? authentication.getName() : null;
-        model.addAttribute("prefillEmail", email);
+        String email =
+                authentication != null
+                        ? authentication.getName()
+                        : null;
+
+        model.addAttribute(
+                "prefillEmail",
+                email
+        );
 
         return "contact";
     }
@@ -203,10 +257,18 @@ public class PageController {
      */
     @PostMapping("/contact")
     public String submitContactForm(
-            @RequestParam(name = "name", required = false) String name,
-            @RequestParam(name = "email", required = false) String email,
-            @RequestParam(name = "subject", required = false) String subject,
-            @RequestParam(name = "message", required = false) String message,
+            @RequestParam(name = "name", required = false)
+            String name,
+
+            @RequestParam(name = "email", required = false)
+            String email,
+
+            @RequestParam(name = "subject", required = false)
+            String subject,
+
+            @RequestParam(name = "message", required = false)
+            String message,
+
             Authentication authentication,
             RedirectAttributes redirectAttributes
     ) {
@@ -214,102 +276,382 @@ public class PageController {
             return "redirect:/admin/messages";
         }
 
-        String authEmail = authentication.getName();
+        String authEmail =
+                authentication.getName();
 
-        User user = userRepository.findByEmailUser(authEmail)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+        User user =
+                userRepository.findByEmailUser(authEmail)
+                        .orElseThrow(() ->
+                                new UserNotFoundException(
+                                        "Utilisateur introuvable."
+                                )
+                        );
 
-        if (subject == null || subject.trim().isEmpty() || message == null || message.trim().isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Sujet et message sont obligatoires.");
+        if (subject == null
+                || subject.trim().isEmpty()
+                || message == null
+                || message.trim().isEmpty()) {
+
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Sujet et message sont obligatoires."
+            );
+
             return "redirect:/contact";
         }
 
-        ContactRequestDTO requestDTO = new ContactRequestDTO();
-        requestDTO.setIdUser(user.getIdUser());
-        requestDTO.setName(name);
-        requestDTO.setEmail(authEmail);
-        requestDTO.setSubject(subject);
-        requestDTO.setMessage(message);
+        ContactRequestDTO requestDTO =
+                new ContactRequestDTO();
 
-        contactService.createContact(requestDTO);
+        requestDTO.setIdUser(
+                user.getIdUser()
+        );
 
-        redirectAttributes.addFlashAttribute("successMessage", "Message envoyé. Nous te répondrons dès que possible.");
+        requestDTO.setName(
+                name
+        );
+
+        requestDTO.setEmail(
+                authEmail
+        );
+
+        requestDTO.setSubject(
+                subject
+        );
+
+        requestDTO.setMessage(
+                message
+        );
+
+        contactService.createContact(
+                requestDTO
+        );
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Message envoyé. Nous te répondrons dès que possible."
+        );
+
         return "redirect:/contact";
     }
+
+    // =========================================================================
+    // MES MESSAGES DE CONTACT
+    // =========================================================================
 
     /*
      * Affiche les messages de contact du membre connecté.
      *
-     * La méthode gère la recherche, la pagination et la sélection
-     * du message actif dans l'interface.
+     * Deux boîtes sont disponibles :
+     *
+     * - active :
+     *      messages non archivés par le membre ;
+     *
+     * - archived :
+     *      messages archivés par le membre.
+     *
+     * L'état d'archivage administratif est volontairement ignoré ici :
+     * le membre possède son propre classement indépendant.
+     *
+     * Cas particulier :
+     *
+     * Lorsqu'un lien direct fournit selectedContactId sans fournir box
+     * (notamment depuis une notification), le contrôleur détermine
+     * automatiquement si le message appartient actuellement à Actifs
+     * ou Archivés.
+     *
+     * Le lien reste ainsi valide même si le membre archive ou restaure
+     * le message après la création de la notification.
      */
     @GetMapping("/mes-messages-de-contact")
     public String myContactMessagesPage(
-            @RequestParam(name = "q", required = false) String q,
-            @RequestParam(name = "selectedContactId", required = false) String selectedContactId,
-            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
-            @RequestParam(name = "size", required = false, defaultValue = "9") int size,
+            @RequestParam(name = "box", required = false)
+            String box,
+
+            @RequestParam(name = "q", required = false)
+            String q,
+
+            @RequestParam(name = "selectedContactId", required = false)
+            String selectedContactId,
+
+            @RequestParam(name = "page", required = false, defaultValue = "0")
+            int page,
+
+            @RequestParam(name = "size", required = false, defaultValue = "9")
+            int size,
+
             Authentication authentication,
             Model model
     ) {
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
-        User user = userRepository.findByEmailUser(email)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+        User user =
+                userRepository.findByEmailUser(email)
+                        .orElseThrow(() ->
+                                new UserNotFoundException(
+                                        "Utilisateur introuvable."
+                                )
+                        );
 
-        int safePage = Math.max(page, 0);
-        int safeSize = size > 0 ? size : CONTACT_MESSAGES_PAGE_SIZE;
-        String resolvedQuery = q == null ? "" : q.trim();
+        int safePage =
+                Math.max(
+                        page,
+                        0
+                );
 
-        List<ContactResponseDTO> memberContacts = contactService.getContactsForUser(user.getIdUser());
+        int safeSize =
+                size > 0
+                        ? size
+                        : CONTACT_MESSAGES_PAGE_SIZE;
 
-        List<ContactResponseDTO> filteredContacts = resolvedQuery.isEmpty()
-                ? memberContacts
-                : memberContacts.stream()
-                .filter(contact -> matchesMyContactMessageSearch(contact, resolvedQuery))
-                .toList();
+        String resolvedQuery =
+                q == null
+                        ? ""
+                        : q.trim();
 
-        ContactResponseDTO selectedContact = null;
+        /*
+         * Détection intelligente de la boîte lorsqu'un lien direct cible
+         * un message sans préciser explicitement Actifs ou Archivés.
+         *
+         * Exemple :
+         *
+         * /mes-messages-de-contact?selectedContactId=...
+         *
+         * C'est notamment le format utilisé par les notifications Contact.
+         *
+         * IMPORTANT :
+         *
+         * - si box est explicitement présent dans l'URL, il reste prioritaire ;
+         * - le message recherché doit appartenir au membre connecté ;
+         * - aucun document tiers n'est utilisé pour déterminer la boîte ;
+         * - si le message est introuvable, Actifs reste la valeur défensive.
+         */
+        MemberContactMessageBox resolvedBox;
 
-        if (selectedContactId != null && !selectedContactId.isBlank()) {
-            selectedContact = contactService.getContactByIdForUser(selectedContactId.trim(), user.getIdUser());
+        boolean explicitBoxProvided =
+                box != null
+                        && !box.isBlank();
 
-            if (selectedContact != null) {
-                final String selectedId = selectedContact.getId();
-                boolean existsInFilteredList = filteredContacts.stream()
-                        .anyMatch(contact -> Objects.equals(contact.getId(), selectedId));
+        if (!explicitBoxProvided
+                && selectedContactId != null
+                && !selectedContactId.isBlank()) {
 
-                if (!existsInFilteredList) {
-                    selectedContact = null;
-                }
+            ContactResponseDTO directlySelectedContact =
+                    contactService.getContactByIdForUser(
+                            selectedContactId.trim(),
+                            user.getIdUser()
+                    );
+
+            if (directlySelectedContact != null
+                    && directlySelectedContact.isArchivedByMember()) {
+
+                resolvedBox =
+                        MemberContactMessageBox.ARCHIVED;
+
+            } else {
+
+                resolvedBox =
+                        MemberContactMessageBox.ACTIVE;
             }
+
+        } else {
+
+            resolvedBox =
+                    MemberContactMessageBox.fromRequestValue(
+                            box
+                    );
         }
 
-        int resolvedPage = resolveContactPageIndex(filteredContacts, selectedContact, safePage, safeSize);
-        Page<ContactResponseDTO> contactsPage = toContactsPage(filteredContacts, resolvedPage, safeSize);
+        /*
+         * On charge uniquement les messages de la boîte actuellement affichée.
+         *
+         * Le service applique déjà le cloisonnement par idUser.
+         */
+        List<ContactResponseDTO> memberContacts =
+                loadMyContactMessagesForBox(
+                        resolvedBox,
+                        user.getIdUser()
+                );
 
-        if (selectedContact == null && !contactsPage.getContent().isEmpty()) {
-            selectedContact = contactsPage.getContent().get(0);
+        /*
+         * La recherche reste limitée à la boîte active.
+         */
+        List<ContactResponseDTO> filteredContacts =
+                resolvedQuery.isEmpty()
+                        ? memberContacts
+                        : memberContacts.stream()
+                        .filter(contact ->
+                                matchesMyContactMessageSearch(
+                                        contact,
+                                        resolvedQuery
+                                )
+                        )
+                        .toList();
+
+        ContactResponseDTO selectedContact =
+                null;
+
+        /*
+         * La sélection est volontairement recherchée directement dans
+         * filteredContacts.
+         *
+         * Ainsi :
+         *
+         * - impossible de sélectionner le message d'un autre membre ;
+         * - impossible d'afficher un message archivé depuis la boîte Actifs ;
+         * - impossible d'afficher un message actif depuis la boîte Archivés ;
+         * - impossible d'afficher un résultat ne correspondant pas à la
+         *   recherche active.
+         */
+        if (selectedContactId != null
+                && !selectedContactId.isBlank()) {
+
+            String normalizedSelectedContactId =
+                    selectedContactId.trim();
+
+            selectedContact =
+                    filteredContacts.stream()
+                            .filter(contact ->
+                                    Objects.equals(
+                                            contact.getId(),
+                                            normalizedSelectedContactId
+                                    )
+                            )
+                            .findFirst()
+                            .orElse(null);
         }
 
-        String resolvedSelectedContactId = selectedContact != null ? selectedContact.getId() : null;
+        int resolvedPage =
+                resolveContactPageIndex(
+                        filteredContacts,
+                        selectedContact,
+                        safePage,
+                        safeSize
+                );
 
-        model.addAttribute("contacts", contactsPage.getContent());
-        model.addAttribute("selectedContact", selectedContact);
-        model.addAttribute("selectedContactId", resolvedSelectedContactId);
-        model.addAttribute("q", resolvedQuery);
-        model.addAttribute("pageTitle", "Mes messages de contact");
-        model.addAttribute("activePage", "mes-messages-de-contact");
+        Page<ContactResponseDTO> contactsPage =
+                toContactsPage(
+                        filteredContacts,
+                        resolvedPage,
+                        safeSize
+                );
 
-        model.addAttribute("currentPage", contactsPage.getNumber());
-        model.addAttribute("pageSize", contactsPage.getSize());
-        model.addAttribute("totalPages", contactsPage.getTotalPages());
-        model.addAttribute("totalElements", contactsPage.getTotalElements());
-        model.addAttribute("hasPrevious", contactsPage.hasPrevious());
-        model.addAttribute("hasNext", contactsPage.hasNext());
-        model.addAttribute("isFirst", contactsPage.isFirst());
-        model.addAttribute("isLast", contactsPage.isLast());
-        model.addAttribute("paginationEnabled", contactsPage.getTotalElements() > safeSize);
+        /*
+         * Lorsque rien n'est explicitement sélectionné, le premier message
+         * visible de la page devient le détail courant.
+         *
+         * Ce comportement historique est conservé.
+         */
+        if (selectedContact == null
+                && !contactsPage.getContent().isEmpty()) {
+
+            selectedContact =
+                    contactsPage.getContent().get(0);
+        }
+
+        String resolvedSelectedContactId =
+                selectedContact != null
+                        ? selectedContact.getId()
+                        : null;
+
+        model.addAttribute(
+                "contacts",
+                contactsPage.getContent()
+        );
+
+        model.addAttribute(
+                "selectedContact",
+                selectedContact
+        );
+
+        model.addAttribute(
+                "selectedContactId",
+                resolvedSelectedContactId
+        );
+
+        model.addAttribute(
+                "q",
+                resolvedQuery
+        );
+
+        /*
+         * État Actifs / Archivés utilisé par le template.
+         */
+        model.addAttribute(
+                "box",
+                resolvedBox.getRequestValue()
+        );
+
+        model.addAttribute(
+                "boxLabel",
+                resolvedBox.getLabel()
+        );
+
+        model.addAttribute(
+                "isActiveBox",
+                resolvedBox == MemberContactMessageBox.ACTIVE
+        );
+
+        model.addAttribute(
+                "isArchivedBox",
+                resolvedBox == MemberContactMessageBox.ARCHIVED
+        );
+
+        model.addAttribute(
+                "pageTitle",
+                "Mes messages de contact"
+        );
+
+        model.addAttribute(
+                "activePage",
+                "mes-messages-de-contact"
+        );
+
+        model.addAttribute(
+                "currentPage",
+                contactsPage.getNumber()
+        );
+
+        model.addAttribute(
+                "pageSize",
+                contactsPage.getSize()
+        );
+
+        model.addAttribute(
+                "totalPages",
+                contactsPage.getTotalPages()
+        );
+
+        model.addAttribute(
+                "totalElements",
+                contactsPage.getTotalElements()
+        );
+
+        model.addAttribute(
+                "hasPrevious",
+                contactsPage.hasPrevious()
+        );
+
+        model.addAttribute(
+                "hasNext",
+                contactsPage.hasNext()
+        );
+
+        model.addAttribute(
+                "isFirst",
+                contactsPage.isFirst()
+        );
+
+        model.addAttribute(
+                "isLast",
+                contactsPage.isLast()
+        );
+
+        model.addAttribute(
+                "paginationEnabled",
+                contactsPage.getTotalElements() > safeSize
+        );
 
         return "mes-messages-de-contact";
     }
@@ -317,31 +659,324 @@ public class PageController {
     /*
      * Fournit les suggestions pour l'autocomplétion des messages
      * de contact du membre connecté.
+     *
+     * Les suggestions restent strictement limitées à la boîte courante.
      */
-    @GetMapping(value = "/mes-messages-de-contact/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(
+            value = "/mes-messages-de-contact/suggest",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @ResponseBody
-    public ResponseEntity<List<MyContactMessageSuggestResponse>> suggestMyContactMessages(
-            @RequestParam(name = "q", required = false) String q,
+    public ResponseEntity<List<MyContactMessageSuggestResponse>>
+    suggestMyContactMessages(
+            @RequestParam(name = "box", required = false, defaultValue = "active")
+            String box,
+
+            @RequestParam(name = "q", required = false)
+            String q,
+
             Authentication authentication
     ) {
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
-        User user = userRepository.findByEmailUser(email)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+        User user =
+                userRepository.findByEmailUser(email)
+                        .orElseThrow(() ->
+                                new UserNotFoundException(
+                                        "Utilisateur introuvable."
+                                )
+                        );
 
-        String normalizedQuery = normalizeSearchValue(q);
+        String normalizedQuery =
+                normalizeSearchValue(
+                        q
+                );
 
         if (normalizedQuery.isEmpty()) {
-            return ResponseEntity.ok(List.of());
+            return ResponseEntity.ok(
+                    List.of()
+            );
         }
 
-        List<MyContactMessageSuggestResponse> suggestions = contactService.getContactsForUser(user.getIdUser()).stream()
-                .filter(contact -> matchesMyContactMessageSearch(contact, normalizedQuery))
-                .limit(CONTACT_MESSAGES_SUGGEST_LIMIT)
-                .map(this::toMyContactMessageSuggestResponse)
-                .toList();
+        MemberContactMessageBox resolvedBox =
+                MemberContactMessageBox.fromRequestValue(
+                        box
+                );
 
-        return ResponseEntity.ok(suggestions);
+        List<MyContactMessageSuggestResponse> suggestions =
+                loadMyContactMessagesForBox(
+                        resolvedBox,
+                        user.getIdUser()
+                )
+                        .stream()
+                        .filter(contact ->
+                                matchesMyContactMessageSearch(
+                                        contact,
+                                        normalizedQuery
+                                )
+                        )
+                        .limit(
+                                CONTACT_MESSAGES_SUGGEST_LIMIT
+                        )
+                        .map(
+                                this::toMyContactMessageSuggestResponse
+                        )
+                        .toList();
+
+        return ResponseEntity.ok(
+                suggestions
+        );
+    }
+
+    /*
+     * Archive logiquement un message dans l'espace du membre connecté.
+     *
+     * Le service vérifie obligatoirement que le document appartient
+     * au membre demandeur.
+     *
+     * Aucune donnée n'est supprimée.
+     */
+    @PostMapping("/mes-messages-de-contact/{id}/archive")
+    public String archiveMyContactMessage(
+            @PathVariable("id")
+            String idContact,
+
+            @RequestParam(name = "page", required = false, defaultValue = "0")
+            int page,
+
+            @RequestParam(name = "size", required = false, defaultValue = "9")
+            int size,
+
+            @RequestParam(name = "q", required = false)
+            String q,
+
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        String email =
+                authentication.getName();
+
+        User user =
+                userRepository.findByEmailUser(email)
+                        .orElseThrow(() ->
+                                new UserNotFoundException(
+                                        "Utilisateur introuvable."
+                                )
+                        );
+
+        contactService.archiveContactForUser(
+                idContact,
+                user.getIdUser()
+        );
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Message archivé."
+        );
+
+        /*
+         * Après archivage, on reste dans Actifs.
+         *
+         * Le message concerné n'y apparaîtra simplement plus.
+         */
+        addMyContactMessageNavigationAttributes(
+                redirectAttributes,
+                MemberContactMessageBox.ACTIVE,
+                page,
+                size,
+                q
+        );
+
+        return "redirect:/mes-messages-de-contact";
+    }
+
+    /*
+     * Restaure un message archivé par le membre.
+     *
+     * Le message quitte Archivés et retourne dans Actifs.
+     */
+    @PostMapping("/mes-messages-de-contact/{id}/restore")
+    public String restoreMyContactMessage(
+            @PathVariable("id")
+            String idContact,
+
+            @RequestParam(name = "page", required = false, defaultValue = "0")
+            int page,
+
+            @RequestParam(name = "size", required = false, defaultValue = "9")
+            int size,
+
+            @RequestParam(name = "q", required = false)
+            String q,
+
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        String email =
+                authentication.getName();
+
+        User user =
+                userRepository.findByEmailUser(email)
+                        .orElseThrow(() ->
+                                new UserNotFoundException(
+                                        "Utilisateur introuvable."
+                                )
+                        );
+
+        contactService.restoreContactForUser(
+                idContact,
+                user.getIdUser()
+        );
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Message restauré dans les messages actifs."
+        );
+
+        /*
+         * Après restauration, on reste dans Archivés.
+         *
+         * Le message concerné n'y apparaîtra simplement plus.
+         */
+        addMyContactMessageNavigationAttributes(
+                redirectAttributes,
+                MemberContactMessageBox.ARCHIVED,
+                page,
+                size,
+                q
+        );
+
+        return "redirect:/mes-messages-de-contact";
+    }
+
+    /*
+     * Charge les messages correspondant à la boîte Contact active
+     * du membre connecté.
+     */
+    private List<ContactResponseDTO> loadMyContactMessagesForBox(
+            MemberContactMessageBox box,
+            Integer idUser
+    ) {
+        return switch (box) {
+
+            case ACTIVE ->
+                    contactService.getActiveContactsForUser(
+                            idUser
+                    );
+
+            case ARCHIVED ->
+                    contactService.getArchivedContactsForUser(
+                            idUser
+                    );
+        };
+    }
+
+    /*
+     * Préserve la boîte, la pagination et la recherche après une action POST
+     * sur un message de contact du membre.
+     */
+    private void addMyContactMessageNavigationAttributes(
+            RedirectAttributes redirectAttributes,
+            MemberContactMessageBox box,
+            int page,
+            int size,
+            String q
+    ) {
+        redirectAttributes.addAttribute(
+                "box",
+                box.getRequestValue()
+        );
+
+        redirectAttributes.addAttribute(
+                "page",
+                Math.max(
+                        page,
+                        0
+                )
+        );
+
+        redirectAttributes.addAttribute(
+                "size",
+                size > 0
+                        ? size
+                        : CONTACT_MESSAGES_PAGE_SIZE
+        );
+
+        if (q != null
+                && !q.trim().isEmpty()) {
+
+            redirectAttributes.addAttribute(
+                    "q",
+                    q.trim()
+            );
+        }
+    }
+
+    /*
+     * Boîtes disponibles dans l'espace personnel des messages de contact.
+     *
+     * Elles représentent exclusivement l'état d'archivage choisi
+     * par le membre.
+     */
+    private enum MemberContactMessageBox {
+
+        ACTIVE(
+                "active",
+                "Actifs"
+        ),
+
+        ARCHIVED(
+                "archived",
+                "Archivés"
+        );
+
+        private final String requestValue;
+        private final String label;
+
+        MemberContactMessageBox(
+                String requestValue,
+                String label
+        ) {
+            this.requestValue = requestValue;
+            this.label = label;
+        }
+
+        public String getRequestValue() {
+            return requestValue;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        /*
+         * Toute valeur absente ou inconnue revient défensivement vers Actifs.
+         */
+        public static MemberContactMessageBox fromRequestValue(
+                String value
+        ) {
+            if (value == null
+                    || value.isBlank()) {
+
+                return ACTIVE;
+            }
+
+            String normalized =
+                    value.trim();
+
+            for (MemberContactMessageBox box
+                    : MemberContactMessageBox.values()) {
+
+                if (box.requestValue.equalsIgnoreCase(
+                        normalized
+                )) {
+                    return box;
+                }
+            }
+
+            return ACTIVE;
+        }
     }
 
     /*
@@ -998,28 +1633,51 @@ public class PageController {
         );
     }
 
-    private MyNotificationSuggestResponse toMyNotificationSuggestResponse(NotificationResponseDTO notification) {
-        String dateLabel = notification.getDateNotification() != null
-                ? notification.getDateNotification().format(NOTIFICATION_DATE_DISPLAY_FORMATTER)
-                : null;
+    private MyNotificationSuggestResponse toMyNotificationSuggestResponse(
+            NotificationResponseDTO notification
+    ) {
+        String dateLabel =
+                notification.getDateNotification() != null
+                        ? notification
+                        .getDateNotification()
+                        .format(
+                                NOTIFICATION_DATE_DISPLAY_FORMATTER
+                        )
+                        : null;
 
-        String readLabel = Boolean.TRUE.equals(notification.getReadNotification()) ? "Lue" : "Non lue";
+        String readLabel =
+                Boolean.TRUE.equals(
+                        notification.getReadNotification()
+                )
+                        ? "Lue"
+                        : "Non lue";
 
         return new MyNotificationSuggestResponse(
                 notification.getIdNotification(),
                 notification.getTitleNotification(),
-                notification.getCategoryNotification() != null ? notification.getCategoryNotification().name() : null,
-                notification.getTypeNotification() != null ? notification.getTypeNotification().name() : null,
+                notification.getCategoryNotification() != null
+                        ? notification.getCategoryNotification().name()
+                        : null,
+                notification.getTypeNotification() != null
+                        ? notification.getTypeNotification().name()
+                        : null,
                 notification.getPriorityNotification(),
                 readLabel,
                 dateLabel
         );
     }
 
-    private MyContactMessageSuggestResponse toMyContactMessageSuggestResponse(ContactResponseDTO contact) {
-        String dateLabel = contact.getDate() != null
-                ? contact.getDate().format(CONTACT_DATE_DISPLAY_FORMATTER)
-                : null;
+    private MyContactMessageSuggestResponse toMyContactMessageSuggestResponse(
+            ContactResponseDTO contact
+    ) {
+        String dateLabel =
+                contact.getDate() != null
+                        ? contact
+                        .getDate()
+                        .format(
+                                CONTACT_DATE_DISPLAY_FORMATTER
+                        )
+                        : null;
 
         return new MyContactMessageSuggestResponse(
                 contact.getId(),
@@ -1098,24 +1756,46 @@ public class PageController {
         );
     }
 
-    private boolean matchesMyContactMessageSearch(ContactResponseDTO contact, String query) {
-        String normalizedQuery = normalizeSearchValue(query);
+    /*
+     * Vérifie si un message de contact appartient au résultat de recherche.
+     */
+    private boolean matchesMyContactMessageSearch(
+            ContactResponseDTO contact,
+            String query
+    ) {
+        String normalizedQuery =
+                normalizeSearchValue(
+                        query
+                );
 
         if (normalizedQuery.isEmpty()) {
             return true;
         }
 
-        String searchableText = buildMyContactMessageSearchableText(contact);
+        String searchableText =
+                buildMyContactMessageSearchableText(
+                        contact
+                );
 
-        return searchableText.contains(normalizedQuery);
+        return searchableText.contains(
+                normalizedQuery
+        );
     }
 
     /*
      * Construit le texte de recherche des messages de contact du membre.
+     *
+     * Les informations d'archivage membre sont incluses afin de permettre
+     * également une recherche par date d'archivage dans la boîte Archivés.
+     *
+     * L'état d'archivage ADMIN n'est volontairement jamais exposé ici.
      */
-    private String buildMyContactMessageSearchableText(ContactResponseDTO contact) {
+    private String buildMyContactMessageSearchableText(
+            ContactResponseDTO contact
+    ) {
         return normalizeSearchValue(
-                String.join(" ",
+                String.join(
+                        " ",
                         "message",
                         "contact",
                         safeValue(contact.getId()),
@@ -1125,11 +1805,40 @@ public class PageController {
                         safeValue(contact.getStatusLabel()),
                         safeValue(contact.getResponseContent()),
                         safeValue(contact.getAnsweredByAdminLabel()),
-                        contact.getDate() != null ? contact.getDate().format(CONTACT_DATE_DISPLAY_FORMATTER) : "",
-                        contact.getDate() != null ? contact.getDate().toLocalDate().toString() : "",
+
+                        contact.getDate() != null
+                                ? contact
+                                .getDate()
+                                .format(CONTACT_DATE_DISPLAY_FORMATTER)
+                                : "",
+
+                        contact.getDate() != null
+                                ? contact
+                                .getDate()
+                                .toLocalDate()
+                                .toString()
+                                : "",
+
+                        contact.getArchivedAtByMember() != null
+                                ? contact
+                                .getArchivedAtByMember()
+                                .format(CONTACT_DATE_DISPLAY_FORMATTER)
+                                : "",
+
+                        contact.getArchivedAtByMember() != null
+                                ? contact
+                                .getArchivedAtByMember()
+                                .toLocalDate()
+                                .toString()
+                                : "",
+
                         contact.isResponseSent()
                                 ? "repondu répondu answered traite traité"
-                                : "nouveau new en attente non repondu non répondu"
+                                : "nouveau new en attente non repondu non répondu",
+
+                        contact.isArchivedByMember()
+                                ? "archive archivee archivée archived"
+                                : "actif active"
                 )
         );
     }
@@ -1238,37 +1947,94 @@ public class PageController {
     /*
      * Transforme une liste d'emprunts en page Spring.
      */
-    private Page<LoanResponseDTO> toPage(List<LoanResponseDTO> loans, int page, int size) {
+    private Page<LoanResponseDTO> toPage(
+            List<LoanResponseDTO> loans,
+            int page,
+            int size
+    ) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : LOANS_PAGE_SIZE;
         int start = safePage * safeSize;
 
         if (start >= loans.size()) {
-            return new PageImpl<>(List.of(), PageRequest.of(safePage, safeSize), loans.size());
+            return new PageImpl<>(
+                    List.of(),
+                    PageRequest.of(safePage, safeSize),
+                    loans.size()
+            );
         }
 
-        int end = Math.min(start + safeSize, loans.size());
-        List<LoanResponseDTO> content = loans.subList(start, end);
+        int end = Math.min(
+                start + safeSize,
+                loans.size()
+        );
 
-        return new PageImpl<>(content, PageRequest.of(safePage, safeSize), loans.size());
+        List<LoanResponseDTO> content =
+                loans.subList(
+                        start,
+                        end
+                );
+
+        return new PageImpl<>(
+                content,
+                PageRequest.of(safePage, safeSize),
+                loans.size()
+        );
     }
 
     /*
      * Transforme une liste de messages de contact en page Spring.
      */
-    private Page<ContactResponseDTO> toContactsPage(List<ContactResponseDTO> contacts, int page, int size) {
-        int safePage = Math.max(page, 0);
-        int safeSize = size > 0 ? size : CONTACT_MESSAGES_PAGE_SIZE;
-        int start = safePage * safeSize;
+    private Page<ContactResponseDTO> toContactsPage(
+            List<ContactResponseDTO> contacts,
+            int page,
+            int size
+    ) {
+        int safePage =
+                Math.max(
+                        page,
+                        0
+                );
+
+        int safeSize =
+                size > 0
+                        ? size
+                        : CONTACT_MESSAGES_PAGE_SIZE;
+
+        int start =
+                safePage * safeSize;
 
         if (start >= contacts.size()) {
-            return new PageImpl<>(List.of(), PageRequest.of(safePage, safeSize), contacts.size());
+            return new PageImpl<>(
+                    List.of(),
+                    PageRequest.of(
+                            safePage,
+                            safeSize
+                    ),
+                    contacts.size()
+            );
         }
 
-        int end = Math.min(start + safeSize, contacts.size());
-        List<ContactResponseDTO> content = contacts.subList(start, end);
+        int end =
+                Math.min(
+                        start + safeSize,
+                        contacts.size()
+                );
 
-        return new PageImpl<>(content, PageRequest.of(safePage, safeSize), contacts.size());
+        List<ContactResponseDTO> content =
+                contacts.subList(
+                        start,
+                        end
+                );
+
+        return new PageImpl<>(
+                content,
+                PageRequest.of(
+                        safePage,
+                        safeSize
+                ),
+                contacts.size()
+        );
     }
 
     /*
@@ -1280,14 +2046,27 @@ public class PageController {
             int requestedPage,
             int pageSize
     ) {
-        int safeRequestedPage = Math.max(requestedPage, 0);
-        int safePageSize = pageSize > 0 ? pageSize : CONTACT_MESSAGES_PAGE_SIZE;
+        int safeRequestedPage =
+                Math.max(
+                        requestedPage,
+                        0
+                );
+
+        int safePageSize =
+                pageSize > 0
+                        ? pageSize
+                        : CONTACT_MESSAGES_PAGE_SIZE;
 
         if (selectedContact != null) {
             for (int i = 0; i < contacts.size(); i++) {
-                ContactResponseDTO contact = contacts.get(i);
 
-                if (Objects.equals(contact.getId(), selectedContact.getId())) {
+                ContactResponseDTO contact =
+                        contacts.get(i);
+
+                if (Objects.equals(
+                        contact.getId(),
+                        selectedContact.getId()
+                )) {
                     return i / safePageSize;
                 }
             }
@@ -1297,8 +2076,14 @@ public class PageController {
             return 0;
         }
 
-        int lastPage = (contacts.size() - 1) / safePageSize;
-        return Math.min(safeRequestedPage, lastPage);
+        int lastPage =
+                (contacts.size() - 1)
+                        / safePageSize;
+
+        return Math.min(
+                safeRequestedPage,
+                lastPage
+        );
     }
 
     /*
@@ -1314,22 +2099,31 @@ public class PageController {
      * par le contrôleur dédié au reset.
      */
     private boolean isDemoManualResetEnabled() {
-        boolean demoProfileActive = Arrays.stream(environment.getActiveProfiles())
-                .anyMatch("demo"::equals);
+        boolean demoProfileActive =
+                Arrays.stream(
+                                environment.getActiveProfiles()
+                        )
+                        .anyMatch(
+                                "demo"::equals
+                        );
 
-        boolean resetEnabled = environment.getProperty(
-                DEMO_RESET_ENABLED_PROPERTY,
-                Boolean.class,
-                false
-        );
+        boolean resetEnabled =
+                environment.getProperty(
+                        DEMO_RESET_ENABLED_PROPERTY,
+                        Boolean.class,
+                        false
+                );
 
-        boolean manualResetEnabled = environment.getProperty(
-                DEMO_MANUAL_RESET_ENABLED_PROPERTY,
-                Boolean.class,
-                false
-        );
+        boolean manualResetEnabled =
+                environment.getProperty(
+                        DEMO_MANUAL_RESET_ENABLED_PROPERTY,
+                        Boolean.class,
+                        false
+                );
 
-        return demoProfileActive && resetEnabled && manualResetEnabled;
+        return demoProfileActive
+                && resetEnabled
+                && manualResetEnabled;
     }
 
     /*
@@ -1337,7 +2131,9 @@ public class PageController {
      * Cette vérification centralise la règle d'accès utilisée par les pages SSR.
      */
     private boolean isAdmin(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
             return false;
         }
 
@@ -1345,10 +2141,18 @@ public class PageController {
             return false;
         }
 
-        return authentication.getAuthorities().stream()
-                .map(authority -> authority.getAuthority())
-                .filter(Objects::nonNull)
-                .anyMatch(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ADMIN"));
+        return authentication.getAuthorities()
+                .stream()
+                .map(authority ->
+                        authority.getAuthority()
+                )
+                .filter(
+                        Objects::nonNull
+                )
+                .anyMatch(authority ->
+                        authority.equals("ROLE_ADMIN")
+                                || authority.equals("ADMIN")
+                );
     }
 
     /*
@@ -1359,7 +2163,11 @@ public class PageController {
             return "";
         }
 
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        String normalized =
+                value.trim()
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
 
         normalized = normalized
                 .replace('à', 'a')
@@ -1382,50 +2190,89 @@ public class PageController {
     }
 
     private String safeValue(Object value) {
-        return value == null ? "" : String.valueOf(value);
+        return value == null
+                ? ""
+                : String.valueOf(value);
     }
 
     private String safeComparableText(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+        return value == null
+                ? ""
+                : value.toLowerCase(
+                Locale.ROOT
+        );
     }
 
     private String formatDateTimeValue(LocalDateTime value) {
-        return value == null ? "" : value.format(LOAN_DATE_TIME_DISPLAY_FORMATTER);
+        return value == null
+                ? ""
+                : value.format(
+                LOAN_DATE_TIME_DISPLAY_FORMATTER
+        );
     }
 
     private String formatDateValue(LocalDate value) {
-        return value == null ? "" : value.format(LOAN_DATE_DISPLAY_FORMATTER);
+        return value == null
+                ? ""
+                : value.format(
+                LOAN_DATE_DISPLAY_FORMATTER
+        );
     }
 
-    private static LocalDateTime safeStartDateTime(LoanResponseDTO loan) {
-        return loan != null ? loan.getStartDateLoan() : null;
+    private static LocalDateTime safeStartDateTime(
+            LoanResponseDTO loan
+    ) {
+        return loan != null
+                ? loan.getStartDateLoan()
+                : null;
     }
 
-    private static LocalDate safeDueDate(LoanResponseDTO loan) {
-        return loan != null ? loan.getDueDateLoan() : null;
+    private static LocalDate safeDueDate(
+            LoanResponseDTO loan
+    ) {
+        return loan != null
+                ? loan.getDueDateLoan()
+                : null;
     }
 
-    private static Integer safeLoanId(LoanResponseDTO loan) {
-        return loan != null ? loan.getIdLoan() : null;
+    private static Integer safeLoanId(
+            LoanResponseDTO loan
+    ) {
+        return loan != null
+                ? loan.getIdLoan()
+                : null;
     }
 
     /*
      * Construit le résumé des objets associés à un emprunt.
      */
-    private String buildLoanItemSummary(String firstTitle, int totalItems) {
+    private String buildLoanItemSummary(
+            String firstTitle,
+            int totalItems
+    ) {
         if (totalItems <= 0) {
             return "Aucun objet associé";
         }
 
-        String safeFirstTitle = firstTitle != null && !firstTitle.isBlank()
-                ? firstTitle
-                : "Objet sans titre";
+        String safeFirstTitle =
+                firstTitle != null
+                        && !firstTitle.isBlank()
+                        ? firstTitle
+                        : "Objet sans titre";
 
         if (totalItems == 1) {
             return safeFirstTitle;
         }
 
-        return safeFirstTitle + " + " + (totalItems - 1) + " autre" + (totalItems - 1 > 1 ? "s" : "");
+        return safeFirstTitle
+                + " + "
+                + (totalItems - 1)
+                + " autre"
+                + (
+                totalItems - 1 > 1
+                        ? "s"
+                        : ""
+        );
     }
 
     /*
@@ -1440,7 +2287,11 @@ public class PageController {
         public MyLoanSuggestResponse() {
         }
 
-        public MyLoanSuggestResponse(Integer idLoan, String status, String origin) {
+        public MyLoanSuggestResponse(
+                Integer idLoan,
+                String status,
+                String origin
+        ) {
             this.idLoan = idLoan;
             this.status = status;
             this.origin = origin;

@@ -10,9 +10,22 @@
                        resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : contactsCount}">
 
         <!--
-            Page d'administration des messages de contact.
-            Permet la consultation, la recherche, la lecture détaillée
-            et la réponse aux demandes envoyées via le formulaire de contact.
+            =============================================================================
+            ADMIN - MESSAGES DE CONTACT
+            =============================================================================
+
+            Cette page distingue désormais deux vues administratives :
+
+            - Actifs :
+                messages encore présents dans la boîte principale ADMIN ;
+
+            - Archivés :
+                messages rangés logiquement par l'administration.
+
+            L'archivage ADMIN est indépendant de l'archivage éventuellement
+            effectué par le membre dans son propre espace.
+
+            Aucun message n'est supprimé physiquement.
         -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
@@ -20,7 +33,9 @@
 
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 max-w-full sm:flex-1">
-                        <h1 class="break-words text-base font-semibold text-gray-900">Messages de contact</h1>
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Messages de contact
+                        </h1>
 
                         <div class="mt-2 max-w-full space-y-2">
                             <p class="break-words hyphens-auto text-sm text-gray-700">
@@ -37,7 +52,7 @@
                     </div>
                 </div>
 
-                <!-- Messages de retour affichés après une action sur une demande de contact -->
+                <!-- Messages de retour après réponse, archivage ou restauration -->
                 <div th:if="${successMessage != null}"
                      class="max-w-full overflow-hidden rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm"
                      role="status"
@@ -54,6 +69,37 @@
                     <span th:text="${errorMessage}">Une erreur est survenue.</span>
                 </div>
 
+                <!--
+                    Navigation entre les deux boîtes administratives.
+
+                    Le changement de boîte repart volontairement :
+                    - page 0 ;
+                    - sans recherche ;
+                    - sans message sélectionné.
+                -->
+                <nav class="flex max-w-full flex-wrap gap-2"
+                     aria-label="Classement des messages de contact">
+
+                    <a th:href="@{/admin/messages(box='active', size=${pageSize != null ? pageSize : 9})}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                       th:classappend="${isActiveBox}
+                           ? ' border-gray-900 bg-gray-900 text-white'
+                           : ' border-gray-200 bg-white text-blue-700 hover:bg-gray-50'"
+                       th:aria-current="${isActiveBox ? 'page' : null}">
+                        Actifs
+                    </a>
+
+                    <a th:href="@{/admin/messages(box='archived', size=${pageSize != null ? pageSize : 9})}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                       th:classappend="${isArchivedBox}
+                           ? ' border-gray-900 bg-gray-900 text-white'
+                           : ' border-gray-200 bg-white text-blue-700 hover:bg-gray-50'"
+                       th:aria-current="${isArchivedBox ? 'page' : null}">
+                        Archivés
+                    </a>
+
+                </nav>
+
                 <div th:if="${!showDetail}"
                      class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 
@@ -61,18 +107,44 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
-                            <!-- Recherche dynamique des messages de contact avec suggestions -->
-                            <form id="searchForm" th:action="@{/admin/messages}" method="get" class="max-w-full">
-                                <input type="hidden" name="page" value="0" />
-                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                            <!-- Recherche dynamique limitée à la boîte courante -->
+                            <form id="searchForm"
+                                  th:action="@{/admin/messages}"
+                                  method="get"
+                                  class="max-w-full">
+
+                                <input id="searchBox"
+                                       type="hidden"
+                                       name="box"
+                                       th:value="${box}" />
+
+                                <input type="hidden"
+                                       name="page"
+                                       value="0" />
+
+                                <input type="hidden"
+                                       name="size"
+                                       th:value="${pageSize != null ? pageSize : 9}" />
 
                                 <div class="relative w-full max-w-full">
-                                    <label for="search" class="sr-only">Rechercher un message de contact</label>
+
+                                    <label for="search" class="sr-only">
+                                        Rechercher un message de contact
+                                    </label>
 
                                     <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
-                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
-                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <svg aria-hidden="true"
+                                             class="h-5 w-5 text-gray-500"
+                                             viewBox="0 0 24 24"
+                                             fill="none">
+                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"/>
+                                            <path d="M16.5 16.5 21 21"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"/>
                                         </svg>
                                     </div>
 
@@ -92,40 +164,77 @@
                                             type="button"
                                             class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
                                             aria-label="Effacer la recherche">
-                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <svg aria-hidden="true"
+                                             class="h-4 w-4"
+                                             viewBox="0 0 24 24"
+                                             fill="none">
+                                            <path d="M6 6l12 12M18 6L6 18"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"/>
                                         </svg>
                                     </button>
 
-                                    <button type="submit" class="sr-only">Rechercher</button>
+                                    <button type="submit" class="sr-only">
+                                        Rechercher
+                                    </button>
 
                                     <div id="suggestPanel"
                                          class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
                                          role="listbox"
                                          aria-label="Suggestions">
-                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+
+                                        <div id="suggestInner"
+                                             class="max-h-64 overflow-auto">
+                                        </div>
                                     </div>
 
-                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                    <div id="suggestAnnounce"
+                                         class="sr-only"
+                                         role="status"
+                                         aria-live="polite"
+                                         aria-atomic="true">
+                                    </div>
+
                                 </div>
                             </form>
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+
                                 <div class="min-w-0 max-w-full flex-1">
-                                    <p id="searchHint" class="text-sm text-gray-600">
-                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
-                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
+                                    <p id="searchHint"
+                                       class="text-sm text-gray-600">
+
+                                        <span th:if="${!hasQuery}">
+                                            Saisis au moins 2 caractères pour obtenir des suggestions.
+                                        </span>
+
+                                        <span th:if="${hasQuery}">
+                                            Recherche active : la liste se met à jour automatiquement pendant la saisie.
+                                        </span>
+
                                     </p>
                                 </div>
 
-                                <!-- Indicateurs du nombre de messages correspondant à la recherche active -->
-                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
-                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
-                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5"
+                                     aria-live="polite">
+
+                                    <span id="resultsCount"
+                                          th:text="${resultsDisplayCount}">
+                                        0
+                                    </span>
+
+                                    <span id="resultsLabel"
+                                          th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">
+                                        résultats
+                                    </span>
+
                                 </div>
+
                             </div>
 
                         </div>
+
                     </div>
 
                 </div>
@@ -135,81 +244,151 @@
             <div class="mt-6 max-w-full text-sm text-gray-700">
 
                 <section class="mt-6 max-w-full first:mt-0">
-                    <h2 class="text-base font-semibold text-gray-900">Demandes reçues</h2>
 
-                    <!-- Résumé de l'état courant : liste, recherche, pagination ou détail sélectionné -->
+                    <h2 class="text-base font-semibold text-gray-900"
+                        th:text="${isArchivedBox ? 'Demandes archivées' : 'Demandes actives'}">
+                        Demandes actives
+                    </h2>
+
+                    <!-- Résumé de l'état courant -->
                     <div class="mt-2 max-w-full space-y-2">
+
                         <p th:if="${!showDetail and contactsCount > 0 and hasQuery}">
-                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
-                            <span th:text="${totalElements == 1 ? 'message trouvé' : 'messages trouvés'}">messages trouvés</span>
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1 ? 'message trouvé' : 'messages trouvés'}">
+                                messages trouvés
+                            </span>
                         </p>
 
                         <p th:if="${!showDetail and contactsCount > 0 and !hasQuery}">
-                            <span class="font-medium text-gray-900" th:text="${resultsDisplayCount}">0</span>
-                            <span th:text="${resultsDisplayCount == 1 ? 'message chargé' : 'messages chargés'}">messages chargés</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${resultsDisplayCount}">
+                                0
+                            </span>
+
+                            <span th:text="${resultsDisplayCount == 1 ? 'message chargé' : 'messages chargés'}">
+                                messages chargés
+                            </span>
+
                         </p>
 
                         <p th:if="${!showDetail and contactsCount == 0 and hasQuery}">
                             Aucun message de contact ne correspond à cette recherche.
                         </p>
 
-                        <p th:if="${!showDetail and contactsCount == 0 and !hasQuery}">
-                            Aucune demande de contact n’est disponible pour le moment.
+                        <p th:if="${!showDetail and contactsCount == 0 and !hasQuery and isActiveBox}">
+                            Aucun message de contact actif n’est disponible pour le moment.
                         </p>
 
-                        <p th:if="${!showDetail and paginationEnabled}" class="text-sm text-gray-600">
+                        <p th:if="${!showDetail and contactsCount == 0 and !hasQuery and isArchivedBox}">
+                            Aucun message de contact n’est archivé pour le moment.
+                        </p>
+
+                        <p th:if="${!showDetail and paginationEnabled}"
+                           class="text-sm text-gray-600">
+
                             <span>Page </span>
-                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${currentPage + 1}">
+                                1
+                            </span>
+
                             <span> sur </span>
-                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalPages}">
+                                1
+                            </span>
+
                             <span> · </span>
-                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
-                            <span th:text="${totalElements == 1 ? ' message au total' : ' messages au total'}"> messages au total</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1 ? ' message au total' : ' messages au total'}">
+                                messages au total
+                            </span>
+
                         </p>
 
                         <p th:if="${showDetail}">
                             Consultation du message sélectionné.
                         </p>
+
                     </div>
 
-                    <div class="mt-6 max-w-full" th:if="${!showDetail and contactsCount == 0}">
+                    <!-- État vide -->
+                    <div class="mt-6 max-w-full"
+                         th:if="${!showDetail and contactsCount == 0}">
+
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
                             <h2 class="text-base font-semibold text-gray-900"
-                                th:text="${hasQuery ? 'Aucun résultat' : 'Aucun message disponible'}">
+                                th:text="${hasQuery
+                                    ? 'Aucun résultat'
+                                    : (isArchivedBox ? 'Aucun message archivé' : 'Aucun message actif')}">
                                 Aucun message disponible
                             </h2>
 
                             <div class="mt-2 space-y-2">
+
                                 <p class="break-words hyphens-auto"
-                                   th:text="${hasQuery ? 'Essaie un autre mot-clé ou efface la recherche.' : 'Aucun message de contact n’est enregistré pour le moment.'}">
-                                    Aucun message de contact n’est enregistré pour le moment.
+                                   th:text="${hasQuery
+                                       ? 'Essaie un autre mot-clé ou efface la recherche.'
+                                       : (isArchivedBox
+                                           ? 'Aucun message de contact n’est actuellement archivé.'
+                                           : 'Aucun message de contact actif n’est enregistré pour le moment.')}">
+                                    Aucun message disponible.
                                 </p>
 
                                 <div th:if="${hasQuery}">
-                                    <a th:href="@{/admin/messages(size=${pageSize})}"
+                                    <a th:href="@{/admin/messages(
+                                           box=${box},
+                                           size=${pageSize}
+                                       )}"
                                        class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Effacer la recherche
                                     </a>
                                 </div>
+
                             </div>
+
                         </section>
+
                     </div>
 
-                    <!-- Détail du message sélectionné et formulaire de réponse administrateur -->
-                    <div class="mt-6 max-w-full" th:if="${showDetail}">
+                    <!-- ===================================================== -->
+                    <!-- DÉTAIL D'UN MESSAGE                                  -->
+                    <!-- ===================================================== -->
+
+                    <div class="mt-6 max-w-full"
+                         th:if="${showDetail}">
+
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
                             <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
 
                                 <div class="min-w-0 max-w-full flex-1">
+
                                     <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+
                                         <h3 class="break-words text-base font-semibold text-gray-900">
                                             Message de contact
                                         </h3>
 
                                         <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
                                               th:text="${selectedContact.statusLabel != null ? selectedContact.statusLabel : 'Statut inconnu'}"
-                                              th:classappend="${selectedContact.statusBadgeClass != null ? selectedContact.statusBadgeClass : ' bg-gray-50 text-gray-700 ring-gray-200'}">
+                                              th:classappend="${selectedContact.statusBadgeClass != null
+                                                  ? selectedContact.statusBadgeClass
+                                                  : ' bg-gray-50 text-gray-700 ring-gray-200'}">
                                             Nouveau
                                         </span>
 
@@ -224,85 +403,172 @@
                                               th:text="${selectedContact.senderRoleLabel}">
                                             Invité
                                         </span>
+
+                                        <span th:if="${isArchivedBox}"
+                                              class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700">
+                                            Archivé
+                                        </span>
+
                                     </div>
 
                                     <p class="mt-3 text-xs text-gray-500"
                                        th:if="${selectedContact.id != null && #strings.length(selectedContact.id) >= 6}">
+
                                         Réf. interne :
+
                                         <span class="font-medium text-gray-700"
-                                              th:text="${#strings.substring(selectedContact.id, #strings.length(selectedContact.id) - 6, #strings.length(selectedContact.id))}">
+                                              th:text="${#strings.substring(
+                                                  selectedContact.id,
+                                                  #strings.length(selectedContact.id) - 6,
+                                                  #strings.length(selectedContact.id)
+                                              )}">
                                             ABC123
                                         </span>
+
                                     </p>
 
                                     <p class="mt-4 break-words text-base font-semibold text-gray-900"
-                                       th:text="${selectedContact.subject != null && !#strings.isEmpty(#strings.trim(selectedContact.subject)) ? selectedContact.subject : 'Message sans sujet'}">
+                                       th:text="${selectedContact.subject != null
+                                           && !#strings.isEmpty(#strings.trim(selectedContact.subject))
+                                           ? selectedContact.subject
+                                           : 'Message sans sujet'}">
                                         Message sans sujet
                                     </p>
 
                                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</p>
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Email
+                                            </p>
+
                                             <p class="mt-2 break-all text-sm text-gray-700"
-                                               th:text="${selectedContact.email != null && !#strings.isEmpty(#strings.trim(selectedContact.email)) ? selectedContact.email : 'Non renseigné'}">
+                                               th:text="${selectedContact.email != null
+                                                   && !#strings.isEmpty(#strings.trim(selectedContact.email))
+                                                   ? selectedContact.email
+                                                   : 'Non renseigné'}">
                                                 Non renseigné
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Nom</p>
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Nom
+                                            </p>
+
                                             <p class="mt-2 break-words text-sm text-gray-700"
-                                               th:text="${selectedContact.name != null && !#strings.isEmpty(#strings.trim(selectedContact.name)) ? selectedContact.name : 'Non renseigné'}">
+                                               th:text="${selectedContact.name != null
+                                                   && !#strings.isEmpty(#strings.trim(selectedContact.name))
+                                                   ? selectedContact.name
+                                                   : 'Non renseigné'}">
                                                 Non renseigné
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Origine</p>
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Origine
+                                            </p>
+
                                             <p class="mt-2 break-words text-sm text-gray-700"
-                                               th:text="${selectedContact.origin != null && !#strings.isEmpty(#strings.trim(selectedContact.origin)) ? selectedContact.origin : 'Non renseignée'}">
+                                               th:text="${selectedContact.origin != null
+                                                   && !#strings.isEmpty(#strings.trim(selectedContact.origin))
+                                                   ? selectedContact.origin
+                                                   : 'Non renseignée'}">
                                                 Non renseignée
                                             </p>
                                         </div>
 
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Date de réception</p>
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Date de réception
+                                            </p>
+
                                             <p class="mt-2 text-sm text-gray-700"
-                                               th:text="${selectedContact.date != null ? #temporals.format(selectedContact.date, 'dd/MM/yyyy HH:mm') : '—'}">
+                                               th:text="${selectedContact.date != null
+                                                   ? #temporals.format(selectedContact.date, 'dd/MM/yyyy HH:mm')
+                                                   : '—'}">
                                                 —
                                             </p>
                                         </div>
+
+                                    </div>
+
+                                    <!-- Date d'archivage ADMIN -->
+                                    <div class="mt-4"
+                                         th:if="${isArchivedBox && selectedContact.archivedAtByAdmin != null}">
+
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Archivé côté administration
+                                        </p>
+
+                                        <p class="mt-2 text-sm text-gray-700"
+                                           th:text="${#temporals.format(selectedContact.archivedAtByAdmin, 'dd/MM/yyyy à HH:mm')}">
+                                            —
+                                        </p>
+
                                     </div>
 
                                     <div class="mt-6">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Message reçu</p>
+
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Message reçu
+                                        </p>
+
                                         <p class="mt-2 break-words hyphens-auto text-sm text-gray-700"
-                                           th:text="${selectedContact.content != null && !#strings.isEmpty(#strings.trim(selectedContact.content)) ? selectedContact.content : 'Aucun contenu disponible.'}">
+                                           th:text="${selectedContact.content != null
+                                               && !#strings.isEmpty(#strings.trim(selectedContact.content))
+                                               ? selectedContact.content
+                                               : 'Aucun contenu disponible.'}">
                                             Aucun contenu disponible.
                                         </p>
+
                                     </div>
 
-                                    <div class="mt-6" th:if="${selectedContact.responseContent != null && !#strings.isEmpty(#strings.trim(selectedContact.responseContent))}">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Réponse admin</p>
+                                    <div class="mt-6"
+                                         th:if="${selectedContact.responseContent != null
+                                             && !#strings.isEmpty(#strings.trim(selectedContact.responseContent))}">
+
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Réponse admin
+                                        </p>
+
                                         <p class="mt-2 break-words hyphens-auto text-sm text-gray-700"
                                            th:text="${selectedContact.responseContent}">
                                             Réponse admin
                                         </p>
+
                                     </div>
 
                                     <div class="mt-6"
-                                         th:if="${selectedContact.answered and selectedContact.answeredByAdminLabel != null and !#strings.isEmpty(#strings.trim(selectedContact.answeredByAdminLabel))}">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Répondu par</p>
+                                         th:if="${selectedContact.answered
+                                             and selectedContact.answeredByAdminLabel != null
+                                             and !#strings.isEmpty(#strings.trim(selectedContact.answeredByAdminLabel))}">
+
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Répondu par
+                                        </p>
+
                                         <p class="mt-2 break-words text-sm text-gray-700"
                                            th:text="${selectedContact.answeredByAdminLabel}">
                                             Administrateur
                                         </p>
+
                                     </div>
 
-                                    <div class="mt-6" th:if="${!selectedContact.answered}">
-                                        <h2 class="text-base font-semibold text-gray-900">Réponse administrateur</h2>
+                                    <!-- ================================================= -->
+                                    <!-- RÉPONSE ADMINISTRATEUR                            -->
+                                    <!-- ================================================= -->
+
+                                    <div class="mt-6"
+                                         th:if="${!selectedContact.answered}">
+
+                                        <h2 class="text-base font-semibold text-gray-900">
+                                            Réponse administrateur
+                                        </h2>
 
                                         <div class="mt-2 space-y-2">
+
                                             <p class="text-sm text-gray-600">
                                                 Rédige une réponse à ce message. Une fois envoyée, la demande passera au statut répondu.
                                             </p>
@@ -311,22 +577,69 @@
                                                   th:action="@{/admin/messages/respond}"
                                                   method="post"
                                                   class="space-y-4">
-                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                                <input type="hidden" name="id" th:value="${selectedContact.id}" />
-                                                <input type="hidden" name="q" th:value="${q}" />
-                                                <input type="hidden" name="from" th:value="${from}" />
-                                                <input type="hidden" name="notifPage" th:value="${notifPage}" />
-                                                <input type="hidden" name="notifSize" th:value="${notifSize}" />
-                                                <input type="hidden" name="notifQ" th:value="${notifQ}" />
-                                                <input type="hidden" name="notifSelectedNotificationId" th:value="${notifSelectedNotificationId}" />
-                                                <input type="hidden" name="page" th:value="${currentPage}" />
-                                                <input type="hidden" name="size" th:value="${pageSize}" />
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="id"
+                                                       th:value="${selectedContact.id}" />
+
+                                                <input type="hidden"
+                                                       name="box"
+                                                       th:value="${box}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
+                                                <input type="hidden"
+                                                       name="from"
+                                                       th:value="${from}" />
+
+                                                <input type="hidden"
+                                                       name="notifPage"
+                                                       th:value="${notifPage}" />
+
+                                                <input type="hidden"
+                                                       name="notifSize"
+                                                       th:value="${notifSize}" />
+
+                                                <input type="hidden"
+                                                       name="notifQ"
+                                                       th:value="${notifQ}" />
+
+                                                <input type="hidden"
+                                                       name="notifSelectedNotificationId"
+                                                       th:value="${notifSelectedNotificationId}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
 
                                                 <div class="min-w-0">
-                                                    <label for="responseContent" class="block text-sm font-medium text-gray-700">
-                                                        Réponse <span class="text-gray-500" aria-hidden="true">*</span>
-                                                        <span class="sr-only">obligatoire</span>
+
+                                                    <label for="responseContent"
+                                                           class="block text-sm font-medium text-gray-700">
+
+                                                        Réponse
+                                                        <span class="text-gray-500"
+                                                              aria-hidden="true">
+                                                            *
+                                                        </span>
+
+                                                        <span class="sr-only">
+                                                            obligatoire
+                                                        </span>
+
                                                     </label>
+
                                                     <textarea id="responseContent"
                                                               name="responseContent"
                                                               required
@@ -335,11 +648,15 @@
                                                               rows="6"
                                                               placeholder="Rédige la réponse administrateur…"
                                                               class="mt-1 w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"></textarea>
+
                                                     <p class="mt-1 text-xs text-gray-500">
                                                         2000 caractères max.
                                                     </p>
+
                                                 </div>
+
                                                 <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+
                                                     <button type="button"
                                                             id="openResponseConfirmModal"
                                                             class="inline-flex min-h-10 items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
@@ -358,16 +675,28 @@
                                                     </a>
 
                                                     <a th:if="${!isFromNotifications}"
-                                                       th:href="@{/admin/messages(size=${pageSize}, page=${currentPage}, q=${q})}"
+                                                       th:href="@{/admin/messages(
+                                                           box=${box},
+                                                           size=${pageSize},
+                                                           page=${currentPage},
+                                                           q=${q}
+                                                       )}"
                                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                         Revenir à la liste
                                                     </a>
+
                                                 </div>
+
                                             </form>
+
                                         </div>
+
                                     </div>
 
-                                    <div class="mt-6" th:if="${selectedContact.answered}">
+                                    <!-- Retour à la liste pour un message déjà répondu -->
+                                    <div class="mt-6"
+                                         th:if="${selectedContact.answered}">
+
                                         <a th:if="${isFromNotifications}"
                                            th:href="@{/admin/notifications(
                                                page=${notifPage},
@@ -380,20 +709,170 @@
                                         </a>
 
                                         <a th:if="${!isFromNotifications}"
-                                           th:href="@{/admin/messages(size=${pageSize}, page=${currentPage}, q=${q})}"
+                                           th:href="@{/admin/messages(
+                                               box=${box},
+                                               size=${pageSize},
+                                               page=${currentPage},
+                                               q=${q}
+                                           )}"
                                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                             Revenir à la liste
                                         </a>
+
                                     </div>
+
+                                    <!-- ================================================= -->
+                                    <!-- CLASSEMENT ADMIN : ARCHIVER / RESTAURER          -->
+                                    <!-- ================================================= -->
+
+                                    <div class="mt-6 border-t border-gray-100 pt-6">
+
+                                        <h2 class="text-base font-semibold text-gray-900">
+                                            Classement administratif
+                                        </h2>
+
+                                        <p class="mt-2 text-sm text-gray-600"
+                                           th:if="${isActiveBox}">
+                                            Archive ce message pour le retirer de la liste active. Il restera conservé et pourra être restauré.
+                                        </p>
+
+                                        <p class="mt-2 text-sm text-gray-600"
+                                           th:if="${isArchivedBox}">
+                                            Restaure ce message pour le replacer dans la liste active.
+                                        </p>
+
+                                        <!-- ARCHIVER -->
+                                        <form th:if="${isActiveBox}"
+                                              th:action="@{/admin/messages/archive}"
+                                              method="post"
+                                              class="mt-4">
+
+                                            <input th:if="${_csrf != null}"
+                                                   type="hidden"
+                                                   th:name="${_csrf.parameterName}"
+                                                   th:value="${_csrf.token}" />
+
+                                            <input type="hidden"
+                                                   name="id"
+                                                   th:value="${selectedContact.id}" />
+
+                                            <input type="hidden"
+                                                   name="box"
+                                                   th:value="${box}" />
+
+                                            <input type="hidden"
+                                                   name="q"
+                                                   th:value="${q}" />
+
+                                            <input type="hidden"
+                                                   name="from"
+                                                   th:value="${from}" />
+
+                                            <input type="hidden"
+                                                   name="notifPage"
+                                                   th:value="${notifPage}" />
+
+                                            <input type="hidden"
+                                                   name="notifSize"
+                                                   th:value="${notifSize}" />
+
+                                            <input type="hidden"
+                                                   name="notifQ"
+                                                   th:value="${notifQ}" />
+
+                                            <input type="hidden"
+                                                   name="notifSelectedNotificationId"
+                                                   th:value="${notifSelectedNotificationId}" />
+
+                                            <input type="hidden"
+                                                   name="page"
+                                                   th:value="${currentPage}" />
+
+                                            <input type="hidden"
+                                                   name="size"
+                                                   th:value="${pageSize}" />
+
+                                            <button type="submit"
+                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Archiver le message
+                                            </button>
+
+                                        </form>
+
+                                        <!-- RESTAURER -->
+                                        <form th:if="${isArchivedBox}"
+                                              th:action="@{/admin/messages/restore}"
+                                              method="post"
+                                              class="mt-4">
+
+                                            <input th:if="${_csrf != null}"
+                                                   type="hidden"
+                                                   th:name="${_csrf.parameterName}"
+                                                   th:value="${_csrf.token}" />
+
+                                            <input type="hidden"
+                                                   name="id"
+                                                   th:value="${selectedContact.id}" />
+
+                                            <input type="hidden"
+                                                   name="box"
+                                                   th:value="${box}" />
+
+                                            <input type="hidden"
+                                                   name="q"
+                                                   th:value="${q}" />
+
+                                            <input type="hidden"
+                                                   name="from"
+                                                   th:value="${from}" />
+
+                                            <input type="hidden"
+                                                   name="notifPage"
+                                                   th:value="${notifPage}" />
+
+                                            <input type="hidden"
+                                                   name="notifSize"
+                                                   th:value="${notifSize}" />
+
+                                            <input type="hidden"
+                                                   name="notifQ"
+                                                   th:value="${notifQ}" />
+
+                                            <input type="hidden"
+                                                   name="notifSelectedNotificationId"
+                                                   th:value="${notifSelectedNotificationId}" />
+
+                                            <input type="hidden"
+                                                   name="page"
+                                                   th:value="${currentPage}" />
+
+                                            <input type="hidden"
+                                                   name="size"
+                                                   th:value="${pageSize}" />
+
+                                            <button type="submit"
+                                                    class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Restaurer le message
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
                                 </div>
 
                             </div>
 
                         </section>
+
                     </div>
 
-                    <!-- Liste des messages de contact en mode consultation globale -->
-                    <div class="mt-6 max-w-full" th:if="${!showDetail and contactsCount > 0}">
+                    <!-- ===================================================== -->
+                    <!-- LISTE DES MESSAGES                                    -->
+                    <!-- ===================================================== -->
+
+                    <div class="mt-6 max-w-full"
+                         th:if="${!showDetail and contactsCount > 0}">
 
                         <ul class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
                             role="list">
@@ -402,14 +881,18 @@
                                 class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
 
                                 <div class="flex max-w-full flex-1 flex-col gap-4">
+
                                     <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+
                                         <h3 class="break-words text-base font-semibold text-gray-900">
                                             Message de contact
                                         </h3>
 
                                         <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
                                               th:text="${contact.statusLabel != null ? contact.statusLabel : 'Statut inconnu'}"
-                                              th:classappend="${contact.statusBadgeClass != null ? contact.statusBadgeClass : ' bg-gray-50 text-gray-700 ring-gray-200'}">
+                                              th:classappend="${contact.statusBadgeClass != null
+                                                  ? contact.statusBadgeClass
+                                                  : ' bg-gray-50 text-gray-700 ring-gray-200'}">
                                             Nouveau
                                         </span>
 
@@ -424,68 +907,119 @@
                                               th:text="${contact.senderRoleLabel}">
                                             Invité
                                         </span>
+
+                                        <span th:if="${isArchivedBox}"
+                                              class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700">
+                                            Archivé
+                                        </span>
+
                                     </div>
 
                                     <p class="text-xs text-gray-500"
                                        th:if="${contact.id != null && #strings.length(contact.id) >= 6}">
+
                                         Réf. interne :
+
                                         <span class="font-medium text-gray-700"
-                                              th:text="${#strings.substring(contact.id, #strings.length(contact.id) - 6, #strings.length(contact.id))}">
+                                              th:text="${#strings.substring(
+                                                  contact.id,
+                                                  #strings.length(contact.id) - 6,
+                                                  #strings.length(contact.id)
+                                              )}">
                                             ABC123
                                         </span>
+
                                     </p>
 
                                     <div class="min-w-0 max-w-full flex-1">
+
                                         <p class="break-words text-base font-semibold text-gray-900"
-                                           th:text="${contact.subject != null && !#strings.isEmpty(#strings.trim(contact.subject)) ? contact.subject : 'Message sans sujet'}">
+                                           th:text="${contact.subject != null
+                                               && !#strings.isEmpty(#strings.trim(contact.subject))
+                                               ? contact.subject
+                                               : 'Message sans sujet'}">
                                             Message sans sujet
                                         </p>
 
                                         <p class="mt-1 break-all text-sm text-gray-600"
-                                           th:text="${contact.email != null && !#strings.isEmpty(#strings.trim(contact.email)) ? contact.email : 'Email non renseigné'}">
+                                           th:text="${contact.email != null
+                                               && !#strings.isEmpty(#strings.trim(contact.email))
+                                               ? contact.email
+                                               : 'Email non renseigné'}">
                                             Email non renseigné
                                         </p>
 
                                         <p class="mt-3 line-clamp-4 break-words hyphens-auto text-sm text-gray-700"
-                                           th:text="${contact.content != null && !#strings.isEmpty(#strings.trim(contact.content)) ? contact.content : 'Aucun contenu disponible.'}">
+                                           th:text="${contact.content != null
+                                               && !#strings.isEmpty(#strings.trim(contact.content))
+                                               ? contact.content
+                                               : 'Aucun contenu disponible.'}">
                                             Aucun contenu disponible.
                                         </p>
 
                                         <p class="mt-3 break-words hyphens-auto text-sm text-gray-700"
-                                           th:text="${contact.date != null ? 'Reçu le ' + #temporals.format(contact.date, 'dd/MM/yyyy à HH:mm') : 'Date non définie'}">
+                                           th:text="${contact.date != null
+                                               ? 'Reçu le ' + #temporals.format(contact.date, 'dd/MM/yyyy à HH:mm')
+                                               : 'Date non définie'}">
                                             Reçu le —
                                         </p>
 
                                         <p class="mt-2 break-words hyphens-auto text-sm text-gray-500"
-                                           th:text="${contact.responseSent ? 'Réponse déjà envoyée' : 'En attente de réponse'}">
+                                           th:text="${contact.responseSent
+                                               ? 'Réponse déjà envoyée'
+                                               : 'En attente de réponse'}">
                                             En attente de réponse
                                         </p>
+
+                                        <p th:if="${isArchivedBox && contact.archivedAtByAdmin != null}"
+                                           class="mt-2 break-words hyphens-auto text-sm text-gray-500"
+                                           th:text="${'Archivé le ' + #temporals.format(contact.archivedAtByAdmin, 'dd/MM/yyyy à HH:mm')}">
+                                            Archivé le —
+                                        </p>
+
                                     </div>
 
                                     <div class="mt-auto border-t border-gray-100 pt-4">
+
                                         <div class="flex w-full flex-col items-stretch gap-3">
-                                            <a th:href="@{/admin/messages(selectedContactId=${contact.id}, q=${q}, page=${currentPage}, size=${pageSize})}"
+
+                                            <a th:href="@{/admin/messages(
+                                                   box=${box},
+                                                   selectedContactId=${contact.id},
+                                                   q=${q},
+                                                   page=${currentPage},
+                                                   size=${pageSize}
+                                               )}"
                                                class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                 Voir le message
                                             </a>
+
                                         </div>
+
                                     </div>
+
                                 </div>
 
                             </li>
 
                         </ul>
 
-                        <!-- Navigation entre les différentes pages de messages de contact -->
+                        <!-- ================================================= -->
+                        <!-- PAGINATION                                        -->
+                        <!-- ================================================= -->
+
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des messages de contact">
+
                             <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
                                 <p class="text-sm text-gray-600">
                                     Navigation entre les pages de messages de contact.
                                 </p>
 
                                 <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+
                                     <span th:if="${!hasPrevious}"
                                           aria-disabled="true"
                                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
@@ -493,12 +1027,18 @@
                                     </span>
 
                                     <a th:if="${hasPrevious}"
-                                       th:href="@{/admin/messages(page=${currentPage - 1}, size=${pageSize}, q=${q})}"
+                                       th:href="@{/admin/messages(
+                                           box=${box},
+                                           page=${currentPage - 1},
+                                           size=${pageSize},
+                                           q=${q}
+                                       )}"
                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Précédent
                                     </a>
 
                                     <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+
                                         <span th:if="${pageNumber == currentPage}"
                                               aria-current="page"
                                               th:text="${pageNumber + 1}"
@@ -507,12 +1047,18 @@
                                         </span>
 
                                         <a th:if="${pageNumber != currentPage}"
-                                           th:href="@{/admin/messages(page=${pageNumber}, size=${pageSize}, q=${q})}"
+                                           th:href="@{/admin/messages(
+                                               box=${box},
+                                               page=${pageNumber},
+                                               size=${pageSize},
+                                               q=${q}
+                                           )}"
                                            th:text="${pageNumber + 1}"
                                            th:aria-label="'Aller à la page ' + (${pageNumber + 1})"
                                            class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                             1
                                         </a>
+
                                     </th:block>
 
                                     <span th:if="${!hasNext}"
@@ -522,12 +1068,20 @@
                                     </span>
 
                                     <a th:if="${hasNext}"
-                                       th:href="@{/admin/messages(page=${currentPage + 1}, size=${pageSize}, q=${q})}"
+                                       th:href="@{/admin/messages(
+                                           box=${box},
+                                           page=${currentPage + 1},
+                                           size=${pageSize},
+                                           q=${q}
+                                       )}"
                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Suivant
                                     </a>
+
                                 </div>
+
                             </div>
+
                         </nav>
 
                     </div>
@@ -538,23 +1092,31 @@
 
         </section>
 
-        <!-- Modale de confirmation avant l'envoi d'une réponse administrateur -->
+        <!-- ============================================================= -->
+        <!-- MODALE DE CONFIRMATION DE RÉPONSE                             -->
+        <!-- ============================================================= -->
+
         <div id="responseConfirmModal"
              class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/50 px-4"
              role="dialog"
              aria-modal="true"
              aria-labelledby="responseConfirmTitle"
              aria-describedby="responseConfirmDescription">
+
             <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-200">
-                <h2 id="responseConfirmTitle" class="text-xl font-semibold text-gray-900">
+
+                <h2 id="responseConfirmTitle"
+                    class="text-xl font-semibold text-gray-900">
                     Confirmer l’envoi de la réponse
                 </h2>
 
-                <p id="responseConfirmDescription" class="mt-4 text-sm text-gray-600">
+                <p id="responseConfirmDescription"
+                   class="mt-4 text-sm text-gray-600">
                     Cette réponse sera enregistrée et le message passera au statut répondu. Cette action doit être confirmée avant validation.
                 </p>
 
                 <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
                     <button type="button"
                             id="cancelResponseConfirmModal"
                             class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
@@ -566,23 +1128,30 @@
                             class="inline-flex min-h-10 items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                         Confirmer l’envoi
                     </button>
+
                 </div>
+
             </div>
+
         </div>
 
-        <!--
-            Gestion de la recherche dynamique, des suggestions,
-            de la sélection clavier et de la confirmation d'envoi de réponse.
-        -->
+        <!-- ============================================================= -->
+        <!-- JAVASCRIPT : RECHERCHE / SUGGESTIONS / RÉPONSE               -->
+        <!-- ============================================================= -->
+
         <script>
             (function () {
+
                 const search = document.getElementById('search');
                 const searchForm = document.getElementById('searchForm');
+                const searchBox = document.getElementById('searchBox');
+
                 const hint = document.getElementById('searchHint');
                 const panel = document.getElementById('suggestPanel');
                 const inner = document.getElementById('suggestInner');
                 const suggestAnnounce = document.getElementById('suggestAnnounce');
                 const clearInline = document.getElementById('searchClearInline');
+
                 const responseForm = document.getElementById('responseForm');
                 const openResponseButton = document.getElementById('openResponseConfirmModal');
                 const responseModal = document.getElementById('responseConfirmModal');
@@ -590,21 +1159,45 @@
                 const confirmResponseButton = document.getElementById('confirmResponseSubmit');
                 const responseField = document.getElementById('responseContent');
 
+                /*
+                 * Boîte ADMIN actuellement affichée.
+                 *
+                 * Elle est transmise à l'endpoint d'autocomplétion afin que
+                 * les messages archivés ne remontent jamais dans les
+                 * suggestions des actifs, et inversement.
+                 */
+                const currentBox =
+                    searchBox && searchBox.value
+                        ? String(searchBox.value).trim()
+                        : 'active';
+
                 let activeIndex = -1;
                 let currentOptions = [];
                 let suggestTimer = null;
                 let submitTimer = null;
                 let fetchController = null;
                 let fetchSequence = 0;
-                let lastSubmittedValue = String(search && search.value ? search.value : '').trim();
+
+                let lastSubmittedValue =
+                    String(
+                        search && search.value
+                            ? search.value
+                            : ''
+                    ).trim();
 
                 function isNumericQuery(value) {
-                    return /^[0-9]+$/.test(String(value ?? '').trim());
+                    return /^[0-9]+$/.test(
+                        String(value ?? '').trim()
+                    );
                 }
 
                 function thresholdReached(q) {
-                    const raw = String(q ?? '').trim();
-                    if (!raw) return false;
+                    const raw =
+                        String(q ?? '').trim();
+
+                    if (!raw) {
+                        return false;
+                    }
 
                     if (isNumericQuery(raw)) {
                         return raw.length >= 1;
@@ -614,26 +1207,41 @@
                 }
 
                 function updateInlineClear(q) {
-                    if (!clearInline) return;
-                    const has = Boolean((q || '').trim());
-                    clearInline.classList.toggle('hidden', !has);
+                    if (!clearInline) {
+                        return;
+                    }
+
+                    const has =
+                        Boolean((q || '').trim());
+
+                    clearInline.classList.toggle(
+                        'hidden',
+                        !has
+                    );
                 }
 
                 function updateHint(q) {
-                    if (!hint) return;
-                    const trimmed = (q || '').trim();
+                    if (!hint) {
+                        return;
+                    }
+
+                    const trimmed =
+                        (q || '').trim();
 
                     if (!trimmed) {
-                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        hint.textContent =
+                            'Saisis au moins 2 caractères pour obtenir des suggestions.';
                         return;
                     }
 
                     if (isNumericQuery(trimmed)) {
-                        hint.textContent = 'Suggestions disponibles dès 1 chiffre pour un identifiant.';
+                        hint.textContent =
+                            'Suggestions disponibles dès 1 chiffre pour un identifiant.';
                         return;
                     }
 
-                    hint.textContent = 'La page se met à jour automatiquement pendant la saisie.';
+                    hint.textContent =
+                        'La page se met à jour automatiquement pendant la saisie.';
                 }
 
                 function escapeHtml(s) {
@@ -646,22 +1254,42 @@
                 }
 
                 function setPanel(open) {
-                    if (!panel || !search) return;
+                    if (!panel || !search) {
+                        return;
+                    }
 
-                    panel.classList.toggle('hidden', !open);
-                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    panel.classList.toggle(
+                        'hidden',
+                        !open
+                    );
+
+                    panel.setAttribute(
+                        'aria-hidden',
+                        open ? 'false' : 'true'
+                    );
+
+                    search.setAttribute(
+                        'aria-expanded',
+                        open ? 'true' : 'false'
+                    );
 
                     if (!open) {
                         activeIndex = -1;
                         currentOptions = [];
-                        search.setAttribute('aria-activedescendant', '');
+
+                        search.setAttribute(
+                            'aria-activedescendant',
+                            ''
+                        );
                     }
                 }
 
                 function closePanel() {
                     setPanel(false);
-                    if (inner) inner.innerHTML = '';
+
+                    if (inner) {
+                        inner.innerHTML = '';
+                    }
                 }
 
                 function openPanel() {
@@ -669,15 +1297,24 @@
                 }
 
                 function buildSuggestionSearchValue(it) {
-                    if (it && it.subject && String(it.subject).trim()) {
+                    if (it
+                        && it.subject
+                        && String(it.subject).trim()) {
+
                         return String(it.subject).trim();
                     }
 
-                    if (it && it.email && String(it.email).trim()) {
+                    if (it
+                        && it.email
+                        && String(it.email).trim()) {
+
                         return String(it.email).trim();
                     }
 
-                    if (it && it.id && String(it.id).trim()) {
+                    if (it
+                        && it.id
+                        && String(it.id).trim()) {
+
                         return String(it.id).trim();
                     }
 
@@ -685,78 +1322,164 @@
                 }
 
                 function renderOptions(list) {
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
                     if (list.length === 0) {
-                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+
+                        inner.innerHTML =
+                            '<div class="px-3 py-3 text-sm text-gray-700">' +
+                            'Aucun résultat en base pour cette recherche.' +
+                            '</div>';
+
                         openPanel();
-                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+
+                        if (suggestAnnounce) {
+                            suggestAnnounce.textContent =
+                                'Aucune suggestion.';
+                        }
+
                         return;
                     }
 
                     let html = '';
 
                     for (let i = 0; i < list.length; i++) {
+
                         const it = list[i];
-                        const safeId = it.id ? escapeHtml(it.id) : String(i);
-                        const optId = 'suggest-opt-' + safeId + '-' + i;
-                        const primary = it.subject && String(it.subject).trim()
+
+                        const safeId =
+                            it.id
+                                ? escapeHtml(it.id)
+                                : String(i);
+
+                        const optId =
+                            'suggest-opt-' + safeId + '-' + i;
+
+                        const primary =
+                            it.subject
+                            && String(it.subject).trim()
                                 ? String(it.subject).trim()
                                 : 'Message sans sujet';
+
                         const secondaryParts = [
-                            it.email ? String(it.email).trim() : '',
-                            it.status ? String(it.status).trim() : '',
-                            it.date ? String(it.date).trim() : ''
+                            it.email
+                                ? String(it.email).trim()
+                                : '',
+
+                            it.status
+                                ? String(it.status).trim()
+                                : '',
+
+                            it.date
+                                ? String(it.date).trim()
+                                : ''
                         ].filter(Boolean);
-                        const secondary = secondaryParts.join(' • ');
-                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
-                        const searchValue = buildSuggestionSearchValue(it);
+
+                        const secondary =
+                            secondaryParts.join(' • ');
+
+                        const ariaLabel =
+                            primary
+                            + (
+                                secondary
+                                    ? ', ' + secondary
+                                    : ''
+                            );
+
+                        const searchValue =
+                            buildSuggestionSearchValue(it);
 
                         html +=
-                            '<div ' +
-                            'id="' + optId + '" ' +
-                            'role="option" ' +
-                            'aria-selected="false" ' +
-                            'aria-label="' + escapeHtml(ariaLabel) + '" ' +
-                            'tabindex="-1" ' +
-                            'data-suggest-index="' + i + '" ' +
-                            'data-suggest-query="' + escapeHtml(searchValue) + '" ' +
-                            'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
-                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
-                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
-                            '</div>';
+                            '<div '
+                            + 'id="' + optId + '" '
+                            + 'role="option" '
+                            + 'aria-selected="false" '
+                            + 'aria-label="' + escapeHtml(ariaLabel) + '" '
+                            + 'tabindex="-1" '
+                            + 'data-suggest-index="' + i + '" '
+                            + 'data-suggest-query="' + escapeHtml(searchValue) + '" '
+                            + 'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">'
+                            + '<div class="break-words text-sm font-semibold text-gray-900">'
+                            + escapeHtml(primary)
+                            + '</div>'
+                            + '<div class="mt-1 break-words text-xs text-gray-600">'
+                            + escapeHtml(secondary)
+                            + '</div>'
+                            + '</div>';
                     }
 
                     inner.innerHTML = html;
+
                     openPanel();
 
                     if (suggestAnnounce) {
-                        suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+                        suggestAnnounce.textContent =
+                            list.length === 1
+                                ? '1 suggestion disponible.'
+                                : list.length + ' suggestions disponibles.';
                     }
                 }
 
                 function setActive(newIndex) {
-                    if (!inner || !search) return;
+                    if (!inner || !search) {
+                        return;
+                    }
 
-                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
-                    if (options.length === 0) return;
+                    const options =
+                        Array.from(
+                            inner.querySelectorAll(
+                                '[role="option"][data-suggest-index]'
+                            )
+                        );
 
-                    if (newIndex < 0) newIndex = options.length - 1;
-                    if (newIndex >= options.length) newIndex = 0;
+                    if (options.length === 0) {
+                        return;
+                    }
+
+                    if (newIndex < 0) {
+                        newIndex = options.length - 1;
+                    }
+
+                    if (newIndex >= options.length) {
+                        newIndex = 0;
+                    }
 
                     activeIndex = newIndex;
 
                     options.forEach(function (el, i) {
-                        const isActive = i === activeIndex;
-                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                        el.classList.toggle('bg-gray-50', isActive);
+
+                        const isActive =
+                            i === activeIndex;
+
+                        el.setAttribute(
+                            'aria-selected',
+                            isActive
+                                ? 'true'
+                                : 'false'
+                        );
+
+                        el.classList.toggle(
+                            'bg-gray-50',
+                            isActive
+                        );
                     });
 
-                    const activeEl = options[activeIndex];
+                    const activeEl =
+                        options[activeIndex];
+
                     if (activeEl && activeEl.id) {
-                        search.setAttribute('aria-activedescendant', activeEl.id);
+
+                        search.setAttribute(
+                            'aria-activedescendant',
+                            activeEl.id
+                        );
+
                         try {
-                            activeEl.scrollIntoView({ block: 'nearest' });
+                            activeEl.scrollIntoView({
+                                block: 'nearest'
+                            });
                         } catch (e) {
                         }
                     }
@@ -767,50 +1490,87 @@
                         return;
                     }
 
-                    const trimmed = String(search.value || '').trim();
+                    const trimmed =
+                        String(
+                            search.value || ''
+                        ).trim();
 
                     if (trimmed === lastSubmittedValue) {
                         return;
                     }
 
                     lastSubmittedValue = trimmed;
+
                     closePanel();
+
                     searchForm.requestSubmit();
                 }
 
                 function applySuggestionAt(idx) {
-                    if (!search) return;
+                    if (!search) {
+                        return;
+                    }
 
-                    const it = currentOptions[idx];
-                    if (!it) return;
+                    const it =
+                        currentOptions[idx];
 
-                    const nextValue = buildSuggestionSearchValue(it);
-                    if (!nextValue) return;
+                    if (!it) {
+                        return;
+                    }
 
-                    search.value = nextValue;
-                    updateInlineClear(nextValue);
-                    updateHint(nextValue);
+                    const nextValue =
+                        buildSuggestionSearchValue(it);
+
+                    if (!nextValue) {
+                        return;
+                    }
+
+                    search.value =
+                        nextValue;
+
+                    updateInlineClear(
+                        nextValue
+                    );
+
+                    updateHint(
+                        nextValue
+                    );
 
                     if (submitTimer) {
-                        window.clearTimeout(submitTimer);
+                        window.clearTimeout(
+                            submitTimer
+                        );
                     }
 
                     submitSearchNow();
                 }
 
                 function scheduleSearchSubmit() {
-                    if (!search) return;
+                    if (!search) {
+                        return;
+                    }
 
-                    const trimmed = String(search.value || '').trim();
+                    const trimmed =
+                        String(
+                            search.value || ''
+                        ).trim();
 
                     if (submitTimer) {
-                        window.clearTimeout(submitTimer);
+                        window.clearTimeout(
+                            submitTimer
+                        );
                     }
 
                     if (!trimmed) {
-                        submitTimer = window.setTimeout(function () {
-                            submitSearchNow();
-                        }, 150);
+
+                        submitTimer =
+                            window.setTimeout(
+                                function () {
+                                    submitSearchNow();
+                                },
+                                150
+                            );
+
                         return;
                     }
 
@@ -818,289 +1578,599 @@
                         return;
                     }
 
-                    submitTimer = window.setTimeout(function () {
-                        submitSearchNow();
-                    }, 450);
+                    submitTimer =
+                        window.setTimeout(
+                            function () {
+                                submitSearchNow();
+                            },
+                            450
+                        );
                 }
 
+                /**
+                 * Interroge l'autocomplétion dans la boîte actuellement
+                 * affichée : active ou archived.
+                 */
                 async function fetchSuggest(q) {
-                    const trimmed = String(q ?? '').trim();
+
+                    const trimmed =
+                        String(q ?? '').trim();
 
                     if (!thresholdReached(trimmed)) {
-                        if (inner) inner.innerHTML = '';
+
+                        if (inner) {
+                            inner.innerHTML = '';
+                        }
+
                         closePanel();
+
                         return;
                     }
 
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
                     if (fetchController) {
                         fetchController.abort();
                     }
 
-                    fetchController = new AbortController();
-                    const currentFetch = ++fetchSequence;
+                    fetchController =
+                        new AbortController();
+
+                    const currentFetch =
+                        ++fetchSequence;
 
                     try {
-                        const url = '/admin/messages/suggest?q=' + encodeURIComponent(trimmed);
-                        const res = await fetch(url, {
-                            headers: { 'Accept': 'application/json' },
-                            signal: fetchController.signal
-                        });
 
-                        if (!res.ok || currentFetch !== fetchSequence) {
+                        const url =
+                            '/admin/messages/suggest?q='
+                            + encodeURIComponent(trimmed)
+                            + '&box='
+                            + encodeURIComponent(currentBox);
+
+                        const res =
+                            await fetch(
+                                url,
+                                {
+                                    headers: {
+                                        'Accept': 'application/json'
+                                    },
+                                    signal:
+                                        fetchController.signal
+                                }
+                            );
+
+                        if (!res.ok
+                            || currentFetch !== fetchSequence) {
+
                             return;
                         }
 
-                        const data = await res.json();
-                        if (currentFetch !== fetchSequence) return;
+                        const data =
+                            await res.json();
 
-                        const list = Array.isArray(data) ? data : [];
-                        currentOptions = list.slice(0, 8).map(function (it) {
-                            return {
-                                id: it && it.id != null ? it.id : '',
-                                idUser: it && it.idUser != null ? it.idUser : '',
-                                subject: it && it.subject != null ? it.subject : '',
-                                email: it && it.email != null ? it.email : '',
-                                status: it && it.status != null ? it.status : '',
-                                responseSent: it && it.responseSent != null ? it.responseSent : false,
-                                date: it && it.date != null ? it.date : ''
-                            };
-                        });
+                        if (currentFetch !== fetchSequence) {
+                            return;
+                        }
 
-                        renderOptions(currentOptions);
+                        const list =
+                            Array.isArray(data)
+                                ? data
+                                : [];
+
+                        currentOptions =
+                            list
+                                .slice(0, 8)
+                                .map(function (it) {
+                                    return {
+                                        id:
+                                            it && it.id != null
+                                                ? it.id
+                                                : '',
+
+                                        idUser:
+                                            it && it.idUser != null
+                                                ? it.idUser
+                                                : '',
+
+                                        subject:
+                                            it && it.subject != null
+                                                ? it.subject
+                                                : '',
+
+                                        email:
+                                            it && it.email != null
+                                                ? it.email
+                                                : '',
+
+                                        status:
+                                            it && it.status != null
+                                                ? it.status
+                                                : '',
+
+                                        responseSent:
+                                            it && it.responseSent != null
+                                                ? it.responseSent
+                                                : false,
+
+                                        date:
+                                            it && it.date != null
+                                                ? it.date
+                                                : ''
+                                    };
+                                });
+
+                        renderOptions(
+                            currentOptions
+                        );
 
                         if (currentOptions.length > 0) {
                             setActive(0);
                         }
+
                     } catch (e) {
-                        if (e && e.name === 'AbortError') return;
-                        if (inner) inner.innerHTML = '';
+
+                        if (e && e.name === 'AbortError') {
+                            return;
+                        }
+
+                        if (inner) {
+                            inner.innerHTML = '';
+                        }
+
                         closePanel();
                     }
                 }
 
                 function scheduleSuggest() {
-                    if (!search) return;
+                    if (!search) {
+                        return;
+                    }
 
-                    const q = search.value || '';
+                    const q =
+                        search.value || '';
+
                     updateHint(q);
 
                     if (suggestTimer) {
-                        window.clearTimeout(suggestTimer);
+                        window.clearTimeout(
+                            suggestTimer
+                        );
                     }
 
-                    suggestTimer = window.setTimeout(function () {
-                        fetchSuggest(q);
-                    }, 180);
+                    suggestTimer =
+                        window.setTimeout(
+                            function () {
+                                fetchSuggest(q);
+                            },
+                            180
+                        );
                 }
 
                 function clearSearchAndSubmit() {
-                    if (!search) return;
+                    if (!search) {
+                        return;
+                    }
 
                     search.value = '';
+
                     updateInlineClear('');
+
                     updateHint('');
+
                     closePanel();
 
                     if (submitTimer) {
-                        window.clearTimeout(submitTimer);
+                        window.clearTimeout(
+                            submitTimer
+                        );
                     }
 
                     submitSearchNow();
                 }
 
+                // -------------------------------------------------------------
+                // MODALE DE RÉPONSE
+                // -------------------------------------------------------------
+
                 function closeResponseModal() {
-                    if (!responseModal || !openResponseButton) {
+                    if (!responseModal
+                        || !openResponseButton) {
+
                         return;
                     }
 
-                    responseModal.classList.add('hidden');
-                    responseModal.classList.remove('flex');
+                    responseModal.classList.add(
+                        'hidden'
+                    );
+
+                    responseModal.classList.remove(
+                        'flex'
+                    );
+
                     openResponseButton.focus();
                 }
 
                 function openResponseModalFn() {
-                    if (!responseModal || !cancelResponseButton) {
+                    if (!responseModal
+                        || !cancelResponseButton) {
+
                         return;
                     }
 
-                    responseModal.classList.remove('hidden');
-                    responseModal.classList.add('flex');
+                    responseModal.classList.remove(
+                        'hidden'
+                    );
+
+                    responseModal.classList.add(
+                        'flex'
+                    );
+
                     cancelResponseButton.focus();
                 }
 
+                // -------------------------------------------------------------
+                // RECHERCHE
+                // -------------------------------------------------------------
+
                 if (search && searchForm) {
-                    document.addEventListener('click', function (e) {
-                        if (!panel || panel.classList.contains('hidden')) return;
-                        const target = e.target;
-                        if (target === search || panel.contains(target)) return;
-                        closePanel();
-                    });
 
-                    window.addEventListener('resize', function () {
-                        closePanel();
-                    });
+                    document.addEventListener(
+                        'click',
+                        function (e) {
 
-                    window.addEventListener('scroll', function () {
-                        if (panel && !panel.classList.contains('hidden')) {
+                            if (!panel
+                                || panel.classList.contains('hidden')) {
+
+                                return;
+                            }
+
+                            const target =
+                                e.target;
+
+                            if (target === search
+                                || panel.contains(target)) {
+
+                                return;
+                            }
+
                             closePanel();
                         }
-                    }, true);
+                    );
+
+                    window.addEventListener(
+                        'resize',
+                        function () {
+                            closePanel();
+                        }
+                    );
+
+                    window.addEventListener(
+                        'scroll',
+                        function () {
+
+                            if (panel
+                                && !panel.classList.contains('hidden')) {
+
+                                closePanel();
+                            }
+                        },
+                        true
+                    );
 
                     if (inner) {
-                        inner.addEventListener('mousedown', function (e) {
-                            const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
-                            if (!opt) return;
-                            e.preventDefault();
-                        });
 
-                        inner.addEventListener('click', function (e) {
-                            const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
-                            if (!opt) return;
-                            const idx = Number(opt.getAttribute('data-suggest-index'));
-                            if (!Number.isFinite(idx)) return;
-                            applySuggestionAt(idx);
-                        });
+                        inner.addEventListener(
+                            'mousedown',
+                            function (e) {
+
+                                const opt =
+                                    e.target
+                                    && e.target.closest
+                                        ? e.target.closest(
+                                            '[role="option"][data-suggest-index]'
+                                        )
+                                        : null;
+
+                                if (!opt) {
+                                    return;
+                                }
+
+                                e.preventDefault();
+                            }
+                        );
+
+                        inner.addEventListener(
+                            'click',
+                            function (e) {
+
+                                const opt =
+                                    e.target
+                                    && e.target.closest
+                                        ? e.target.closest(
+                                            '[role="option"][data-suggest-index]'
+                                        )
+                                        : null;
+
+                                if (!opt) {
+                                    return;
+                                }
+
+                                const idx =
+                                    Number(
+                                        opt.getAttribute(
+                                            'data-suggest-index'
+                                        )
+                                    );
+
+                                if (!Number.isFinite(idx)) {
+                                    return;
+                                }
+
+                                applySuggestionAt(idx);
+                            }
+                        );
                     }
 
                     if (clearInline) {
-                        clearInline.addEventListener('click', function () {
-                            clearSearchAndSubmit();
-                        });
+
+                        clearInline.addEventListener(
+                            'click',
+                            function () {
+                                clearSearchAndSubmit();
+                            }
+                        );
                     }
 
-                    search.addEventListener('keydown', function (e) {
-                        const isOpen = panel && !panel.classList.contains('hidden');
+                    search.addEventListener(
+                        'keydown',
+                        function (e) {
 
-                        if (e.key === 'Escape' || e.key === 'Esc') {
-                            e.preventDefault();
+                            const isOpen =
+                                panel
+                                && !panel.classList.contains('hidden');
 
-                            if (String(search.value || '').trim()) {
-                                clearSearchAndSubmit();
+                            if (e.key === 'Escape'
+                                || e.key === 'Esc') {
+
+                                e.preventDefault();
+
+                                if (String(search.value || '').trim()) {
+
+                                    clearSearchAndSubmit();
+
+                                    return;
+                                }
+
+                                closePanel();
+
                                 return;
                             }
 
-                            closePanel();
-                            return;
-                        }
+                            if (e.key === 'ArrowDown') {
 
-                        if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            if (!isOpen) {
-                                scheduleSuggest();
-                                window.setTimeout(function () {
-                                    if (panel && !panel.classList.contains('hidden')) {
-                                        setActive(0);
-                                    }
-                                }, 200);
-                            } else {
-                                setActive(activeIndex + 1);
-                            }
-                            return;
-                        }
-
-                        if (e.key === 'ArrowUp') {
-                            if (isOpen) {
                                 e.preventDefault();
-                                setActive(activeIndex - 1);
-                            }
-                            return;
-                        }
 
-                        if (e.key === 'Enter') {
-                            if (isOpen && activeIndex >= 0) {
-                                e.preventDefault();
-                                applySuggestionAt(activeIndex);
+                                if (!isOpen) {
+
+                                    scheduleSuggest();
+
+                                    window.setTimeout(
+                                        function () {
+
+                                            if (panel
+                                                && !panel.classList.contains('hidden')) {
+
+                                                setActive(0);
+                                            }
+                                        },
+                                        200
+                                    );
+
+                                } else {
+
+                                    setActive(
+                                        activeIndex + 1
+                                    );
+                                }
+
                                 return;
                             }
 
-                            if (submitTimer) {
-                                window.clearTimeout(submitTimer);
+                            if (e.key === 'ArrowUp') {
+
+                                if (isOpen) {
+
+                                    e.preventDefault();
+
+                                    setActive(
+                                        activeIndex - 1
+                                    );
+                                }
+
+                                return;
                             }
 
-                            submitSearchNow();
-                            return;
+                            if (e.key === 'Enter') {
+
+                                if (isOpen
+                                    && activeIndex >= 0) {
+
+                                    e.preventDefault();
+
+                                    applySuggestionAt(
+                                        activeIndex
+                                    );
+
+                                    return;
+                                }
+
+                                if (submitTimer) {
+                                    window.clearTimeout(
+                                        submitTimer
+                                    );
+                                }
+
+                                submitSearchNow();
+
+                                return;
+                            }
+
+                            if (e.key === 'Tab'
+                                && isOpen) {
+
+                                closePanel();
+                            }
                         }
+                    );
 
-                        if (e.key === 'Tab' && isOpen) {
-                            closePanel();
-                        }
-                    });
+                    search.addEventListener(
+                        'input',
+                        function () {
 
-                    search.addEventListener('input', function () {
-                        updateInlineClear(search.value);
-                        scheduleSuggest();
-                        scheduleSearchSubmit();
-                    });
+                            updateInlineClear(
+                                search.value
+                            );
 
-                    search.addEventListener('focus', function () {
-                        const q = (search.value || '').trim();
-                        if (q) {
                             scheduleSuggest();
-                        }
-                    });
 
-                    updateHint(search.value || '');
-                    updateInlineClear(search.value || '');
+                            scheduleSearchSubmit();
+                        }
+                    );
+
+                    search.addEventListener(
+                        'focus',
+                        function () {
+
+                            const q =
+                                (search.value || '').trim();
+
+                            if (q) {
+                                scheduleSuggest();
+                            }
+                        }
+                    );
+
+                    updateHint(
+                        search.value || ''
+                    );
+
+                    updateInlineClear(
+                        search.value || ''
+                    );
+
                     closePanel();
 
-                    const initialQuery = String(search.value || '').trim();
+                    const initialQuery =
+                        String(
+                            search.value || ''
+                        ).trim();
 
                     if (initialQuery) {
-                        window.setTimeout(function () {
-                            search.focus();
-                            const length = search.value.length;
-                            search.setSelectionRange(length, length);
-                        }, 80);
+
+                        window.setTimeout(
+                            function () {
+
+                                search.focus();
+
+                                const length =
+                                    search.value.length;
+
+                                search.setSelectionRange(
+                                    length,
+                                    length
+                                );
+                            },
+                            80
+                        );
                     }
 
                     if (thresholdReached(initialQuery)) {
-                        window.setTimeout(function () {
-                            fetchSuggest(initialQuery);
-                        }, 120);
+
+                        window.setTimeout(
+                            function () {
+                                fetchSuggest(
+                                    initialQuery
+                                );
+                            },
+                            120
+                        );
                     }
                 }
 
-                if (responseForm && openResponseButton && responseModal && cancelResponseButton && confirmResponseButton && responseField) {
-                    openResponseButton.addEventListener('click', function () {
-                        if (!responseField.value.trim()) {
-                            responseField.focus();
-                            responseField.reportValidity();
-                            return;
+                // -------------------------------------------------------------
+                // CONFIRMATION DE RÉPONSE
+                // -------------------------------------------------------------
+
+                if (responseForm
+                    && openResponseButton
+                    && responseModal
+                    && cancelResponseButton
+                    && confirmResponseButton
+                    && responseField) {
+
+                    openResponseButton.addEventListener(
+                        'click',
+                        function () {
+
+                            if (!responseField.value.trim()) {
+
+                                responseField.focus();
+
+                                responseField.reportValidity();
+
+                                return;
+                            }
+
+                            openResponseModalFn();
                         }
+                    );
 
-                        openResponseModalFn();
-                    });
-
-                    cancelResponseButton.addEventListener('click', function () {
-                        closeResponseModal();
-                    });
-
-                    confirmResponseButton.addEventListener('click', function () {
-                        responseForm.submit();
-                    });
-
-                    responseModal.addEventListener('click', function (event) {
-                        if (event.target === responseModal) {
+                    cancelResponseButton.addEventListener(
+                        'click',
+                        function () {
                             closeResponseModal();
                         }
-                    });
+                    );
 
-                    document.addEventListener('keydown', function (event) {
-                        if (responseModal.classList.contains('hidden')) {
-                            return;
+                    confirmResponseButton.addEventListener(
+                        'click',
+                        function () {
+                            responseForm.submit();
                         }
+                    );
 
-                        if (event.key === 'Escape' || event.key === 'Esc') {
-                            closeResponseModal();
+                    responseModal.addEventListener(
+                        'click',
+                        function (event) {
+
+                            if (event.target === responseModal) {
+                                closeResponseModal();
+                            }
                         }
-                    });
+                    );
+
+                    document.addEventListener(
+                        'keydown',
+                        function (event) {
+
+                            if (responseModal.classList.contains('hidden')) {
+                                return;
+                            }
+
+                            if (event.key === 'Escape'
+                                || event.key === 'Esc') {
+
+                                closeResponseModal();
+                            }
+                        }
+                    );
                 }
+
             })();
         </script>
 
     </th:block>
 
 </th:block>
-
