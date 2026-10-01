@@ -1,0 +1,588 @@
+<th:block xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout :: layout(~{::content})}"
+          th:with="pageTitle='Utilisateurs archivés', activePage='admin-members'">
+
+    <th:block th:fragment="content"
+              th:with="usersCount=${users != null ? #lists.size(users) : 0},
+                       isSingle=${users != null && #lists.size(users) == 1},
+                       hasQuery=${search != null && !#strings.isEmpty(#strings.trim(search))},
+                       hasActiveFilters=${(search != null && !#strings.isEmpty(#strings.trim(search)))
+                           or (role != null && !#strings.isEmpty(#strings.trim(role)))
+                           or (sort != null && !#strings.isEmpty(#strings.trim(sort)) && sort != 'roleThenLastName')},
+                       resultsDisplayCount=${totalElements != null ? totalElements : usersCount}">
+
+        <!--
+            Administration des utilisateurs archivés.
+
+            Un utilisateur archivé conserve :
+            - son identifiant ;
+            - son rôle ;
+            - son historique ;
+            - ses données associées.
+
+            La restauration réactive exactement le même compte.
+        -->
+        <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+            <div class="flex max-w-full flex-col gap-4">
+
+                <!-- En-tête -->
+                <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+                    <div class="min-w-0 max-w-full sm:flex-1">
+
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Utilisateurs archivés
+                        </h1>
+
+                        <div class="mt-2 max-w-full space-y-2">
+
+                            <p class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation et restauration des comptes utilisateurs archivés.
+                            </p>
+
+                            <p class="break-words hyphens-auto text-sm text-gray-600">
+                                L’archivage ne supprime aucune donnée ni aucun historique.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:self-start">
+
+                        <a th:href="@{/admin/membres}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Utilisateurs actifs
+                        </a>
+
+                        <a th:href="@{/accueil}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Retour à l’accueil
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <!-- Recherche -->
+                <form th:action="@{/admin/membres/archives}"
+                      method="get"
+                      class="max-w-full">
+
+                    <input type="hidden"
+                           name="page"
+                           value="0" />
+
+                    <input type="hidden"
+                           name="size"
+                           th:value="${pageSize != null ? pageSize : 9}" />
+
+                    <input type="hidden"
+                           name="role"
+                           th:value="${role}" />
+
+                    <input type="hidden"
+                           name="sort"
+                           th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort))
+                               ? sort
+                               : 'roleThenLastName'}" />
+
+                    <div class="flex max-w-full flex-col gap-2 sm:flex-row">
+
+                        <div class="relative min-w-0 flex-1">
+
+                            <label for="searchArchives"
+                                   class="sr-only">
+                                Rechercher un utilisateur archivé
+                            </label>
+
+                            <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+
+                                <svg aria-hidden="true"
+                                     class="h-5 w-5 text-gray-500"
+                                     viewBox="0 0 24 24"
+                                     fill="none">
+
+                                    <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+
+                                    <path d="M16.5 16.5 21 21"
+                                          stroke="currentColor"
+                                          stroke-width="2"
+                                          stroke-linecap="round"/>
+
+                                </svg>
+
+                            </div>
+
+                            <input id="searchArchives"
+                                   name="search"
+                                   type="search"
+                                   autocomplete="off"
+                                   th:value="${search}"
+                                   placeholder="Rechercher par prénom, nom, email, rôle ou identifiant…"
+                                   class="h-10 w-full rounded-md bg-white py-2 pl-11 pr-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900" />
+
+                        </div>
+
+                        <button type="submit"
+                                class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Rechercher
+                        </button>
+
+                    </div>
+
+                </form>
+
+                <!-- Filtres -->
+                <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+
+                    <div class="min-w-0 max-w-full flex-1">
+
+                        <form id="archivesFiltersForm"
+                              th:action="@{/admin/membres/archives}"
+                              method="get"
+                              class="max-w-full">
+
+                            <input type="hidden"
+                                   name="page"
+                                   value="0" />
+
+                            <input type="hidden"
+                                   name="size"
+                                   th:value="${pageSize != null ? pageSize : 9}" />
+
+                            <input type="hidden"
+                                   name="search"
+                                   th:value="${search}" />
+
+                            <div class="flex max-w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+
+                                <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+
+                                    <label for="archivesRoleSelect"
+                                           class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                        Rôle
+                                    </label>
+
+                                    <select id="archivesRoleSelect"
+                                            name="role"
+                                            class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-52">
+
+                                        <option value=""
+                                                th:selected="${role == null or role == ''}">
+                                            Tous les rôles
+                                        </option>
+
+                                        <option value="ADMIN"
+                                                th:selected="${role == 'ADMIN'}">
+                                            Administrateur
+                                        </option>
+
+                                        <option value="MEMBRE"
+                                                th:selected="${role == 'MEMBRE'}">
+                                            Membre
+                                        </option>
+
+                                        <option value="INVITE"
+                                                th:selected="${role == 'INVITE'}">
+                                            Invité
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                                <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+
+                                    <label for="archivesSortSelect"
+                                           class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                        Trier par
+                                    </label>
+
+                                    <select id="archivesSortSelect"
+                                            name="sort"
+                                            class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72">
+
+                                        <option value="roleThenLastName"
+                                                th:selected="${sort == 'roleThenLastName' or sort == null or sort == ''}">
+                                            Rôle puis nom
+                                        </option>
+
+                                        <option value="lastNameThenFirstName"
+                                                th:selected="${sort == 'lastNameThenFirstName'}">
+                                            Nom puis prénom
+                                        </option>
+
+                                        <option value="firstNameThenLastName"
+                                                th:selected="${sort == 'firstNameThenLastName'}">
+                                            Prénom puis nom
+                                        </option>
+
+                                        <option value="emailAsc"
+                                                th:selected="${sort == 'emailAsc'}">
+                                            Email
+                                        </option>
+
+                                        <option value="newest"
+                                                th:selected="${sort == 'newest'}">
+                                            Ajout récent
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                                <a th:if="${hasActiveFilters}"
+                                   th:href="@{/admin/membres/archives(size=${pageSize})}"
+                                   class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                    Réinitialiser les filtres
+                                </a>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                    <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-2"
+                         aria-live="polite">
+
+                        <span th:text="${resultsDisplayCount}">
+                            0
+                        </span>
+
+                        <span th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">
+                            résultats
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Messages -->
+            <div class="mt-6 max-w-full">
+
+                <div th:if="${successMessage}"
+                     class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                     role="status"
+                     aria-live="polite"
+                     th:text="'Succès : ' + ${successMessage}">
+                    Succès : opération effectuée.
+                </div>
+
+                <div th:if="${errorMessage}"
+                     class="mb-4 rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900"
+                     role="alert"
+                     aria-live="assertive"
+                     th:text="'Erreur : ' + ${errorMessage}">
+                    Erreur : une anomalie est survenue.
+                </div>
+
+                <section>
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Comptes archivés
+                    </h2>
+
+                    <div class="mt-2 space-y-2 text-sm text-gray-700">
+
+                        <p th:if="${usersCount > 0 and hasQuery}">
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1
+                                ? 'utilisateur archivé trouvé'
+                                : 'utilisateurs archivés trouvés'}">
+                                utilisateurs archivés trouvés
+                            </span>
+
+                        </p>
+
+                        <p th:if="${usersCount > 0 and !hasQuery}">
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${resultsDisplayCount}">
+                                0
+                            </span>
+
+                            <span th:text="${resultsDisplayCount == 1
+                                ? 'utilisateur archivé au total'
+                                : 'utilisateurs archivés au total'}">
+                                utilisateurs archivés au total
+                            </span>
+
+                        </p>
+
+                        <p th:if="${usersCount == 0 and hasQuery}">
+                            Aucun utilisateur archivé ne correspond à cette recherche.
+                        </p>
+
+                        <p th:if="${usersCount == 0 and !hasQuery}">
+                            Aucun utilisateur archivé pour le moment.
+                        </p>
+
+                    </div>
+
+                    <!-- État vide -->
+                    <div th:if="${usersCount == 0}"
+                         class="mt-6">
+
+                        <section class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
+                            <h3 class="text-base font-semibold text-gray-900">
+                                Aucun utilisateur archivé
+                            </h3>
+
+                            <p class="mt-2 text-sm text-gray-700"
+                               th:text="${hasQuery
+                                   ? 'Essaie un autre mot-clé ou réinitialise les filtres.'
+                                   : 'Les utilisateurs archivés apparaîtront ici.'}">
+                                Les utilisateurs archivés apparaîtront ici.
+                            </p>
+
+                        </section>
+
+                    </div>
+
+                    <!-- Cartes -->
+                    <div th:if="${usersCount > 0}"
+                         class="mt-6">
+
+                        <ul th:class="${isSingle
+                            ? 'grid max-w-full grid-cols-1 gap-4'
+                            : 'grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'}"
+                            role="list">
+
+                            <li th:each="user : ${users}"
+                                class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
+
+                                <div class="flex flex-1 flex-col">
+
+                                    <!-- Identité -->
+                                    <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
+
+                                        <h3 class="break-words text-base font-semibold text-gray-900"
+                                            th:text="${((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim().isEmpty()
+                                                ? 'Utilisateur inconnu'
+                                                : ((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim()}">
+                                            Jean Dupont
+                                        </h3>
+
+                                        <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
+                                              th:classappend="${user.roleLabel == 'ADMIN'
+                                                ? ' border-gray-300 bg-white text-gray-700'
+                                                : ' border-gray-200 bg-gray-50 text-gray-600'}">
+
+                                            <span th:switch="${user.roleLabel}">
+                                                <span th:case="'ADMIN'">Administrateur</span>
+                                                <span th:case="'MEMBRE'">Membre</span>
+                                                <span th:case="'INVITE'">Invité</span>
+                                                <span th:case="*" th:text="${user.roleLabel}">Membre</span>
+                                            </span>
+
+                                        </span>
+
+                                        <span class="inline-flex rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                                            Archivé
+                                        </span>
+
+                                    </div>
+
+                                    <!-- Email -->
+                                    <p class="mt-3 break-all text-sm">
+
+                                        <a th:if="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                           th:href="|mailto:${user.email}|"
+                                           th:text="${user.email}"
+                                           th:aria-label="'Écrire à ' + ${user.email}"
+                                           class="font-medium text-blue-700 hover:text-blue-900 hover:underline focus:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            jean.dupont@email.fr
+                                        </a>
+
+                                        <span th:unless="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                              class="text-gray-700">
+                                            Email non renseigné
+                                        </span>
+
+                                    </p>
+
+                                    <div class="mt-5 space-y-2 text-sm text-gray-700">
+
+                                        <div class="flex flex-wrap items-center gap-2">
+
+                                            <span class="font-medium text-gray-900">
+                                                Cotisation :
+                                            </span>
+
+                                            <span th:if="${user.subscriptionUser}">
+                                                À jour
+                                            </span>
+
+                                            <span th:unless="${user.subscriptionUser}"
+                                                  class="inline-flex rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-900">
+                                                Non à jour
+                                            </span>
+
+                                        </div>
+
+                                        <p>
+                                            <span class="font-medium text-gray-900">
+                                                ID utilisateur :
+                                            </span>
+
+                                            <span th:text="${user.idUser}">
+                                                1
+                                            </span>
+                                        </p>
+
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div class="mt-auto border-t border-gray-100 pt-4">
+
+                                        <div class="flex w-full flex-col gap-3 sm:flex-row">
+
+                                            <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
+                                               class="inline-flex min-h-10 w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Voir le profil
+                                            </a>
+
+                                            <form th:action="@{/admin/membres/{id}/restaurer(id=${user.idUser})}"
+                                                  method="post"
+                                                  class="w-full flex-1">
+
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Restaurer
+                                                </button>
+
+                                            </form>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </li>
+
+                        </ul>
+
+                        <!-- Pagination -->
+                        <nav th:if="${paginationEnabled}"
+                             class="mt-6 border-t border-gray-100 pt-6"
+                             aria-label="Pagination des utilisateurs archivés">
+
+                            <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-gray-600">
+                                    Navigation entre les pages d’utilisateurs archivés.
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    <span th:if="${!hasPrevious}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Précédent
+                                    </span>
+
+                                    <a th:if="${hasPrevious}"
+                                       th:href="@{/admin/membres/archives(page=${currentPage - 1}, size=${pageSize}, sort=${sort}, role=${role}, search=${search})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50">
+                                        Précédent
+                                    </a>
+
+                                    <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+
+                                        <span th:if="${pageNumber == currentPage}"
+                                              aria-current="page"
+                                              th:text="${pageNumber + 1}"
+                                              class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm">
+                                            1
+                                        </span>
+
+                                        <a th:if="${pageNumber != currentPage}"
+                                           th:href="@{/admin/membres/archives(page=${pageNumber}, size=${pageSize}, sort=${sort}, role=${role}, search=${search})}"
+                                           th:text="${pageNumber + 1}"
+                                           class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50">
+                                            1
+                                        </a>
+
+                                    </th:block>
+
+                                    <span th:if="${!hasNext}"
+                                          aria-disabled="true"
+                                          class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
+                                        Suivant
+                                    </span>
+
+                                    <a th:if="${hasNext}"
+                                       th:href="@{/admin/membres/archives(page=${currentPage + 1}, size=${pageSize}, sort=${sort}, role=${role}, search=${search})}"
+                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50">
+                                        Suivant
+                                    </a>
+
+                                </div>
+
+                            </div>
+
+                        </nav>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+        <!-- Soumission automatique des filtres -->
+        <script>
+            (function () {
+                const roleSelect =
+                    document.getElementById('archivesRoleSelect');
+
+                const sortSelect =
+                    document.getElementById('archivesSortSelect');
+
+                function submitSelect(select) {
+                    if (!select || !select.form) {
+                        return;
+                    }
+
+                    select.form.requestSubmit();
+                }
+
+                if (roleSelect) {
+                    roleSelect.addEventListener(
+                        'change',
+                        function () {
+                            submitSelect(roleSelect);
+                        }
+                    );
+                }
+
+                if (sortSelect) {
+                    sortSelect.addEventListener(
+                        'change',
+                        function () {
+                            submitSelect(sortSelect);
+                        }
+                    );
+                }
+            })();
+        </script>
+
+    </th:block>
+
+</th:block>

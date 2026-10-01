@@ -18,9 +18,12 @@ import com.magiclibrary.services.UserService;
 /**
  * Contrôleur SSR réservé à l'administration des membres.
  *
- * Cette classe gère l'affichage paginé des utilisateurs, les filtres
- * de recherche, de rôle et de statut, le tri ainsi que l'autocomplétion
+ * Cette classe gère l'affichage paginé des utilisateurs actifs,
+ * les filtres de recherche et de rôle, le tri ainsi que l'autocomplétion
  * utilisée sur la page d'administration des membres.
+ *
+ * Les utilisateurs archivés sont volontairement exclus de cette page.
+ * Ils seront consultables depuis l'espace dédié aux utilisateurs archivés.
  */
 @Controller
 public class AdminMembersPageController {
@@ -38,17 +41,21 @@ public class AdminMembersPageController {
     }
 
     /*
-     * Affiche la page d'administration des membres.
+     * Affiche la page d'administration des membres actifs.
      *
      * La méthode prépare les filtres, le tri, la pagination et les indicateurs
      * nécessaires à l'affichage de la liste dans le template Thymeleaf.
+     *
+     * Important :
+     *      la liste principale est désormais strictement limitée aux comptes
+     *      actifs. Un paramètre manuel dans l'URL ne peut donc pas permettre
+     *      de réafficher ici un utilisateur archivé.
      */
     @GetMapping("/admin/membres")
     @PreAuthorize("hasRole('ADMIN')")
     public String showMembersPage(
             @RequestParam(name = "search", required = false) String search,
             @RequestParam(name = "role", required = false) String role,
-            @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "sort", required = false) String sort,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "9") int size,
@@ -56,19 +63,35 @@ public class AdminMembersPageController {
     ) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : MEMBERS_PAGE_SIZE;
-        String resolvedSort = sort == null || sort.trim().isEmpty() ? "roleThenLastName" : sort.trim();
-        String resolvedSearch = search == null ? "" : search.trim();
 
+        String resolvedSort =
+                sort == null || sort.trim().isEmpty()
+                        ? "roleThenLastName"
+                        : sort.trim();
+
+        String resolvedSearch =
+                search == null
+                        ? ""
+                        : search.trim();
+
+        /*
+         * La page /admin/membres représente maintenant exclusivement
+         * les utilisateurs actifs.
+         *
+         * Le statut ACTIF est donc imposé côté serveur et ne dépend plus
+         * d'un paramètre fourni par le navigateur.
+         */
         Page<UserResponseDTO> usersPage = userService.getFilteredUsersPaged(
                 resolvedSearch,
                 role,
-                status,
+                "ACTIF",
                 resolvedSort,
                 safePage,
                 safeSize
         );
 
         List<UserResponseDTO> users = usersPage.getContent();
+
         boolean hasSearch = !resolvedSearch.isEmpty();
         boolean paginationEnabled = usersPage.getTotalElements() > safeSize;
         long resultsDisplayCount = usersPage.getTotalElements();
@@ -76,7 +99,14 @@ public class AdminMembersPageController {
         model.addAttribute("users", users);
         model.addAttribute("search", resolvedSearch);
         model.addAttribute("role", role);
-        model.addAttribute("status", status);
+
+        /*
+         * Conservé temporairement pour assurer la compatibilité avec
+         * le template actuel jusqu'à la suppression du filtre Actif/Inactif
+         * dans admin/membres.html.
+         */
+        model.addAttribute("status", "ACTIF");
+
         model.addAttribute("sort", resolvedSort);
         model.addAttribute("pageTitle", "Membres");
         model.addAttribute("activePage", "admin-membres");
@@ -98,16 +128,25 @@ public class AdminMembersPageController {
     }
 
     /*
-     * Fournit les suggestions de membres pour l'autocomplétion
+     * Fournit les suggestions d'utilisateurs actifs pour l'autocomplétion
      * de la page d'administration.
+     *
+     * Les comptes archivés sont volontairement exclus afin qu'un utilisateur
+     * absent de la liste principale ne puisse pas réapparaître indirectement
+     * dans les suggestions de recherche.
      */
-    @GetMapping(value = "/admin/membres/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(
+            value = "/admin/membres/suggest",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<MemberSuggestResponse>> suggestMembers(
             @RequestParam(name = "q", required = false) String q
     ) {
-        List<MemberSuggestResponse> suggestions = userService.suggestUsers(q).stream()
+        List<MemberSuggestResponse> suggestions = userService.suggestUsers(q)
+                .stream()
+                .filter(user -> Boolean.TRUE.equals(user.getActiveUser()))
                 .map(this::toSuggestResponse)
                 .toList();
 

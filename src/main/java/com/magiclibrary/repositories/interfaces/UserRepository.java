@@ -46,6 +46,32 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     boolean existsByEmailUser(String emailUser);
 
+    // -------------------------------------------------------------------------
+    // CONTRÔLE DES ADMINISTRATEURS ACTIFS
+    // -------------------------------------------------------------------------
+
+    /**
+     * Compte le nombre d'utilisateurs possédant actuellement le rôle ADMIN
+     * et dont le compte est actif.
+     *
+     * Cette méthode constitue un garde-fou métier pour l'archivage logique :
+     * un administrateur ne doit jamais pouvoir être archivé si cette opération
+     * conduisait à ne plus avoir aucun administrateur actif dans l'application.
+     *
+     * Le comptage est effectué directement en base afin d'éviter le chargement
+     * inutile de l'ensemble des comptes administrateurs.
+     *
+     * @return nombre d'administrateurs actifs
+     */
+    @Query("""
+            SELECT COUNT(u)
+            FROM User u
+            JOIN u.role r
+            WHERE UPPER(r.labelRole) = 'ADMIN'
+              AND u.activeUser = true
+           """)
+    long countActiveAdmins();
+
     /*
      * Recherche les utilisateurs associés à un scénario de démonstration.
      *

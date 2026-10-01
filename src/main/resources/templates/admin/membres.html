@@ -6,34 +6,67 @@
               th:with="usersCount=${users != null ? #lists.size(users) : 0},
                        isSingle=${users != null && #lists.size(users) == 1},
                        hasQuery=${search != null && !#strings.isEmpty(#strings.trim(search))},
+                       hasActiveFilters=${(search != null && !#strings.isEmpty(#strings.trim(search)))
+                           or (role != null && !#strings.isEmpty(#strings.trim(role)))
+                           or (sort != null && !#strings.isEmpty(#strings.trim(sort)) && sort != 'roleThenLastName')},
                        resultsDisplayCount=${totalElements != null ? totalElements : usersCount}">
 
         <!--
-            Page d'administration des membres.
-            Permet la consultation, la recherche, le filtrage,
-            le tri, la pagination et l'accès aux actions de gestion.
+            Page d'administration des utilisateurs actifs.
+
+            Les comptes archivés sont désormais volontairement séparés
+            de la liste principale et disposent de leur propre espace
+            d'administration.
         -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
 
+                <!--
+                    En-tête de page.
+
+                    Hiérarchie des actions :
+                    - création : action métier principale ;
+                    - consultation des archives : action secondaire ;
+                    - retour à l'accueil : navigation secondaire.
+                -->
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
                     <div class="min-w-0 max-w-full sm:flex-1">
-                        <h1 class="break-words text-base font-semibold text-gray-900">Membres</h1>
+
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Membres
+                        </h1>
 
                         <div class="mt-2 max-w-full space-y-2">
+
                             <p class="break-words hyphens-auto text-sm text-gray-700">
-                                Consultation et gestion des utilisateurs de l’application MagicLibrary.
+                                Consultation et gestion des utilisateurs actifs de l’application MagicLibrary.
                             </p>
+
                         </div>
+
                     </div>
 
-                    <div class="shrink-0 sm:self-start">
+                    <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:self-start">
+
+                        <a th:href="@{/admin/membres/ajouter}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Créer un utilisateur
+                        </a>
+
+                        <a th:href="@{/admin/membres/archives}"
+                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                            Utilisateurs archivés
+                        </a>
+
                         <a th:href="@{/accueil}"
                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                             Retour à l’accueil
                         </a>
+
                     </div>
+
                 </div>
 
                 <div class="flex max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -42,83 +75,145 @@
 
                         <div class="flex max-w-full flex-col gap-3">
 
-                            <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div class="min-w-0 max-w-full flex-1">
+                            <div class="min-w-0 max-w-full">
 
-                                    <!-- Recherche dynamique des membres avec conservation des filtres actifs -->
-                                    <form id="searchForm" th:action="@{/admin/membres}" method="get" class="max-w-full">
-                                        <input type="hidden" name="page" value="0" />
-                                        <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
-                                        <input type="hidden" name="sort" th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort)) ? sort : 'roleThenLastName'}" />
-                                        <input type="hidden" name="role" th:value="${role}" />
-                                        <input type="hidden" name="status" th:value="${status}" />
+                                <form id="searchForm"
+                                      th:action="@{/admin/membres}"
+                                      method="get"
+                                      class="max-w-full">
 
-                                        <div class="relative w-full max-w-full">
-                                            <label for="search" class="sr-only">Rechercher un membre</label>
+                                    <input type="hidden"
+                                           name="page"
+                                           value="0" />
 
-                                            <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
-                                                <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
-                                                    <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                                    <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                                </svg>
-                                            </div>
+                                    <input type="hidden"
+                                           name="size"
+                                           th:value="${pageSize != null ? pageSize : 9}" />
 
-                                            <input id="search"
-                                                   name="search"
-                                                   type="text"
-                                                   inputmode="search"
-                                                   autocomplete="off"
-                                                   th:value="${search}"
-                                                   placeholder="Rechercher par prénom, nom, email, rôle, statut ou identifiant…"
-                                                   class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                                   aria-describedby="searchHint resultsCount resultsLabel triActive"
-                                                   aria-controls="suggestPanel"
-                                                   aria-expanded="false" />
+                                    <input type="hidden"
+                                           name="sort"
+                                           th:value="${sort != null && !#strings.isEmpty(#strings.trim(sort))
+                                               ? sort
+                                               : 'roleThenLastName'}" />
 
-                                            <button id="searchClearInline"
-                                                    type="button"
-                                                    class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                                    aria-label="Effacer la recherche">
-                                                <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                                    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                                </svg>
-                                            </button>
+                                    <input type="hidden"
+                                           name="role"
+                                           th:value="${role}" />
 
-                                            <button type="submit" class="sr-only">Rechercher</button>
+                                    <div class="relative w-full max-w-full">
 
-                                            <div id="suggestPanel"
-                                                 class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
-                                                 role="listbox"
-                                                 aria-label="Suggestions">
-                                                <div id="suggestInner" class="max-h-64 overflow-auto"></div>
-                                            </div>
+                                        <label for="search" class="sr-only">
+                                            Rechercher un utilisateur
+                                        </label>
 
-                                            <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                        <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
+
+                                            <svg aria-hidden="true"
+                                                 class="h-5 w-5 text-gray-500"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none">
+
+                                                <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round"/>
+
+                                                <path d="M16.5 16.5 21 21"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round"/>
+
+                                            </svg>
+
                                         </div>
-                                    </form>
-                                </div>
 
-                                <div class="shrink-0 sm:self-start">
-                                    <a th:href="@{/admin/membres/ajouter}"
-                                       class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                                        Créer un utilisateur
-                                    </a>
-                                </div>
+                                        <input id="search"
+                                               name="search"
+                                               type="text"
+                                               inputmode="search"
+                                               autocomplete="off"
+                                               th:value="${search}"
+                                               placeholder="Rechercher par prénom, nom, email, rôle ou identifiant…"
+                                               class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                               aria-describedby="searchHint resultsCount resultsLabel triActive"
+                                               aria-controls="suggestPanel"
+                                               aria-expanded="false" />
+
+                                        <button id="searchClearInline"
+                                                type="button"
+                                                class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                                                aria-label="Effacer la recherche">
+
+                                            <svg aria-hidden="true"
+                                                 class="h-4 w-4"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none">
+
+                                                <path d="M6 6l12 12M18 6L6 18"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round"/>
+
+                                            </svg>
+
+                                        </button>
+
+                                        <button type="submit" class="sr-only">
+                                            Rechercher
+                                        </button>
+
+                                        <div id="suggestPanel"
+                                             class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
+                                             role="listbox"
+                                             aria-label="Suggestions"
+                                             aria-hidden="true">
+
+                                            <div id="suggestInner"
+                                                 class="max-h-64 overflow-auto">
+                                            </div>
+
+                                        </div>
+
+                                        <div id="suggestAnnounce"
+                                             class="sr-only"
+                                             role="status"
+                                             aria-live="polite"
+                                             aria-atomic="true">
+                                        </div>
+
+                                    </div>
+
+                                </form>
+
                             </div>
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+
                                 <div class="min-w-0 max-w-full flex-1">
 
-                                    <!-- Filtres et tri appliqués à la liste des membres -->
-                                    <form id="filtersForm" th:action="@{/admin/membres}" method="get" class="max-w-full">
-                                        <input type="hidden" name="page" value="0" />
-                                        <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
-                                        <input type="hidden" name="search" th:value="${search}" />
+                                    <form id="filtersForm"
+                                          th:action="@{/admin/membres}"
+                                          method="get"
+                                          class="max-w-full">
+
+                                        <input type="hidden"
+                                               name="page"
+                                               value="0" />
+
+                                        <input type="hidden"
+                                               name="size"
+                                               th:value="${pageSize != null ? pageSize : 9}" />
+
+                                        <input type="hidden"
+                                               name="search"
+                                               th:value="${search}" />
 
                                         <div class="flex max-w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
 
                                             <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                                                <label for="roleSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+
+                                                <label for="roleSelect"
+                                                       class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
                                                     Rôle
                                                 </label>
 
@@ -126,30 +221,35 @@
                                                         name="role"
                                                         class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-52"
                                                         aria-label="Filtrer par rôle">
-                                                    <option value="" th:selected="${role == null or role == ''}">Tous les rôles</option>
-                                                    <option value="ADMIN" th:selected="${role == 'ADMIN'}">Administrateur</option>
-                                                    <option value="MEMBRE" th:selected="${role == 'MEMBRE'}">Membre</option>
-                                                    <option value="INVITE" th:selected="${role == 'INVITE'}">Invité</option>
+
+                                                    <option value=""
+                                                            th:selected="${role == null or role == ''}">
+                                                        Tous les rôles
+                                                    </option>
+
+                                                    <option value="ADMIN"
+                                                            th:selected="${role == 'ADMIN'}">
+                                                        Administrateur
+                                                    </option>
+
+                                                    <option value="MEMBRE"
+                                                            th:selected="${role == 'MEMBRE'}">
+                                                        Membre
+                                                    </option>
+
+                                                    <option value="INVITE"
+                                                            th:selected="${role == 'INVITE'}">
+                                                        Invité
+                                                    </option>
+
                                                 </select>
+
                                             </div>
 
                                             <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                                                <label for="statusSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
-                                                    Statut
-                                                </label>
 
-                                                <select id="statusSelect"
-                                                        name="status"
-                                                        class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-52"
-                                                        aria-label="Filtrer par statut">
-                                                    <option value="" th:selected="${status == null or status == ''}">Tous les statuts</option>
-                                                    <option value="ACTIF" th:selected="${status == 'ACTIF'}">Actif</option>
-                                                    <option value="INACTIF" th:selected="${status == 'INACTIF'}">Inactif</option>
-                                                </select>
-                                            </div>
-
-                                            <div class="flex min-w-0 max-w-full flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                                                <label for="sortSelect" class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
+                                                <label for="sortSelect"
+                                                       class="shrink-0 text-xs font-medium leading-none text-gray-700 sm:text-sm">
                                                     Trier par
                                                 </label>
 
@@ -157,48 +257,129 @@
                                                         name="sort"
                                                         class="h-10 w-full max-w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:w-72"
                                                         aria-label="Trier les résultats">
-                                                    <option value="roleThenLastName" th:selected="${sort == 'roleThenLastName' or sort == null or sort == ''}">Rôle puis nom</option>
-                                                    <option value="lastNameThenFirstName" th:selected="${sort == 'lastNameThenFirstName'}">Nom puis prénom</option>
-                                                    <option value="firstNameThenLastName" th:selected="${sort == 'firstNameThenLastName'}">Prénom puis nom</option>
-                                                    <option value="statusThenLastName" th:selected="${sort == 'statusThenLastName'}">Statut puis nom</option>
-                                                    <option value="emailAsc" th:selected="${sort == 'emailAsc'}">Email</option>
-                                                    <option value="newest" th:selected="${sort == 'newest'}">Ajout récent</option>
+
+                                                    <option value="roleThenLastName"
+                                                            th:selected="${sort == 'roleThenLastName' or sort == null or sort == ''}">
+                                                        Rôle puis nom
+                                                    </option>
+
+                                                    <option value="lastNameThenFirstName"
+                                                            th:selected="${sort == 'lastNameThenFirstName'}">
+                                                        Nom puis prénom
+                                                    </option>
+
+                                                    <option value="firstNameThenLastName"
+                                                            th:selected="${sort == 'firstNameThenLastName'}">
+                                                        Prénom puis nom
+                                                    </option>
+
+                                                    <option value="emailAsc"
+                                                            th:selected="${sort == 'emailAsc'}">
+                                                        Email
+                                                    </option>
+
+                                                    <option value="newest"
+                                                            th:selected="${sort == 'newest'}">
+                                                        Ajout récent
+                                                    </option>
+
                                                 </select>
 
-                                                <button type="submit" class="sr-only">Appliquer les filtres</button>
+                                                <button type="submit" class="sr-only">
+                                                    Appliquer les filtres
+                                                </button>
+
                                             </div>
 
-                                            <p id="triActive" class="text-xs font-medium text-gray-600 sm:text-sm">
-                                                <span class="text-gray-500">Tri actif :</span>
-                                                <span class="font-medium text-gray-900" th:switch="${sort}">
-                                                    <span th:case="'roleThenLastName'">Rôle puis nom</span>
-                                                    <span th:case="'lastNameThenFirstName'">Nom puis prénom</span>
-                                                    <span th:case="'firstNameThenLastName'">Prénom puis nom</span>
-                                                    <span th:case="'statusThenLastName'">Statut puis nom</span>
-                                                    <span th:case="'emailAsc'">Email</span>
-                                                    <span th:case="'newest'">Ajout récent</span>
-                                                    <span th:case="*">Rôle puis nom</span>
+                                            <p id="triActive"
+                                               class="text-xs font-medium text-gray-600 sm:text-sm">
+
+                                                <span class="text-gray-500">
+                                                    Tri actif :
                                                 </span>
+
+                                                <span class="font-medium text-gray-900"
+                                                      th:switch="${sort}">
+
+                                                    <span th:case="'roleThenLastName'">
+                                                        Rôle puis nom
+                                                    </span>
+
+                                                    <span th:case="'lastNameThenFirstName'">
+                                                        Nom puis prénom
+                                                    </span>
+
+                                                    <span th:case="'firstNameThenLastName'">
+                                                        Prénom puis nom
+                                                    </span>
+
+                                                    <span th:case="'emailAsc'">
+                                                        Email
+                                                    </span>
+
+                                                    <span th:case="'newest'">
+                                                        Ajout récent
+                                                    </span>
+
+                                                    <span th:case="*">
+                                                        Rôle puis nom
+                                                    </span>
+
+                                                </span>
+
                                             </p>
 
-                                            <div id="sortAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                            <a th:if="${hasActiveFilters}"
+                                               th:href="@{/admin/membres(size=${pageSize})}"
+                                               class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                Réinitialiser les filtres
+                                            </a>
+
+                                            <div id="sortAnnounce"
+                                                 class="sr-only"
+                                                 role="status"
+                                                 aria-live="polite"
+                                                 aria-atomic="true">
+                                            </div>
+
                                         </div>
+
                                     </form>
 
-                                    <p id="searchHint" class="mt-2 text-sm text-gray-600">
-                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
-                                        <span th:if="${hasQuery}">Recherche active : la liste se met à jour automatiquement pendant la saisie.</span>
+                                    <p id="searchHint"
+                                       class="mt-2 text-sm text-gray-600">
+
+                                        <span th:if="${!hasQuery}">
+                                            Saisis au moins 2 caractères pour obtenir des suggestions.
+                                        </span>
+
+                                        <span th:if="${hasQuery}">
+                                            Recherche active : la liste se met à jour automatiquement pendant la saisie.
+                                        </span>
+
                                     </p>
+
                                 </div>
 
-                                <!-- Indicateurs du nombre de membres correspondant aux critères actifs -->
-                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
-                                    <span id="resultsCount" th:text="${resultsDisplayCount}">0</span>
-                                    <span id="resultsLabel" th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">résultats</span>
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5"
+                                     aria-live="polite">
+
+                                    <span id="resultsCount"
+                                          th:text="${resultsDisplayCount}">
+                                        0
+                                    </span>
+
+                                    <span id="resultsLabel"
+                                          th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">
+                                        résultats
+                                    </span>
+
                                 </div>
+
                             </div>
 
                         </div>
+
                     </div>
 
                 </div>
@@ -207,7 +388,6 @@
 
             <div class="mt-6 max-w-full text-sm text-gray-700">
 
-                <!-- Messages de retour affichés après une action d'administration -->
                 <div th:if="${successMessage}"
                      class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
                      role="status"
@@ -225,67 +405,129 @@
                 </div>
 
                 <section class="mt-6 max-w-full first:mt-0">
-                    <h2 class="text-base font-semibold text-gray-900">Utilisateurs</h2>
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Utilisateurs actifs
+                    </h2>
 
                     <div class="mt-2 max-w-full space-y-2">
+
                         <p th:if="${usersCount > 0 and hasQuery}">
-                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
-                            <span th:text="${totalElements == 1 ? 'utilisateur trouvé' : 'utilisateurs trouvés'}">utilisateurs trouvés</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1
+                                ? 'utilisateur actif trouvé'
+                                : 'utilisateurs actifs trouvés'}">
+                                utilisateurs actifs trouvés
+                            </span>
+
                         </p>
 
                         <p th:if="${usersCount > 0 and !hasQuery}">
-                            <span class="font-medium text-gray-900" th:text="${resultsDisplayCount}">0</span>
-                            <span th:text="${resultsDisplayCount == 1 ? 'utilisateur au total' : 'utilisateurs au total'}">utilisateurs au total</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${resultsDisplayCount}">
+                                0
+                            </span>
+
+                            <span th:text="${resultsDisplayCount == 1
+                                ? 'utilisateur actif au total'
+                                : 'utilisateurs actifs au total'}">
+                                utilisateurs actifs au total
+                            </span>
+
                         </p>
 
                         <p th:if="${usersCount == 0 and hasQuery}">
-                            Aucun utilisateur ne correspond à cette recherche.
+                            Aucun utilisateur actif ne correspond à cette recherche.
                         </p>
 
                         <p th:if="${usersCount == 0 and !hasQuery}">
-                            Aucun utilisateur disponible pour le moment.
+                            Aucun utilisateur actif disponible pour le moment.
                         </p>
 
-                        <p th:if="${paginationEnabled}" class="text-sm text-gray-600">
+                        <p th:if="${paginationEnabled}"
+                           class="text-sm text-gray-600">
+
                             <span>Page </span>
-                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${currentPage + 1}">
+                                1
+                            </span>
+
                             <span> sur </span>
-                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalPages}">
+                                1
+                            </span>
+
                             <span> · </span>
-                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
-                            <span th:text="${totalElements == 1 ? ' utilisateur au total' : ' utilisateurs au total'}"> utilisateurs au total</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1
+                                ? ' utilisateur actif au total'
+                                : ' utilisateurs actifs au total'}">
+                                utilisateurs actifs au total
+                            </span>
+
                         </p>
+
                     </div>
 
-                    <div class="mt-6 max-w-full" th:if="${usersCount == 0}">
+                    <div class="mt-6 max-w-full"
+                         th:if="${usersCount == 0}">
+
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
+
                             <h2 class="text-base font-semibold text-gray-900"
-                                th:text="${hasQuery ? 'Aucun résultat' : 'Aucun utilisateur disponible'}">
-                                Aucun utilisateur disponible
+                                th:text="${hasQuery
+                                    ? 'Aucun résultat'
+                                    : 'Aucun utilisateur actif disponible'}">
+                                Aucun utilisateur actif disponible
                             </h2>
 
                             <div class="mt-2 space-y-2">
+
                                 <p class="break-words hyphens-auto"
-                                   th:text="${hasQuery ? 'Essaie un autre mot-clé ou efface la recherche.' : 'Aucun compte n’est disponible pour le moment.'}">
-                                    Aucun compte n’est disponible pour le moment.
+                                   th:text="${hasQuery
+                                       ? 'Essaie un autre mot-clé ou réinitialise les filtres.'
+                                       : 'Aucun compte actif n’est disponible pour le moment.'}">
+                                    Aucun compte actif n’est disponible pour le moment.
                                 </p>
 
                                 <div th:if="${hasQuery}">
-                                    <a th:href="@{/admin/membres(role=${role}, status=${status}, sort=${sort}, size=${pageSize})}"
+
+                                    <a th:href="@{/admin/membres(role=${role}, sort=${sort}, size=${pageSize})}"
                                        class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Effacer la recherche
                                     </a>
+
                                 </div>
+
                             </div>
+
                         </section>
+
                     </div>
 
-                    <!-- Affichage des utilisateurs sous forme de cartes -->
-                    <div class="mt-6 max-w-full" th:if="${usersCount > 0}">
+                    <div class="mt-6 max-w-full"
+                         th:if="${usersCount > 0}">
 
-                        <!-- Variante pleine largeur utilisée lorsqu'un seul utilisateur est affiché -->
+                        <!--
+                            Variante pleine largeur lorsqu'un seul utilisateur est affiché.
+                        -->
                         <ul th:if="${isSingle}"
-                            class="grid max-w-full grid-cols-1 gap-4"
+                            class="grid max-w-full grid-cols-1 gap-5"
                             role="list">
 
                             <li th:each="user : ${users}"
@@ -294,73 +536,179 @@
                                          data-first-name=${user.firstName},
                                          data-last-name=${user.lastName},
                                          data-email=${user.email},
-                                         data-role=${user.roleLabel},
-                                         data-status=${user.activeUser ? 'Actif' : 'Inactif'}"
-                                class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
+                                         data-role=${user.roleLabel}"
+                                class="max-w-full overflow-hidden rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
 
-                                <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="flex max-w-full flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
 
                                     <div class="min-w-0 max-w-full flex-1">
 
-                                        <!-- Identité et états principaux du compte -->
+                                        <!--
+                                            Identité, civilité et rôle.
+
+                                            La normalisation est purement visuelle :
+                                            aucune valeur n'est modifiée en base.
+
+                                            Valeurs masculines reconnues :
+                                            M, MR, M., MR. -> M.
+
+                                            Valeurs féminines reconnues :
+                                            Mme, Mme., MME, MME. -> Mme
+
+                                            Toute autre valeur non vide est conservée
+                                            telle quelle afin de ne jamais masquer une
+                                            donnée inattendue.
+                                        -->
                                         <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
 
                                             <h3 class="break-words text-base font-semibold text-gray-900"
-                                                th:text="${((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim().isEmpty()
+                                                th:with="rawCivility=${user.civility != null ? #strings.trim(user.civility) : ''},
+                                                         normalizedCivility=${#strings.toUpperCase(rawCivility)},
+                                                         displayCivility=${normalizedCivility == 'M'
+                                                             or normalizedCivility == 'MR'
+                                                             or normalizedCivility == 'M.'
+                                                             or normalizedCivility == 'MR.'
+                                                                 ? 'M.'
+                                                                 : ((normalizedCivility == 'MME'
+                                                                     or normalizedCivility == 'MME.')
+                                                                     ? 'Mme'
+                                                                     : rawCivility)},
+                                                         displayName=${((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim()}"
+                                                th:text="${displayName.isEmpty()
                                                     ? 'Utilisateur inconnu'
-                                                    : ((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim()}">
-                                                Jean Dupont
+                                                    : ((displayCivility != ''
+                                                        ? displayCivility + ' '
+                                                        : '') + displayName)}">
+                                                M. Jean Dupont
                                             </h3>
 
                                             <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
                                                   th:classappend="${user.roleLabel == 'ADMIN'
                                                     ? ' border-gray-300 bg-white text-gray-700'
                                                     : ' border-gray-200 bg-gray-50 text-gray-600'}">
-                                                <span th:switch="${user.roleLabel}">
-                                                    <span th:case="'ADMIN'">Administrateur</span>
-                                                    <span th:case="'MEMBRE'">Membre</span>
-                                                    <span th:case="'INVITE'">Invité</span>
-                                                    <span th:case="*" th:text="${user.roleLabel}">Membre</span>
-                                                </span>
-                                            </span>
 
-                                            <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
-                                                  th:text="${user.activeUser ? 'Actif' : 'Inactif'}"
-                                                  th:classappend="${user.activeUser
-                                                    ? ' border-blue-200 bg-blue-50 text-blue-900'
-                                                    : ' border-gray-300 bg-gray-50 text-gray-700'}">
-                                                Actif
+                                                <span th:switch="${user.roleLabel}">
+
+                                                    <span th:case="'ADMIN'">
+                                                        Administrateur
+                                                    </span>
+
+                                                    <span th:case="'MEMBRE'">
+                                                        Membre
+                                                    </span>
+
+                                                    <span th:case="'INVITE'">
+                                                        Invité
+                                                    </span>
+
+                                                    <span th:case="*"
+                                                          th:text="${user.roleLabel}">
+                                                        Membre
+                                                    </span>
+
+                                                </span>
+
                                             </span>
 
                                         </div>
 
-                                        <!--
-                                            Adresse email affichée directement dans la carte.
-                                            Elle reste volontairement non cliquable à ce stade :
-                                            une éventuelle action mailto fera l'objet d'une
-                                            amélioration ergonomique séparée.
-                                        -->
-                                        <p class="mt-3 break-all text-sm text-gray-700"
-                                           th:text="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))
-                                               ? user.email
-                                               : 'Email non renseigné'}">
-                                            jean.dupont@email.fr
-                                        </p>
+                                        <div class="mt-4 flex max-w-full flex-wrap items-center gap-x-2 gap-y-2 text-sm leading-6">
 
-                                        <!-- Informations métier utiles à la consultation rapide -->
-                                        <div class="mt-5 space-y-2 text-sm">
+                                            <a th:if="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                               th:href="|mailto:${user.email}|"
+                                               th:text="${user.email}"
+                                               th:aria-label="'Écrire à ' + ${user.email}"
+                                               class="min-w-0 break-all font-medium text-blue-700 hover:text-blue-900 hover:underline focus:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                jean.dupont@email.fr
+                                            </a>
 
-                                            <p class="break-words text-gray-700">
+                                            <button th:if="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                                    type="button"
+                                                    data-copy-email
+                                                    th:attr="data-copy-value=${user.email},
+                                                             aria-label='Copier l’adresse email ' + ${user.email}"
+                                                    title="Copier l’adresse email"
+                                                    class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-blue-700 shadow-sm hover:bg-gray-50 hover:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-100">
+
+                                                <svg data-copy-icon
+                                                     aria-hidden="true"
+                                                     class="h-4 w-4"
+                                                     viewBox="0 0 24 24"
+                                                     fill="none">
+
+                                                    <rect x="9"
+                                                          y="9"
+                                                          width="11"
+                                                          height="11"
+                                                          rx="2"
+                                                          stroke="currentColor"
+                                                          stroke-width="2"/>
+
+                                                    <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"
+                                                          stroke="currentColor"
+                                                          stroke-width="2"
+                                                          stroke-linecap="round"
+                                                          stroke-linejoin="round"/>
+
+                                                </svg>
+
+                                                <svg data-copy-success-icon
+                                                     aria-hidden="true"
+                                                     class="hidden h-4 w-4"
+                                                     viewBox="0 0 24 24"
+                                                     fill="none">
+
+                                                    <path d="M5 12.5 9.5 17 19 7.5"
+                                                          stroke="currentColor"
+                                                          stroke-width="2.25"
+                                                          stroke-linecap="round"
+                                                          stroke-linejoin="round"/>
+
+                                                </svg>
+
+                                            </button>
+
+                                            <span th:unless="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                                  class="text-gray-700">
+                                                Email non renseigné
+                                            </span>
+
+                                        </div>
+
+                                        <div class="mt-6 space-y-3 text-sm leading-6">
+
+                                            <div class="flex flex-wrap items-center gap-2">
+
                                                 <span class="font-medium text-gray-900">
                                                     Cotisation :
                                                 </span>
 
-                                                <span th:text="${user.subscriptionUser ? 'À jour' : 'Non à jour'}">
+                                                <span th:if="${user.subscriptionUser}"
+                                                      class="text-gray-700">
                                                     À jour
                                                 </span>
+
+                                                <span th:unless="${user.subscriptionUser}"
+                                                      class="inline-flex rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-900">
+                                                    Non à jour
+                                                </span>
+
+                                            </div>
+
+                                            <p class="break-words text-gray-700">
+
+                                                <span class="font-medium text-gray-900">
+                                                    Emprunts en cours :
+                                                </span>
+
+                                                <span th:text="${user.openLoanCount}">
+                                                    0
+                                                </span>
+
                                             </p>
 
                                             <p class="break-words text-gray-700">
+
                                                 <span class="font-medium text-gray-900">
                                                     ID utilisateur :
                                                 </span>
@@ -368,27 +716,29 @@
                                                 <span th:text="${user.idUser}">
                                                     1
                                                 </span>
+
                                             </p>
 
                                         </div>
 
                                     </div>
 
-                                    <!-- Actions de gestion -->
-                                    <div class="w-full shrink-0 border-t border-gray-100 pt-5 lg:w-auto lg:min-w-[24rem] lg:self-end lg:border-t-0 lg:pt-0">
+                                    <div class="w-full shrink-0 border-t border-gray-200 pt-6 lg:w-auto lg:min-w-[24rem] lg:self-end lg:border-t-0 lg:pt-0">
+
                                         <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
 
                                             <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
-                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                               class="inline-flex min-h-11 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                 Voir le profil
                                             </a>
 
                                             <a th:href="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
-                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                               class="inline-flex min-h-11 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                 Modifier
                                             </a>
 
                                         </div>
+
                                     </div>
 
                                 </div>
@@ -397,9 +747,11 @@
 
                         </ul>
 
-                        <!-- Variante en grille utilisée lorsque plusieurs utilisateurs sont affichés -->
+                        <!--
+                            Variante en grille lorsque plusieurs utilisateurs sont affichés.
+                        -->
                         <ul th:if="${!isSingle}"
-                            class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                            class="grid max-w-full grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3"
                             role="list">
 
                             <li th:each="user : ${users}"
@@ -408,79 +760,165 @@
                                          data-first-name=${user.firstName},
                                          data-last-name=${user.lastName},
                                          data-email=${user.email},
-                                         data-role=${user.roleLabel},
-                                         data-status=${user.activeUser ? 'Actif' : 'Inactif'}"
-                                class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
+                                         data-role=${user.roleLabel}"
+                                class="flex min-h-[14rem] max-w-full flex-col overflow-hidden rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
 
                                 <div class="flex max-w-full flex-1 flex-col">
 
-                                    <!-- Identité et états principaux du compte -->
+                                    <!--
+                                        Même normalisation de civilité que dans
+                                        la variante mono-utilisateur.
+                                    -->
                                     <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
 
                                         <h3 class="break-words text-base font-semibold text-gray-900"
-                                            th:text="${((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim().isEmpty()
+                                            th:with="rawCivility=${user.civility != null ? #strings.trim(user.civility) : ''},
+                                                     normalizedCivility=${#strings.toUpperCase(rawCivility)},
+                                                     displayCivility=${normalizedCivility == 'M'
+                                                         or normalizedCivility == 'MR'
+                                                         or normalizedCivility == 'M.'
+                                                         or normalizedCivility == 'MR.'
+                                                             ? 'M.'
+                                                             : ((normalizedCivility == 'MME'
+                                                                 or normalizedCivility == 'MME.')
+                                                                 ? 'Mme'
+                                                                 : rawCivility)},
+                                                     displayName=${((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim()}"
+                                            th:text="${displayName.isEmpty()
                                                 ? 'Utilisateur inconnu'
-                                                : ((user.firstName ?: '') + ' ' + (user.lastName ?: '')).trim()}">
-                                            Jean Dupont
+                                                : ((displayCivility != ''
+                                                    ? displayCivility + ' '
+                                                    : '') + displayName)}">
+                                            M. Jean Dupont
                                         </h3>
 
                                         <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
                                               th:classappend="${user.roleLabel == 'ADMIN'
                                                 ? ' border-gray-300 bg-white text-gray-700'
                                                 : ' border-gray-200 bg-gray-50 text-gray-600'}">
-                                            <span th:switch="${user.roleLabel}">
-                                                <span th:case="'ADMIN'">Administrateur</span>
-                                                <span th:case="'MEMBRE'">Membre</span>
-                                                <span th:case="'INVITE'">Invité</span>
-                                                <span th:case="*" th:text="${user.roleLabel}">Membre</span>
-                                            </span>
-                                        </span>
 
-                                        <span class="inline-flex rounded-full border px-3 py-1 text-xs font-medium"
-                                              th:text="${user.activeUser ? 'Actif' : 'Inactif'}"
-                                              th:classappend="${user.activeUser
-                                                ? ' border-blue-200 bg-blue-50 text-blue-900'
-                                                : ' border-gray-300 bg-gray-50 text-gray-700'}">
-                                            Actif
+                                            <span th:switch="${user.roleLabel}">
+
+                                                <span th:case="'ADMIN'">
+                                                    Administrateur
+                                                </span>
+
+                                                <span th:case="'MEMBRE'">
+                                                    Membre
+                                                </span>
+
+                                                <span th:case="'INVITE'">
+                                                    Invité
+                                                </span>
+
+                                                <span th:case="*"
+                                                      th:text="${user.roleLabel}">
+                                                    Membre
+                                                </span>
+
+                                            </span>
+
                                         </span>
 
                                     </div>
 
-                                    <!--
-                                        L'email est affiché directement dans la carte afin
-                                        d'identifier rapidement le compte sans devoir ouvrir
-                                        la fiche détaillée.
+                                    <div class="mt-4 flex max-w-full flex-wrap items-center gap-x-2 gap-y-2 text-sm leading-6">
 
-                                        Il reste non cliquable pour le moment.
-                                    -->
-                                    <p class="mt-3 break-all text-sm text-gray-700"
-                                       th:text="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))
-                                           ? user.email
-                                           : 'Email non renseigné'}">
-                                        jean.dupont@email.fr
-                                    </p>
+                                        <a th:if="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                           th:href="|mailto:${user.email}|"
+                                           th:text="${user.email}"
+                                           th:aria-label="'Écrire à ' + ${user.email}"
+                                           class="min-w-0 break-all font-medium text-blue-700 hover:text-blue-900 hover:underline focus:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-gray-900">
+                                            jean.dupont@email.fr
+                                        </a>
 
-                                    <!--
-                                        Informations métier synthétiques.
+                                        <button th:if="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                                type="button"
+                                                data-copy-email
+                                                th:attr="data-copy-value=${user.email},
+                                                         aria-label='Copier l’adresse email ' + ${user.email}"
+                                                title="Copier l’adresse email"
+                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-blue-700 shadow-sm hover:bg-gray-50 hover:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-100">
 
-                                        Le format en lignes compactes évite l'ancien bloc
-                                        vertical "COTISATION / À jour" et rapproche la
-                                        structure des cartes Membres de celles utilisées
-                                        dans les écrans Bibliothèque et Emprunts.
-                                    -->
-                                    <div class="mt-5 space-y-2 text-sm">
+                                            <svg data-copy-icon
+                                                 aria-hidden="true"
+                                                 class="h-4 w-4"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none">
 
-                                        <p class="break-words text-gray-700">
+                                                <rect x="9"
+                                                      y="9"
+                                                      width="11"
+                                                      height="11"
+                                                      rx="2"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"/>
+
+                                                <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"
+                                                      stroke="currentColor"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round"/>
+
+                                            </svg>
+
+                                            <svg data-copy-success-icon
+                                                 aria-hidden="true"
+                                                 class="hidden h-4 w-4"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none">
+
+                                                <path d="M5 12.5 9.5 17 19 7.5"
+                                                      stroke="currentColor"
+                                                      stroke-width="2.25"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round"/>
+
+                                            </svg>
+
+                                        </button>
+
+                                        <span th:unless="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))}"
+                                              class="text-gray-700">
+                                            Email non renseigné
+                                        </span>
+
+                                    </div>
+
+                                    <div class="mt-6 space-y-3 text-sm leading-6">
+
+                                        <div class="flex flex-wrap items-center gap-2">
+
                                             <span class="font-medium text-gray-900">
                                                 Cotisation :
                                             </span>
 
-                                            <span th:text="${user.subscriptionUser ? 'À jour' : 'Non à jour'}">
+                                            <span th:if="${user.subscriptionUser}"
+                                                  class="text-gray-700">
                                                 À jour
                                             </span>
+
+                                            <span th:unless="${user.subscriptionUser}"
+                                                  class="inline-flex rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-900">
+                                                Non à jour
+                                            </span>
+
+                                        </div>
+
+                                        <p class="break-words text-gray-700">
+
+                                            <span class="font-medium text-gray-900">
+                                                Emprunts en cours :
+                                            </span>
+
+                                            <span th:text="${user.openLoanCount}">
+                                                0
+                                            </span>
+
                                         </p>
 
                                         <p class="break-words text-gray-700">
+
                                             <span class="font-medium text-gray-900">
                                                 ID utilisateur :
                                             </span>
@@ -488,25 +926,31 @@
                                             <span th:text="${user.idUser}">
                                                 1
                                             </span>
+
                                         </p>
 
                                     </div>
 
-                                    <!-- Actions alignées au bas de toutes les cartes -->
-                                    <div class="mt-auto border-t border-gray-100 pt-4">
-                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+                                    <div class="mt-auto pt-6">
 
-                                            <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
-                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                                                Voir le profil
-                                            </a>
+                                        <div class="border-t border-gray-200 pt-5">
 
-                                            <a th:href="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
-                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                                                Modifier
-                                            </a>
+                                            <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
+
+                                                <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
+                                                   class="inline-flex min-h-11 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Voir le profil
+                                                </a>
+
+                                                <a th:href="@{/admin/membres/{id}/modifier(id=${user.idUser})}"
+                                                   class="inline-flex min-h-11 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Modifier
+                                                </a>
+
+                                            </div>
 
                                         </div>
+
                                     </div>
 
                                 </div>
@@ -515,7 +959,6 @@
 
                         </ul>
 
-                        <!-- Navigation entre les différentes pages de membres -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des membres">
@@ -535,7 +978,7 @@
                                     </span>
 
                                     <a th:if="${hasPrevious}"
-                                       th:href="@{/admin/membres(page=${currentPage - 1}, size=${pageSize}, sort=${sort}, role=${role}, status=${status}, search=${search})}"
+                                       th:href="@{/admin/membres(page=${currentPage - 1}, size=${pageSize}, sort=${sort}, role=${role}, search=${search})}"
                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Précédent
                                     </a>
@@ -550,7 +993,7 @@
                                         </span>
 
                                         <a th:if="${pageNumber != currentPage}"
-                                           th:href="@{/admin/membres(page=${pageNumber}, size=${pageSize}, sort=${sort}, role=${role}, status=${status}, search=${search})}"
+                                           th:href="@{/admin/membres(page=${pageNumber}, size=${pageSize}, sort=${sort}, role=${role}, search=${search})}"
                                            th:text="${pageNumber + 1}"
                                            th:aria-label="'Aller à la page ' + (${pageNumber + 1})"
                                            class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
@@ -566,7 +1009,7 @@
                                     </span>
 
                                     <a th:if="${hasNext}"
-                                       th:href="@{/admin/membres(page=${currentPage + 1}, size=${pageSize}, sort=${sort}, role=${role}, status=${status}, search=${search})}"
+                                       th:href="@{/admin/membres(page=${currentPage + 1}, size=${pageSize}, sort=${sort}, role=${role}, search=${search})}"
                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Suivant
                                     </a>
@@ -585,22 +1028,23 @@
 
         </section>
 
-        <!--
-            Gestion de la recherche dynamique, des suggestions,
-            des filtres, du tri automatique et de la navigation clavier.
-        -->
+        <div id="copyEmailAnnounce"
+             class="sr-only"
+             role="status"
+             aria-live="polite"
+             aria-atomic="true">
+        </div>
+
         <script>
             (function () {
                 const search = document.getElementById('search');
                 const searchForm = document.getElementById('searchForm');
-                const filtersForm = document.getElementById('filtersForm');
                 const hint = document.getElementById('searchHint');
                 const panel = document.getElementById('suggestPanel');
                 const inner = document.getElementById('suggestInner');
                 const suggestAnnounce = document.getElementById('suggestAnnounce');
                 const clearInline = document.getElementById('searchClearInline');
                 const roleSelect = document.getElementById('roleSelect');
-                const statusSelect = document.getElementById('statusSelect');
                 const sortSelect = document.getElementById('sortSelect');
                 const sortAnnounce = document.getElementById('sortAnnounce');
 
@@ -612,15 +1056,23 @@
                 let submitTimer = null;
                 let fetchController = null;
                 let fetchSequence = 0;
-                let lastSubmittedValue = String(search.value || '').trim();
+
+                let lastSubmittedValue =
+                    String(search.value || '').trim();
 
                 function isNumericQuery(value) {
-                    return /^[0-9]+$/.test(String(value ?? '').trim());
+                    return /^[0-9]+$/.test(
+                        String(value ?? '').trim()
+                    );
                 }
 
                 function thresholdReached(q) {
-                    const raw = String(q ?? '').trim();
-                    if (!raw) return false;
+                    const raw =
+                        String(q ?? '').trim();
+
+                    if (!raw) {
+                        return false;
+                    }
 
                     if (isNumericQuery(raw)) {
                         return raw.length >= 1;
@@ -630,26 +1082,41 @@
                 }
 
                 function updateInlineClear(q) {
-                    if (!clearInline) return;
-                    const has = Boolean((q || '').trim());
-                    clearInline.classList.toggle('hidden', !has);
+                    if (!clearInline) {
+                        return;
+                    }
+
+                    const has =
+                        Boolean((q || '').trim());
+
+                    clearInline.classList.toggle(
+                        'hidden',
+                        !has
+                    );
                 }
 
                 function updateHint(q) {
-                    if (!hint) return;
-                    const trimmed = (q || '').trim();
+                    if (!hint) {
+                        return;
+                    }
+
+                    const trimmed =
+                        (q || '').trim();
 
                     if (!trimmed) {
-                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        hint.textContent =
+                            'Saisis au moins 2 caractères pour obtenir des suggestions.';
                         return;
                     }
 
                     if (isNumericQuery(trimmed)) {
-                        hint.textContent = 'Suggestions disponibles dès 1 chiffre pour un identifiant.';
+                        hint.textContent =
+                            'Suggestions disponibles dès 1 chiffre pour un identifiant.';
                         return;
                     }
 
-                    hint.textContent = 'La page se met à jour automatiquement pendant la saisie.';
+                    hint.textContent =
+                        'La page se met à jour automatiquement pendant la saisie.';
                 }
 
                 function escapeHtml(s) {
@@ -662,22 +1129,42 @@
                 }
 
                 function setPanel(open) {
-                    if (!panel) return;
+                    if (!panel) {
+                        return;
+                    }
 
-                    panel.classList.toggle('hidden', !open);
-                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    panel.classList.toggle(
+                        'hidden',
+                        !open
+                    );
+
+                    panel.setAttribute(
+                        'aria-hidden',
+                        open ? 'false' : 'true'
+                    );
+
+                    search.setAttribute(
+                        'aria-expanded',
+                        open ? 'true' : 'false'
+                    );
 
                     if (!open) {
                         activeIndex = -1;
                         currentOptions = [];
-                        search.setAttribute('aria-activedescendant', '');
+
+                        search.setAttribute(
+                            'aria-activedescendant',
+                            ''
+                        );
                     }
                 }
 
                 function closePanel() {
                     setPanel(false);
-                    if (inner) inner.innerHTML = '';
+
+                    if (inner) {
+                        inner.innerHTML = '';
+                    }
                 }
 
                 function openPanel() {
@@ -685,12 +1172,23 @@
                 }
 
                 function renderOptions(list) {
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
                     if (list.length === 0) {
-                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+                        inner.innerHTML =
+                            '<div class="px-3 py-3 text-sm text-gray-700">' +
+                            'Aucun résultat en base pour cette recherche.' +
+                            '</div>';
+
                         openPanel();
-                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+
+                        if (suggestAnnounce) {
+                            suggestAnnounce.textContent =
+                                'Aucune suggestion.';
+                        }
+
                         return;
                     }
 
@@ -698,17 +1196,42 @@
 
                     for (let i = 0; i < list.length; i++) {
                         const it = list[i];
-                        const optId = 'suggest-opt-' + escapeHtml(it.id) + '-' + i;
-                        const fullName = [it.firstName, it.lastName].filter(Boolean).join(' ').trim();
-                        const primary = fullName || it.email || ('Membre ' + (it.id || ''));
+
+                        const optId =
+                            'suggest-opt-' +
+                            escapeHtml(it.id) +
+                            '-' +
+                            i;
+
+                        const fullName =
+                            [it.firstName, it.lastName]
+                                .filter(Boolean)
+                                .join(' ')
+                                .trim();
+
+                        const primary =
+                            fullName ||
+                            it.email ||
+                            ('Membre ' + (it.id || ''));
+
                         const secondaryParts = [
                             it.email || '',
                             it.role || '',
-                            it.status || '',
-                            it.id != null ? ('ID ' + it.id) : ''
+                            it.id != null
+                                ? ('ID ' + it.id)
+                                : ''
                         ].filter(Boolean);
-                        const secondary = secondaryParts.join(' • ');
-                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
+
+                        const secondary =
+                            secondaryParts.join(' • ');
+
+                        const ariaLabel =
+                            primary +
+                            (
+                                secondary
+                                    ? (', ' + secondary)
+                                    : ''
+                            );
 
                         html +=
                             '<div ' +
@@ -719,92 +1242,168 @@
                             'tabindex="-1" ' +
                             'data-suggest-index="' + i + '" ' +
                             'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
-                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
-                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
+
+                            '<div class="break-words text-sm font-semibold text-gray-900">' +
+                            escapeHtml(primary) +
+                            '</div>' +
+
+                            '<div class="mt-1 break-words text-xs text-gray-600">' +
+                            escapeHtml(secondary) +
+                            '</div>' +
+
                             '</div>';
                     }
 
                     inner.innerHTML = html;
+
                     openPanel();
 
                     if (suggestAnnounce) {
-                        suggestAnnounce.textContent = list.length === 1
-                            ? '1 suggestion disponible.'
-                            : (list.length + ' suggestions disponibles.');
+                        suggestAnnounce.textContent =
+                            list.length === 1
+                                ? '1 suggestion disponible.'
+                                : (
+                                    list.length +
+                                    ' suggestions disponibles.'
+                                );
                     }
                 }
 
                 function setActive(newIndex) {
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
-                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
-                    if (options.length === 0) return;
+                    const options =
+                        Array.from(
+                            inner.querySelectorAll(
+                                '[role="option"][data-suggest-index]'
+                            )
+                        );
 
-                    if (newIndex < 0) newIndex = options.length - 1;
-                    if (newIndex >= options.length) newIndex = 0;
+                    if (options.length === 0) {
+                        return;
+                    }
+
+                    if (newIndex < 0) {
+                        newIndex = options.length - 1;
+                    }
+
+                    if (newIndex >= options.length) {
+                        newIndex = 0;
+                    }
 
                     activeIndex = newIndex;
 
                     options.forEach(function (el, i) {
-                        const isActive = i === activeIndex;
-                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                        el.classList.toggle('bg-gray-50', isActive);
+                        const isActive =
+                            i === activeIndex;
+
+                        el.setAttribute(
+                            'aria-selected',
+                            isActive ? 'true' : 'false'
+                        );
+
+                        el.classList.toggle(
+                            'bg-gray-50',
+                            isActive
+                        );
                     });
 
-                    const activeEl = options[activeIndex];
+                    const activeEl =
+                        options[activeIndex];
 
                     if (activeEl && activeEl.id) {
-                        search.setAttribute('aria-activedescendant', activeEl.id);
+                        search.setAttribute(
+                            'aria-activedescendant',
+                            activeEl.id
+                        );
 
                         try {
-                            activeEl.scrollIntoView({ block: 'nearest' });
+                            activeEl.scrollIntoView({
+                                block: 'nearest'
+                            });
                         } catch (e) {
                         }
                     }
                 }
 
                 function applySuggestionAt(idx) {
-                    const it = currentOptions[idx];
-                    if (!it) return;
+                    const it =
+                        currentOptions[idx];
 
-                    const fullName = [it.firstName, it.lastName].filter(Boolean).join(' ').trim();
+                    if (!it) {
+                        return;
+                    }
 
-                    search.value = fullName || it.email || String(it.id || '');
+                    const uniqueSearchValue =
+                        String(it.email || '').trim() ||
+                        String(it.id || '').trim();
 
-                    updateInlineClear(search.value);
-                    updateHint(search.value);
+                    if (!uniqueSearchValue) {
+                        return;
+                    }
+
+                    search.value =
+                        uniqueSearchValue;
+
+                    updateInlineClear(
+                        search.value
+                    );
+
+                    updateHint(
+                        search.value
+                    );
+
                     closePanel();
 
                     if (submitTimer) {
-                        window.clearTimeout(submitTimer);
+                        window.clearTimeout(
+                            submitTimer
+                        );
                     }
 
                     searchForm.requestSubmit();
                 }
 
                 function submitSearchNow() {
-                    const trimmed = String(search.value || '').trim();
+                    const trimmed =
+                        String(
+                            search.value || ''
+                        ).trim();
 
                     if (trimmed === lastSubmittedValue) {
                         return;
                     }
 
-                    lastSubmittedValue = trimmed;
+                    lastSubmittedValue =
+                        trimmed;
+
                     closePanel();
+
                     searchForm.requestSubmit();
                 }
 
                 function scheduleSearchSubmit() {
-                    const trimmed = String(search.value || '').trim();
+                    const trimmed =
+                        String(
+                            search.value || ''
+                        ).trim();
 
                     if (submitTimer) {
-                        window.clearTimeout(submitTimer);
+                        window.clearTimeout(
+                            submitTimer
+                        );
                     }
 
                     if (!trimmed) {
-                        submitTimer = window.setTimeout(function () {
-                            submitSearchNow();
-                        }, 150);
+                        submitTimer =
+                            window.setTimeout(
+                                function () {
+                                    submitSearchNow();
+                                },
+                                150
+                            );
 
                         return;
                     }
@@ -813,85 +1412,148 @@
                         return;
                     }
 
-                    submitTimer = window.setTimeout(function () {
-                        submitSearchNow();
-                    }, 450);
+                    submitTimer =
+                        window.setTimeout(
+                            function () {
+                                submitSearchNow();
+                            },
+                            450
+                        );
                 }
 
                 async function fetchSuggest(q) {
-                    const trimmed = String(q ?? '').trim();
+                    const trimmed =
+                        String(q ?? '').trim();
 
                     if (!thresholdReached(trimmed)) {
-                        if (inner) inner.innerHTML = '';
+                        if (inner) {
+                            inner.innerHTML = '';
+                        }
+
                         closePanel();
                         return;
                     }
 
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
                     if (fetchController) {
                         fetchController.abort();
                     }
 
-                    fetchController = new AbortController();
+                    fetchController =
+                        new AbortController();
 
-                    const currentFetch = ++fetchSequence;
+                    const currentFetch =
+                        ++fetchSequence;
 
                     try {
-                        const url = '/admin/membres/suggest?q=' + encodeURIComponent(trimmed);
+                        const url =
+                            '/admin/membres/suggest?q=' +
+                            encodeURIComponent(trimmed);
 
-                        const res = await fetch(url, {
-                            headers: { 'Accept': 'application/json' },
-                            signal: fetchController.signal
-                        });
+                        const res =
+                            await fetch(
+                                url,
+                                {
+                                    headers: {
+                                        'Accept': 'application/json'
+                                    },
+                                    signal: fetchController.signal
+                                }
+                            );
 
-                        if (!res.ok || currentFetch !== fetchSequence) {
+                        if (!res.ok
+                            || currentFetch !== fetchSequence) {
                             return;
                         }
 
-                        const data = await res.json();
+                        const data =
+                            await res.json();
 
-                        if (currentFetch !== fetchSequence) return;
+                        if (currentFetch !== fetchSequence) {
+                            return;
+                        }
 
-                        const list = Array.isArray(data) ? data : [];
+                        const list =
+                            Array.isArray(data)
+                                ? data
+                                : [];
 
-                        currentOptions = list.slice(0, 8).map(function (it) {
-                            return {
-                                id: it && it.id != null ? it.id : '',
-                                firstName: it && it.firstName != null ? it.firstName : '',
-                                lastName: it && it.lastName != null ? it.lastName : '',
-                                email: it && it.email != null ? it.email : '',
-                                role: it && it.role != null ? it.role : '',
-                                status: it && it.status != null ? it.status : ''
-                            };
-                        });
+                        currentOptions =
+                            list
+                                .slice(0, 8)
+                                .map(function (it) {
+                                    return {
+                                        id:
+                                            it && it.id != null
+                                                ? it.id
+                                                : '',
 
-                        renderOptions(currentOptions);
+                                        firstName:
+                                            it && it.firstName != null
+                                                ? it.firstName
+                                                : '',
+
+                                        lastName:
+                                            it && it.lastName != null
+                                                ? it.lastName
+                                                : '',
+
+                                        email:
+                                            it && it.email != null
+                                                ? it.email
+                                                : '',
+
+                                        role:
+                                            it && it.role != null
+                                                ? it.role
+                                                : ''
+                                    };
+                                });
+
+                        renderOptions(
+                            currentOptions
+                        );
 
                         if (currentOptions.length > 0) {
                             setActive(0);
                         }
 
                     } catch (e) {
-                        if (e && e.name === 'AbortError') return;
+                        if (e
+                            && e.name === 'AbortError') {
+                            return;
+                        }
 
-                        if (inner) inner.innerHTML = '';
+                        if (inner) {
+                            inner.innerHTML = '';
+                        }
+
                         closePanel();
                     }
                 }
 
                 function scheduleSuggest() {
-                    const q = search.value || '';
+                    const q =
+                        search.value || '';
 
                     updateHint(q);
 
                     if (suggestTimer) {
-                        window.clearTimeout(suggestTimer);
+                        window.clearTimeout(
+                            suggestTimer
+                        );
                     }
 
-                    suggestTimer = window.setTimeout(function () {
-                        fetchSuggest(q);
-                    }, 180);
+                    suggestTimer =
+                        window.setTimeout(
+                            function () {
+                                fetchSuggest(q);
+                            },
+                            180
+                        );
                 }
 
                 function clearSearchAndSubmit() {
@@ -902,22 +1564,31 @@
                     closePanel();
 
                     if (submitTimer) {
-                        window.clearTimeout(submitTimer);
+                        window.clearTimeout(
+                            submitTimer
+                        );
                     }
 
                     submitSearchNow();
                 }
 
                 function handleEscape(e) {
-                    const key = e && e.key ? e.key : '';
+                    const key =
+                        e && e.key
+                            ? e.key
+                            : '';
 
-                    if (key !== 'Escape' && key !== 'Esc') {
+                    if (key !== 'Escape'
+                        && key !== 'Esc') {
                         return false;
                     }
 
                     e.preventDefault();
 
-                    const currentValue = String(search.value || '').trim();
+                    const currentValue =
+                        String(
+                            search.value || ''
+                        ).trim();
 
                     if (currentValue) {
                         clearSearchAndSubmit();
@@ -930,7 +1601,8 @@
                 }
 
                 function submitFilterForm(sourceSelect) {
-                    if (!sourceSelect || !sourceSelect.form) {
+                    if (!sourceSelect
+                        || !sourceSelect.form) {
                         return;
                     }
 
@@ -938,191 +1610,533 @@
                 }
 
                 if (roleSelect) {
-                    roleSelect.addEventListener('change', function () {
-                        submitFilterForm(roleSelect);
-                    });
-                }
-
-                if (statusSelect) {
-                    statusSelect.addEventListener('change', function () {
-                        submitFilterForm(statusSelect);
-                    });
+                    roleSelect.addEventListener(
+                        'change',
+                        function () {
+                            submitFilterForm(
+                                roleSelect
+                            );
+                        }
+                    );
                 }
 
                 if (sortSelect) {
-                    sortSelect.addEventListener('change', function () {
-                        const opt =
-                            sortSelect.options && sortSelect.selectedIndex >= 0
-                                ? sortSelect.options[sortSelect.selectedIndex]
-                                : null;
+                    sortSelect.addEventListener(
+                        'change',
+                        function () {
+                            const opt =
+                                sortSelect.options
+                                && sortSelect.selectedIndex >= 0
+                                    ? sortSelect.options[
+                                        sortSelect.selectedIndex
+                                    ]
+                                    : null;
 
-                        const label =
-                            opt && opt.text
-                                ? opt.text
-                                : '';
+                            const label =
+                                opt && opt.text
+                                    ? opt.text
+                                    : '';
 
-                        if (sortAnnounce) {
-                            sortAnnounce.textContent =
-                                label
-                                    ? ('Tri appliqué : ' + label)
-                                    : 'Tri appliqué.';
+                            if (sortAnnounce) {
+                                sortAnnounce.textContent =
+                                    label
+                                        ? (
+                                            'Tri appliqué : ' +
+                                            label
+                                        )
+                                        : 'Tri appliqué.';
+                            }
+
+                            window.setTimeout(
+                                function () {
+                                    submitFilterForm(
+                                        sortSelect
+                                    );
+                                },
+                                120
+                            );
                         }
-
-                        window.setTimeout(function () {
-                            submitFilterForm(sortSelect);
-                        }, 120);
-                    });
+                    );
                 }
 
-                document.addEventListener('click', function (e) {
-                    if (!panel || panel.classList.contains('hidden')) return;
-
-                    const target = e.target;
-
-                    if (target === search || panel.contains(target)) return;
-
-                    closePanel();
-                });
-
-                window.addEventListener('resize', function () {
-                    closePanel();
-                });
-
-                window.addEventListener('scroll', function () {
-                    if (panel && !panel.classList.contains('hidden')) {
-                        closePanel();
-                    }
-                }, true);
-
-                document.addEventListener('keydown', function (e) {
-                    handleEscape(e);
-                }, true);
-
-                if (inner) {
-                    inner.addEventListener('mousedown', function (e) {
-                        const opt =
-                            e.target && e.target.closest
-                                ? e.target.closest('[role="option"][data-suggest-index]')
-                                : null;
-
-                        if (!opt) return;
-
-                        e.preventDefault();
-                    });
-
-                    inner.addEventListener('click', function (e) {
-                        const opt =
-                            e.target && e.target.closest
-                                ? e.target.closest('[role="option"][data-suggest-index]')
-                                : null;
-
-                        if (!opt) return;
-
-                        const idx = Number(opt.getAttribute('data-suggest-index'));
-
-                        if (!Number.isFinite(idx)) return;
-
-                        applySuggestionAt(idx);
-                    });
-                }
-
-                if (clearInline) {
-                    clearInline.addEventListener('click', function () {
-                        clearSearchAndSubmit();
-                    });
-                }
-
-                search.addEventListener('keydown', function (e) {
-                    const isOpen =
-                        panel && !panel.classList.contains('hidden');
-
-                    if (handleEscape(e)) return;
-
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-
-                        if (!isOpen) {
-                            scheduleSuggest();
-
-                            window.setTimeout(function () {
-                                if (panel && !panel.classList.contains('hidden')) {
-                                    setActive(0);
-                                }
-                            }, 200);
-
-                        } else {
-                            setActive(activeIndex + 1);
-                        }
-
-                        return;
-                    }
-
-                    if (e.key === 'ArrowUp') {
-                        if (isOpen) {
-                            e.preventDefault();
-                            setActive(activeIndex - 1);
-                        }
-
-                        return;
-                    }
-
-                    if (e.key === 'Enter') {
-                        if (isOpen && activeIndex >= 0) {
-                            e.preventDefault();
-                            applySuggestionAt(activeIndex);
+                document.addEventListener(
+                    'click',
+                    function (e) {
+                        if (!panel
+                            || panel.classList.contains('hidden')) {
                             return;
                         }
 
-                        if (submitTimer) {
-                            window.clearTimeout(submitTimer);
+                        const target =
+                            e.target;
+
+                        if (target === search
+                            || panel.contains(target)) {
+                            return;
                         }
 
-                        submitSearchNow();
-
-                        return;
-                    }
-
-                    if (e.key === 'Tab' && isOpen) {
                         closePanel();
                     }
-                });
+                );
 
-                search.addEventListener('input', function () {
-                    updateInlineClear(search.value);
-                    scheduleSuggest();
-                    scheduleSearchSubmit();
-                });
-
-                search.addEventListener('focus', function () {
-                    const q = (search.value || '').trim();
-
-                    if (q) {
-                        scheduleSuggest();
+                window.addEventListener(
+                    'resize',
+                    function () {
+                        closePanel();
                     }
-                });
+                );
 
-                updateHint(search.value || '');
-                updateInlineClear(search.value || '');
+                window.addEventListener(
+                    'scroll',
+                    function () {
+                        if (panel
+                            && !panel.classList.contains('hidden')) {
+                            closePanel();
+                        }
+                    },
+                    true
+                );
+
+                document.addEventListener(
+                    'keydown',
+                    function (e) {
+                        handleEscape(e);
+                    },
+                    true
+                );
+
+                if (inner) {
+
+                    inner.addEventListener(
+                        'mousedown',
+                        function (e) {
+                            const opt =
+                                e.target
+                                && e.target.closest
+                                    ? e.target.closest(
+                                        '[role="option"][data-suggest-index]'
+                                    )
+                                    : null;
+
+                            if (!opt) {
+                                return;
+                            }
+
+                            e.preventDefault();
+                        }
+                    );
+
+                    inner.addEventListener(
+                        'click',
+                        function (e) {
+                            const opt =
+                                e.target
+                                && e.target.closest
+                                    ? e.target.closest(
+                                        '[role="option"][data-suggest-index]'
+                                    )
+                                    : null;
+
+                            if (!opt) {
+                                return;
+                            }
+
+                            const idx =
+                                Number(
+                                    opt.getAttribute(
+                                        'data-suggest-index'
+                                    )
+                                );
+
+                            if (!Number.isFinite(idx)) {
+                                return;
+                            }
+
+                            applySuggestionAt(idx);
+                        }
+                    );
+                }
+
+                if (clearInline) {
+                    clearInline.addEventListener(
+                        'click',
+                        function () {
+                            clearSearchAndSubmit();
+                        }
+                    );
+                }
+
+                search.addEventListener(
+                    'keydown',
+                    function (e) {
+                        const isOpen =
+                            panel
+                            && !panel.classList.contains('hidden');
+
+                        if (handleEscape(e)) {
+                            return;
+                        }
+
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+
+                            if (!isOpen) {
+                                scheduleSuggest();
+
+                                window.setTimeout(
+                                    function () {
+                                        if (panel
+                                            && !panel.classList.contains('hidden')) {
+                                            setActive(0);
+                                        }
+                                    },
+                                    200
+                                );
+
+                            } else {
+                                setActive(
+                                    activeIndex + 1
+                                );
+                            }
+
+                            return;
+                        }
+
+                        if (e.key === 'ArrowUp') {
+                            if (isOpen) {
+                                e.preventDefault();
+
+                                setActive(
+                                    activeIndex - 1
+                                );
+                            }
+
+                            return;
+                        }
+
+                        if (e.key === 'Enter') {
+
+                            if (isOpen
+                                && activeIndex >= 0) {
+
+                                e.preventDefault();
+
+                                applySuggestionAt(
+                                    activeIndex
+                                );
+
+                                return;
+                            }
+
+                            if (submitTimer) {
+                                window.clearTimeout(
+                                    submitTimer
+                                );
+                            }
+
+                            submitSearchNow();
+
+                            return;
+                        }
+
+                        if (e.key === 'Tab'
+                            && isOpen) {
+                            closePanel();
+                        }
+                    }
+                );
+
+                search.addEventListener(
+                    'input',
+                    function () {
+                        updateInlineClear(
+                            search.value
+                        );
+
+                        scheduleSuggest();
+                        scheduleSearchSubmit();
+                    }
+                );
+
+                search.addEventListener(
+                    'focus',
+                    function () {
+                        const q =
+                            (search.value || '').trim();
+
+                        if (q) {
+                            scheduleSuggest();
+                        }
+                    }
+                );
+
+                updateHint(
+                    search.value || ''
+                );
+
+                updateInlineClear(
+                    search.value || ''
+                );
+
                 closePanel();
 
                 const initialQuery =
-                    String(search.value || '').trim();
+                    String(
+                        search.value || ''
+                    ).trim();
 
                 if (initialQuery) {
-                    window.setTimeout(function () {
-                        search.focus();
+                    window.setTimeout(
+                        function () {
+                            search.focus();
 
-                        const length = search.value.length;
+                            const length =
+                                search.value.length;
 
-                        search.setSelectionRange(length, length);
-                    }, 80);
+                            search.setSelectionRange(
+                                length,
+                                length
+                            );
+                        },
+                        80
+                    );
                 }
 
                 if (thresholdReached(initialQuery)) {
-                    window.setTimeout(function () {
-                        fetchSuggest(initialQuery);
-                    }, 120);
+                    window.setTimeout(
+                        function () {
+                            fetchSuggest(
+                                initialQuery
+                            );
+                        },
+                        120
+                    );
                 }
+
+            })();
+        </script>
+
+        <script>
+            (function () {
+                const copyButtons =
+                    Array.from(
+                        document.querySelectorAll(
+                            '[data-copy-email]'
+                        )
+                    );
+
+                const announce =
+                    document.getElementById(
+                        'copyEmailAnnounce'
+                    );
+
+                if (copyButtons.length === 0) {
+                    return;
+                }
+
+                function fallbackCopy(text) {
+                    const textarea =
+                        document.createElement(
+                            'textarea'
+                        );
+
+                    textarea.value = text;
+
+                    textarea.setAttribute(
+                        'readonly',
+                        ''
+                    );
+
+                    textarea.style.position =
+                        'fixed';
+
+                    textarea.style.left =
+                        '-9999px';
+
+                    textarea.style.top =
+                        '0';
+
+                    document.body.appendChild(
+                        textarea
+                    );
+
+                    textarea.focus();
+                    textarea.select();
+
+                    let copied = false;
+
+                    try {
+                        copied =
+                            document.execCommand(
+                                'copy'
+                            );
+                    } catch (e) {
+                        copied = false;
+                    }
+
+                    document.body.removeChild(
+                        textarea
+                    );
+
+                    return copied;
+                }
+
+                async function copyText(text) {
+                    if (
+                        navigator.clipboard
+                        && window.isSecureContext
+                    ) {
+                        try {
+                            await navigator.clipboard.writeText(
+                                text
+                            );
+
+                            return true;
+                        } catch (e) {
+                            return fallbackCopy(
+                                text
+                            );
+                        }
+                    }
+
+                    return fallbackCopy(
+                        text
+                    );
+                }
+
+                copyButtons.forEach(
+                    function (button) {
+
+                        button.addEventListener(
+                            'click',
+                            async function () {
+
+                                const email =
+                                    String(
+                                        button.getAttribute(
+                                            'data-copy-value'
+                                        ) || ''
+                                    ).trim();
+
+                                if (!email) {
+                                    return;
+                                }
+
+                                const copyIcon =
+                                    button.querySelector(
+                                        '[data-copy-icon]'
+                                    );
+
+                                const successIcon =
+                                    button.querySelector(
+                                        '[data-copy-success-icon]'
+                                    );
+
+                                const originalAriaLabel =
+                                    button.getAttribute(
+                                        'aria-label'
+                                    );
+
+                                const originalTitle =
+                                    button.getAttribute(
+                                        'title'
+                                    );
+
+                                button.disabled = true;
+
+                                const copied =
+                                    await copyText(
+                                        email
+                                    );
+
+                                if (copied) {
+
+                                    if (copyIcon) {
+                                        copyIcon.classList.add(
+                                            'hidden'
+                                        );
+                                    }
+
+                                    if (successIcon) {
+                                        successIcon.classList.remove(
+                                            'hidden'
+                                        );
+                                    }
+
+                                    button.setAttribute(
+                                        'aria-label',
+                                        'Adresse email copiée : ' + email
+                                    );
+
+                                    button.setAttribute(
+                                        'title',
+                                        'Copié'
+                                    );
+
+                                    if (announce) {
+                                        announce.textContent =
+                                            'Adresse email copiée : '
+                                            + email;
+                                    }
+
+                                } else {
+
+                                    button.setAttribute(
+                                        'aria-label',
+                                        'Impossible de copier l’adresse email'
+                                    );
+
+                                    button.setAttribute(
+                                        'title',
+                                        'Échec de la copie'
+                                    );
+
+                                    if (announce) {
+                                        announce.textContent =
+                                            'Impossible de copier l’adresse email.';
+                                    }
+                                }
+
+                                window.setTimeout(
+                                    function () {
+
+                                        if (copyIcon) {
+                                            copyIcon.classList.remove(
+                                                'hidden'
+                                            );
+                                        }
+
+                                        if (successIcon) {
+                                            successIcon.classList.add(
+                                                'hidden'
+                                            );
+                                        }
+
+                                        if (originalAriaLabel) {
+                                            button.setAttribute(
+                                                'aria-label',
+                                                originalAriaLabel
+                                            );
+                                        }
+
+                                        if (originalTitle) {
+                                            button.setAttribute(
+                                                'title',
+                                                originalTitle
+                                            );
+                                        }
+
+                                        button.disabled =
+                                            false;
+
+                                    },
+                                    1600
+                                );
+                            }
+                        );
+                    }
+                );
+
             })();
         </script>
 

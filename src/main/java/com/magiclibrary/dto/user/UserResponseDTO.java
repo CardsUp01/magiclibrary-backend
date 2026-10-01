@@ -8,8 +8,12 @@ import java.time.LocalDateTime;
  * DTO de réponse représentant un utilisateur.
  *
  * Cette classe regroupe les informations nécessaires à l'affichage
- * et à la consultation d'un membre dans les différentes interfaces
+ * et à la consultation d'un utilisateur dans les différentes interfaces
  * de l'application.
+ *
+ * Certaines informations peuvent être calculées à partir de données métier
+ * associées à l'utilisateur sans correspondre directement à une colonne
+ * de la table USER.
  */
 public class UserResponseDTO implements Serializable {
 
@@ -41,6 +45,21 @@ public class UserResponseDTO implements Serializable {
     private LocalDate associationJoinDateUser;
     private LocalDateTime lastLoginUser;
     private LocalDateTime updatedAtUser;
+
+    /*
+     * Nombre d'emprunts actuellement non clôturés pour cet utilisateur.
+     *
+     * Cette valeur est calculée côté service à partir des emprunts :
+     *
+     * - returnedLoan = false ;
+     * - deletedDateLoan = null.
+     *
+     * Elle inclut donc aussi bien les emprunts EN COURS que ceux EN RETARD.
+     *
+     * Ce champ est purement dérivé :
+     * il n'existe aucune colonne correspondante dans la table USER.
+     */
+    private long openLoanCount;
 
     public Integer getIdUser() {
         return idUser;
@@ -216,5 +235,13 @@ public class UserResponseDTO implements Serializable {
 
     public void setUpdatedAtUser(LocalDateTime updatedAtUser) {
         this.updatedAtUser = updatedAtUser;
+    }
+
+    public long getOpenLoanCount() {
+        return openLoanCount;
+    }
+
+    public void setOpenLoanCount(long openLoanCount) {
+        this.openLoanCount = openLoanCount;
     }
 }

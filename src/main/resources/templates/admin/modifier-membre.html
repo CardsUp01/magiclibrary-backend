@@ -6,7 +6,7 @@
 
         <!--
             Page d'administration dédiée à la modification d'un utilisateur.
-            Permet la mise à jour des informations principales du compte membre.
+            Permet la mise à jour des informations principales du compte utilisateur.
         -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
@@ -14,11 +14,13 @@
 
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 max-w-full sm:flex-1">
-                        <h1 class="break-words text-base font-semibold text-gray-900">Modifier un utilisateur</h1>
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Modifier un utilisateur
+                        </h1>
 
                         <div class="mt-2 max-w-full space-y-2">
                             <p class="break-words hyphens-auto text-sm text-gray-700">
-                                Mise à jour des informations principales d’un compte membre de l’application MagicLibrary.
+                                Mise à jour des informations principales d’un compte utilisateur de l’application MagicLibrary.
                             </p>
                         </div>
                     </div>
@@ -48,13 +50,16 @@
                     Erreur : une anomalie est survenue.
                 </div>
 
-                <!-- Formulaire de modification des informations principales du membre -->
+                <!-- Formulaire de modification des informations principales de l'utilisateur -->
                 <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
-                    <h2 class="text-base font-semibold text-gray-900">Formulaire</h2>
+
+                    <h2 class="text-base font-semibold text-gray-900">
+                        Formulaire
+                    </h2>
 
                     <div class="mt-2 space-y-2">
                         <p class="break-words hyphens-auto text-sm text-gray-700">
-                            Modifie les informations principales du compte membre. La civilité est contrôlée, le prénom est normalisé et le nom est enregistré en majuscules.
+                            Modifie les informations principales du compte utilisateur. La civilité est contrôlée, le prénom est normalisé et le nom est enregistré en majuscules.
                         </p>
                     </div>
 
@@ -62,6 +67,7 @@
                           th:object="${userUpdateDTO}"
                           method="post"
                           class="mt-6 max-w-full">
+
                         <div class="grid max-w-full grid-cols-1 gap-4 md:grid-cols-2">
 
                             <div class="min-w-0 max-w-full">
@@ -69,15 +75,27 @@
                                        class="mb-2 block text-sm font-medium text-gray-900">
                                     Civilité <span aria-hidden="true">*</span>
                                 </label>
+
                                 <select id="civility"
                                         th:field="*{civility}"
                                         required
                                         aria-required="true"
                                         class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                                    <option value="">Sélectionner une civilité</option>
-                                    <option value="M">M</option>
-                                    <option value="Mme">Mme</option>
+
+                                    <option value="">
+                                        Sélectionner une civilité
+                                    </option>
+
+                                    <option value="M">
+                                        M
+                                    </option>
+
+                                    <option value="Mme">
+                                        Mme
+                                    </option>
+
                                 </select>
+
                                 <p th:if="${#fields.hasErrors('civility')}"
                                    th:errors="*{civility}"
                                    class="mt-2 text-sm text-gray-900">
@@ -90,6 +108,7 @@
                                        class="mb-2 block text-sm font-medium text-gray-900">
                                     Prénom <span aria-hidden="true">*</span>
                                 </label>
+
                                 <input id="firstName"
                                        th:field="*{firstName}"
                                        type="text"
@@ -97,7 +116,8 @@
                                        required
                                        aria-required="true"
                                        class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                       placeholder="Prénom du membre" />
+                                       placeholder="Prénom de l’utilisateur" />
+
                                 <p th:if="${#fields.hasErrors('firstName')}"
                                    th:errors="*{firstName}"
                                    class="mt-2 text-sm text-gray-900">
@@ -110,6 +130,7 @@
                                        class="mb-2 block text-sm font-medium text-gray-900">
                                     Nom <span aria-hidden="true">*</span>
                                 </label>
+
                                 <input id="lastName"
                                        th:field="*{lastName}"
                                        type="text"
@@ -117,7 +138,8 @@
                                        required
                                        aria-required="true"
                                        class="h-11 w-full rounded-md bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
-                                       placeholder="Nom du membre" />
+                                       placeholder="Nom de l’utilisateur" />
+
                                 <p th:if="${#fields.hasErrors('lastName')}"
                                    th:errors="*{lastName}"
                                    class="mt-2 text-sm text-gray-900">
@@ -129,6 +151,7 @@
 
                         <!-- Actions du formulaire : annulation ou enregistrement des modifications -->
                         <div class="mt-6 flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+
                             <a th:href="@{/admin/membres/{id}(id=${user.idUser})}"
                                class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                 Annuler
@@ -138,8 +161,11 @@
                                     class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                 Enregistrer
                             </button>
+
                         </div>
+
                     </form>
+
                 </section>
 
             </div>

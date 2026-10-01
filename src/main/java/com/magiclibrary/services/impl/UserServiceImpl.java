@@ -4,13 +4,15 @@ import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.core.env.Environment;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import com.magiclibrary.entities.Role;
 import com.magiclibrary.entities.User;
 import com.magiclibrary.init.DemoScenarioCodes;
 import com.magiclibrary.mappers.UserMapper;
+import com.magiclibrary.repositories.interfaces.LoanRepository;
 import com.magiclibrary.repositories.interfaces.RoleRepository;
 import com.magiclibrary.repositories.interfaces.UserRepository;
 import com.magiclibrary.services.UserService;
@@ -54,6 +57,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final LoanRepository loanRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final Environment environment;
@@ -61,12 +65,14 @@ public class UserServiceImpl implements UserService {
     public UserServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
+            LoanRepository loanRepository,
             UserMapper userMapper,
             PasswordEncoder passwordEncoder,
             Environment environment
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.loanRepository = loanRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.environment = environment;
@@ -150,6 +156,109 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponseDTO(saved);
     }
 
+    // -------------------------------------------------------------------------
+    // ARCHIVAGE / RESTAURATION DES UTILISATEURS
+    // -------------------------------------------------------------------------
+
+    /**
+     * Archive logiquement un utilisateur en positionnant activeUser à false.
+     *
+     * Aucun utilisateur n'est supprimé physiquement : son identifiant,
+     * ses données personnelles autorisées, son rôle et son historique
+     * d'emprunts restent intégralement conservés.
+     *
+     * Garde-fous appliqués :
+     *      - l'utilisateur doit exister et être actif ;
+     *      - aucun emprunt non restitué ne doit subsister ;
+     *      - un administrateur ne peut pas s'archiver lui-même ;
+     *      - au moins un administrateur actif doit toujours subsister.
+     */
+    @Override
+    public UserResponseDTO archiveUser(
+            Integer userId,
+            String authenticatedAdminEmail
+    ) {
+        User user = userRepository.findByIdUserWithRole(userId)
+                .orElseThrow(() -> new IllegalStateException("Utilisateur introuvable."));
+
+        if (!Boolean.TRUE.equals(user.getActiveUser())) {
+            throw new IllegalStateException("Cet utilisateur est déjà archivé.");
+        }
+
+        /*
+         * Un compte possédant encore un emprunt non restitué ne doit jamais
+         * être archivé. Le contrôle est effectué directement en base afin
+         * d'éviter le chargement inutile de l'ensemble des emprunts.
+         */
+        if (loanRepository.existsByUserAndReturnedLoanFalseAndDeletedDateLoanIsNull(user)) {
+            throw new IllegalStateException(
+                    "Impossible d’archiver cet utilisateur : un emprunt est encore en cours ou en retard."
+            );
+        }
+
+        boolean targetIsAdmin = user.getRole() != null
+                && user.getRole().getLabelRole() != null
+                && "ADMIN".equalsIgnoreCase(user.getRole().getLabelRole());
+
+        if (targetIsAdmin) {
+            String normalizedAuthenticatedAdminEmail =
+                    authenticatedAdminEmail == null
+                            ? null
+                            : authenticatedAdminEmail.trim();
+
+            /*
+             * Protection explicite contre l'auto-archivage.
+             * L'administrateur actuellement connecté ne doit jamais pouvoir
+             * désactiver son propre compte depuis l'administration.
+             */
+            if (normalizedAuthenticatedAdminEmail != null
+                    && user.getEmailUser() != null
+                    && user.getEmailUser().equalsIgnoreCase(normalizedAuthenticatedAdminEmail)) {
+                throw new IllegalStateException(
+                        "Vous ne pouvez pas archiver votre propre compte administrateur."
+                );
+            }
+
+            /*
+             * Invariant de sécurité :
+             * MagicLibrary doit toujours conserver au moins un ADMIN actif.
+             */
+            if (userRepository.countActiveAdmins() <= 1) {
+                throw new IllegalStateException(
+                        "Impossible d’archiver le dernier administrateur actif."
+                );
+            }
+        }
+
+        user.setActiveUser(false);
+        user.setUpdatedAtUser(LocalDateTime.now());
+
+        User saved = userRepository.save(user);
+        return userMapper.toResponseDTO(saved);
+    }
+
+    /**
+     * Restaure un utilisateur archivé en réactivant exactement le même compte.
+     *
+     * Aucune nouvelle ligne USER n'est créée. L'identifiant technique,
+     * le rôle et tout l'historique associé sont conservés.
+     */
+    @Override
+    public UserResponseDTO restoreUser(Integer userId) {
+        User user = userRepository.findByIdUserWithRole(userId)
+                .orElseThrow(() -> new IllegalStateException("Utilisateur introuvable."));
+
+        if (Boolean.TRUE.equals(user.getActiveUser())) {
+            throw new IllegalStateException("Cet utilisateur est déjà actif.");
+        }
+
+        user.setActiveUser(true);
+        user.setUpdatedAtUser(LocalDateTime.now());
+
+        User saved = userRepository.save(user);
+        return userMapper.toResponseDTO(saved);
+    }
+
     @Override
     public List<UserResponseDTO> getAllUsers() {
         return userRepository.findAll()
@@ -159,13 +268,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserResponseDTO> getFilteredUsers(String search, String role, String status, String sort) {
+    public List<UserResponseDTO> getFilteredUsers(
+            String search,
+            String role,
+            String status,
+            String sort
+    ) {
         String normalizedSearch = normalize(search);
         String normalizedRole = normalize(role);
         Boolean normalizedStatus = parseStatus(status);
         String normalizedSort = normalizeSort(sort);
 
-        return userRepository.findAllWithFilters(normalizedSearch, normalizedRole, normalizedStatus)
+        return userRepository.findAllWithFilters(
+                        normalizedSearch,
+                        normalizedRole,
+                        normalizedStatus
+                )
                 .stream()
                 .map(userMapper::toResponseDTO)
                 .sorted(buildComparator(normalizedSort))
@@ -173,22 +291,125 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<UserResponseDTO> getFilteredUsersPaged(String search, String role, String status, String sort, int page, int size) {
+    public Page<UserResponseDTO> getFilteredUsersPaged(
+            String search,
+            String role,
+            String status,
+            String sort,
+            int page,
+            int size
+    ) {
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : DEFAULT_PAGE_SIZE;
 
-        List<UserResponseDTO> users = getFilteredUsers(search, role, status, sort);
+        List<UserResponseDTO> users =
+                getFilteredUsers(search, role, status, sort);
+
         int total = users.size();
         int fromIndex = Math.min(safePage * safeSize, total);
         int toIndex = Math.min(fromIndex + safeSize, total);
 
-        List<UserResponseDTO> content = users.subList(fromIndex, toIndex);
+        /*
+         * La pagination est déterminée avant le calcul des emprunts ouverts.
+         *
+         * Ainsi, la requête d'agrégation ne concerne que les utilisateurs
+         * réellement affichés sur la page courante et non la totalité des
+         * utilisateurs correspondant aux filtres.
+         */
+        List<UserResponseDTO> content =
+                users.subList(fromIndex, toIndex);
+
+        populateOpenLoanCounts(content);
 
         return new PageImpl<>(
                 content,
                 PageRequest.of(safePage, safeSize),
                 total
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // ENRICHISSEMENT DES DTO : EMPRUNTS OUVERTS
+    // -------------------------------------------------------------------------
+
+    /**
+     * Complète les DTO utilisateurs avec leur nombre d'emprunts actuellement
+     * ouverts.
+     *
+     * Une seule requête agrégée est exécutée pour l'ensemble des utilisateurs
+     * reçus, ce qui évite volontairement toute stratégie N+1.
+     *
+     * La définition d'un emprunt ouvert est identique à celle utilisée lors
+     * du contrôle d'archivage :
+     *
+     *      - returnedLoan = false ;
+     *      - deletedDateLoan IS NULL.
+     *
+     * Les emprunts EN COURS et EN RETARD sont donc comptabilisés.
+     * Les emprunts restitués ou supprimés logiquement sont exclus.
+     *
+     * Un utilisateur absent du résultat agrégé ne possède aucun emprunt ouvert
+     * et reçoit explicitement la valeur 0.
+     *
+     * @param users utilisateurs de la page courante à enrichir
+     */
+    private void populateOpenLoanCounts(
+            List<UserResponseDTO> users
+    ) {
+        if (users == null || users.isEmpty()) {
+            return;
+        }
+
+        List<Integer> userIds = users.stream()
+                .filter(user -> user != null && user.getIdUser() != null)
+                .map(UserResponseDTO::getIdUser)
+                .distinct()
+                .toList();
+
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        List<Object[]> rows =
+                loanRepository.countOpenLoansByUserIds(userIds);
+
+        Map<Integer, Long> countsByUserId =
+                new HashMap<>();
+
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2) {
+                continue;
+            }
+
+            if (!(row[0] instanceof Number userIdNumber)
+                    || !(row[1] instanceof Number countNumber)) {
+                continue;
+            }
+
+            Integer userId =
+                    userIdNumber.intValue();
+
+            long openLoanCount =
+                    countNumber.longValue();
+
+            countsByUserId.put(
+                    userId,
+                    openLoanCount
+            );
+        }
+
+        for (UserResponseDTO user : users) {
+            if (user == null || user.getIdUser() == null) {
+                continue;
+            }
+
+            user.setOpenLoanCount(
+                    countsByUserId.getOrDefault(
+                            user.getIdUser(),
+                            0L
+                    )
+            );
+        }
     }
 
     @Override
@@ -208,16 +429,19 @@ public class UserServiceImpl implements UserService {
         }
 
         List<String> tokens = tokenize(normalizedQuery);
+
         if (tokens.isEmpty()) {
             return List.of();
         }
 
-        List<UserResponseDTO> users = userRepository.findAll().stream()
+        List<UserResponseDTO> users = userRepository.findAll()
+                .stream()
                 .map(userMapper::toResponseDTO)
                 .sorted(buildComparator(SORT_NEWEST))
                 .toList();
 
-        List<UserResponseDTO> suggestions = new ArrayList<>(SUGGEST_LIMIT);
+        List<UserResponseDTO> suggestions =
+                new ArrayList<>(SUGGEST_LIMIT);
 
         for (UserResponseDTO user : users) {
             if (user == null || user.getIdUser() == null) {
@@ -227,8 +451,11 @@ public class UserServiceImpl implements UserService {
             String haystack = buildSuggestHaystack(user);
 
             boolean matchesAll = true;
+
             for (String token : tokens) {
-                String normalizedToken = normalizeTokenForMatch(token);
+                String normalizedToken =
+                        normalizeTokenForMatch(token);
+
                 if (normalizedToken.isEmpty()) {
                     continue;
                 }
@@ -266,12 +493,15 @@ public class UserServiceImpl implements UserService {
      *         et que {@code magiclibrary.demo.reset.enabled=true}
      */
     private boolean isRecruiterDemoResetEnabled() {
-        boolean demoProfileActive = environment.matchesProfiles("demo");
-        boolean resetEnabled = environment.getProperty(
-                "magiclibrary.demo.reset.enabled",
-                Boolean.class,
-                Boolean.FALSE
-        );
+        boolean demoProfileActive =
+                environment.matchesProfiles("demo");
+
+        boolean resetEnabled =
+                environment.getProperty(
+                        "magiclibrary.demo.reset.enabled",
+                        Boolean.class,
+                        Boolean.FALSE
+                );
 
         return demoProfileActive && resetEnabled;
     }
@@ -281,10 +511,21 @@ public class UserServiceImpl implements UserService {
             return;
         }
 
-        userCreateDTO.setCivility(normalizeCivility(userCreateDTO.getCivility()));
-        userCreateDTO.setFirstName(normalizeFirstName(userCreateDTO.getFirstName()));
-        userCreateDTO.setLastName(normalizeLastName(userCreateDTO.getLastName()));
-        userCreateDTO.setEmail(normalizeEmail(userCreateDTO.getEmail()));
+        userCreateDTO.setCivility(
+                normalizeCivility(userCreateDTO.getCivility())
+        );
+
+        userCreateDTO.setFirstName(
+                normalizeFirstName(userCreateDTO.getFirstName())
+        );
+
+        userCreateDTO.setLastName(
+                normalizeLastName(userCreateDTO.getLastName())
+        );
+
+        userCreateDTO.setEmail(
+                normalizeEmail(userCreateDTO.getEmail())
+        );
     }
 
     private void normalizeUpdateDTO(UserUpdateDTO userUpdateDTO) {
@@ -292,8 +533,13 @@ public class UserServiceImpl implements UserService {
             return;
         }
 
-        userUpdateDTO.setFirstName(normalizeFirstName(userUpdateDTO.getFirstName()));
-        userUpdateDTO.setLastName(normalizeLastName(userUpdateDTO.getLastName()));
+        userUpdateDTO.setFirstName(
+                normalizeFirstName(userUpdateDTO.getFirstName())
+        );
+
+        userUpdateDTO.setLastName(
+                normalizeLastName(userUpdateDTO.getLastName())
+        );
     }
 
     private String normalize(String value) {
@@ -302,12 +548,18 @@ public class UserServiceImpl implements UserService {
         }
 
         String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+
+        return trimmed.isEmpty()
+                ? null
+                : trimmed;
     }
 
     private String normalizeSpaces(String value) {
         String normalized = normalize(value);
-        return normalized == null ? null : normalized.replaceAll("\\s+", " ");
+
+        return normalized == null
+                ? null
+                : normalized.replaceAll("\\s+", " ");
     }
 
     private String stripAccents(String value) {
@@ -315,7 +567,10 @@ public class UserServiceImpl implements UserService {
             return null;
         }
 
-        return Normalizer.normalize(value, Normalizer.Form.NFD)
+        return Normalizer.normalize(
+                        value,
+                        Normalizer.Form.NFD
+                )
                 .replaceAll("\\p{M}+", "");
     }
 
@@ -326,7 +581,8 @@ public class UserServiceImpl implements UserService {
             return null;
         }
 
-        String simplified = stripAccents(normalized).toLowerCase(Locale.ROOT);
+        String simplified = stripAccents(normalized)
+                .toLowerCase(Locale.ROOT);
 
         return switch (simplified) {
             case "m" -> "M";
@@ -345,15 +601,17 @@ public class UserServiceImpl implements UserService {
         String[] parts = normalized.split(" ");
         StringBuilder builder = new StringBuilder();
 
-        for (int i = 0; i < parts.length; i++) {
-            String part = parts[i];
-
+        for (String part : parts) {
             if (part.isEmpty()) {
                 continue;
             }
 
-            String lower = part.toLowerCase(Locale.ROOT);
-            String formatted = Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+            String lower =
+                    part.toLowerCase(Locale.ROOT);
+
+            String formatted =
+                    Character.toUpperCase(lower.charAt(0))
+                            + lower.substring(1);
 
             if (builder.length() > 0) {
                 builder.append(' ');
@@ -392,7 +650,9 @@ public class UserServiceImpl implements UserService {
             return null;
         }
 
-        return switch (normalizedStatus.toUpperCase(Locale.ROOT)) {
+        return switch (
+                normalizedStatus.toUpperCase(Locale.ROOT)
+                ) {
             case "ACTIF", "ACTIVE", "TRUE" -> Boolean.TRUE;
             case "INACTIF", "INACTIVE", "FALSE" -> Boolean.FALSE;
             default -> null;
@@ -413,79 +673,151 @@ public class UserServiceImpl implements UserService {
                  SORT_STATUS_THEN_LAST_NAME,
                  SORT_EMAIL_ASC,
                  SORT_NEWEST -> normalizedSort;
+
             default -> SORT_ROLE_THEN_LAST_NAME;
         };
     }
 
     private Comparator<UserResponseDTO> buildComparator(String sort) {
-        Comparator<UserResponseDTO> byId = Comparator.comparing(
-                UserResponseDTO::getIdUser,
-                Comparator.nullsLast(Integer::compareTo)
-        );
+        Comparator<UserResponseDTO> byId =
+                Comparator.comparing(
+                        UserResponseDTO::getIdUser,
+                        Comparator.nullsLast(Integer::compareTo)
+                );
 
-        Comparator<UserResponseDTO> byLastName = Comparator.comparing(
-                user -> normalizeForSort(user.getLastName()),
-                Comparator.nullsLast(String::compareToIgnoreCase)
-        );
+        Comparator<UserResponseDTO> byLastName =
+                Comparator.comparing(
+                        user -> normalizeForSort(user.getLastName()),
+                        Comparator.nullsLast(
+                                String::compareToIgnoreCase
+                        )
+                );
 
-        Comparator<UserResponseDTO> byFirstName = Comparator.comparing(
-                user -> normalizeForSort(user.getFirstName()),
-                Comparator.nullsLast(String::compareToIgnoreCase)
-        );
+        Comparator<UserResponseDTO> byFirstName =
+                Comparator.comparing(
+                        user -> normalizeForSort(user.getFirstName()),
+                        Comparator.nullsLast(
+                                String::compareToIgnoreCase
+                        )
+                );
 
-        Comparator<UserResponseDTO> byEmail = Comparator.comparing(
-                user -> normalizeForSort(user.getEmail()),
-                Comparator.nullsLast(String::compareToIgnoreCase)
-        );
+        Comparator<UserResponseDTO> byEmail =
+                Comparator.comparing(
+                        user -> normalizeForSort(user.getEmail()),
+                        Comparator.nullsLast(
+                                String::compareToIgnoreCase
+                        )
+                );
 
-        Comparator<UserResponseDTO> byRole = Comparator.comparing(
-                user -> normalizeForSort(user.getRoleLabel()),
-                Comparator.nullsLast(String::compareToIgnoreCase)
-        );
+        Comparator<UserResponseDTO> byRole =
+                Comparator.comparing(
+                        user -> normalizeForSort(user.getRoleLabel()),
+                        Comparator.nullsLast(
+                                String::compareToIgnoreCase
+                        )
+                );
 
-        Comparator<UserResponseDTO> byStatus = Comparator.comparing(
-                user -> user.getActiveUser() == null ? null : (user.getActiveUser() ? 0 : 1),
-                Comparator.nullsLast(Integer::compareTo)
-        );
+        Comparator<UserResponseDTO> byStatus =
+                Comparator.comparing(
+                        user -> user.getActiveUser() == null
+                                ? null
+                                : (user.getActiveUser() ? 0 : 1),
+                        Comparator.nullsLast(Integer::compareTo)
+                );
 
-        Comparator<UserResponseDTO> bySignupDateDesc = Comparator.comparing(
-                UserResponseDTO::getSignupDateUser,
-                Comparator.nullsLast(LocalDateTime::compareTo)
-        ).reversed();
+        Comparator<UserResponseDTO> bySignupDateDesc =
+                Comparator.comparing(
+                        UserResponseDTO::getSignupDateUser,
+                        Comparator.nullsLast(
+                                LocalDateTime::compareTo
+                        )
+                ).reversed();
 
         return switch (sort) {
-            case SORT_LAST_NAME_THEN_FIRST_NAME -> byLastName.thenComparing(byFirstName).thenComparing(byId);
-            case SORT_FIRST_NAME_THEN_LAST_NAME -> byFirstName.thenComparing(byLastName).thenComparing(byId);
-            case SORT_EMAIL_ASC -> byEmail.thenComparing(byLastName).thenComparing(byFirstName).thenComparing(byId);
-            case SORT_STATUS_THEN_LAST_NAME -> byStatus.thenComparing(byLastName).thenComparing(byFirstName).thenComparing(byId);
-            case SORT_NEWEST -> bySignupDateDesc.thenComparing(byLastName).thenComparing(byFirstName).thenComparing(byId);
-            case SORT_ROLE_THEN_LAST_NAME -> byRole.thenComparing(byLastName).thenComparing(byFirstName).thenComparing(byId);
-            default -> byRole.thenComparing(byLastName).thenComparing(byFirstName).thenComparing(byId);
+            case SORT_LAST_NAME_THEN_FIRST_NAME ->
+                    byLastName
+                            .thenComparing(byFirstName)
+                            .thenComparing(byId);
+
+            case SORT_FIRST_NAME_THEN_LAST_NAME ->
+                    byFirstName
+                            .thenComparing(byLastName)
+                            .thenComparing(byId);
+
+            case SORT_EMAIL_ASC ->
+                    byEmail
+                            .thenComparing(byLastName)
+                            .thenComparing(byFirstName)
+                            .thenComparing(byId);
+
+            case SORT_STATUS_THEN_LAST_NAME ->
+                    byStatus
+                            .thenComparing(byLastName)
+                            .thenComparing(byFirstName)
+                            .thenComparing(byId);
+
+            case SORT_NEWEST ->
+                    bySignupDateDesc
+                            .thenComparing(byLastName)
+                            .thenComparing(byFirstName)
+                            .thenComparing(byId);
+
+            case SORT_ROLE_THEN_LAST_NAME ->
+                    byRole
+                            .thenComparing(byLastName)
+                            .thenComparing(byFirstName)
+                            .thenComparing(byId);
+
+            default ->
+                    byRole
+                            .thenComparing(byLastName)
+                            .thenComparing(byFirstName)
+                            .thenComparing(byId);
         };
     }
 
     private String normalizeForSort(String value) {
         String normalized = normalize(value);
-        return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+
+        return normalized == null
+                ? null
+                : normalized.toLowerCase(Locale.ROOT);
     }
 
-    private static String buildSuggestHaystack(UserResponseDTO user) {
-        String id = user.getIdUser() == null ? "" : normalizeNumericToken(String.valueOf(user.getIdUser()));
-        String firstName = normalizeText(user.getFirstName());
-        String lastName = normalizeText(user.getLastName());
-        String email = normalizeText(user.getEmail());
-        String role = normalizeText(user.getRoleLabel());
-        String status = Boolean.TRUE.equals(user.getActiveUser())
-                ? "actif active actifs actives active true"
-                : "inactif inactive inactifs inactives inactive false";
+    private static String buildSuggestHaystack(
+            UserResponseDTO user
+    ) {
+        String id =
+                user.getIdUser() == null
+                        ? ""
+                        : normalizeNumericToken(
+                        String.valueOf(user.getIdUser())
+                );
+
+        String firstName =
+                normalizeText(user.getFirstName());
+
+        String lastName =
+                normalizeText(user.getLastName());
+
+        String email =
+                normalizeText(user.getEmail());
+
+        String role =
+                normalizeText(user.getRoleLabel());
+
+        String status =
+                Boolean.TRUE.equals(user.getActiveUser())
+                        ? "actif active actifs actives active true"
+                        : "inactif inactive inactifs inactives inactive false";
 
         return (
-                id + " " +
-                        firstName + " " +
-                        lastName + " " +
-                        email + " " +
-                        role + " " +
-                        status
+                id + " "
+                        + firstName + " "
+                        + lastName + " "
+                        + email + " "
+                        + role + " "
+                        + status
         ).trim();
     }
 
@@ -494,10 +826,17 @@ public class UserServiceImpl implements UserService {
             return "";
         }
 
-        String lower = value.toLowerCase(Locale.ROOT).trim();
+        String lower =
+                value.toLowerCase(Locale.ROOT).trim();
 
-        String normalized = Normalizer.normalize(lower, Normalizer.Form.NFD);
-        normalized = normalized.replaceAll("\\p{M}+", "");
+        String normalized =
+                Normalizer.normalize(
+                        lower,
+                        Normalizer.Form.NFD
+                );
+
+        normalized =
+                normalized.replaceAll("\\p{M}+", "");
 
         normalized = normalized
                 .replace('\'', ' ')
@@ -521,7 +860,8 @@ public class UserServiceImpl implements UserService {
                 .replace('!', ' ')
                 .replace('?', ' ');
 
-        normalized = normalized.replaceAll("\\s+", " ").trim();
+        normalized =
+                normalized.replaceAll("\\s+", " ").trim();
 
         return normalized;
     }
@@ -532,12 +872,14 @@ public class UserServiceImpl implements UserService {
         }
 
         String cleaned = normalizeText(raw);
+
         if (cleaned.isEmpty()) {
             return List.of();
         }
 
         String[] parts = cleaned.split(" ");
-        List<String> tokens = new ArrayList<>(parts.length);
+        List<String> tokens =
+                new ArrayList<>(parts.length);
 
         for (String part : parts) {
             if (part == null) {
@@ -545,6 +887,7 @@ public class UserServiceImpl implements UserService {
             }
 
             String token = part.trim();
+
             if (token.isEmpty()) {
                 continue;
             }
@@ -554,7 +897,9 @@ public class UserServiceImpl implements UserService {
             }
 
             if (isNumeric(token)) {
-                tokens.add(normalizeNumericToken(token));
+                tokens.add(
+                        normalizeNumericToken(token)
+                );
                 continue;
             }
 
@@ -574,28 +919,38 @@ public class UserServiceImpl implements UserService {
         }
 
         String trimmed = query.trim();
+
         if (trimmed.isEmpty()) {
             return "";
         }
 
         if (trimmed.length() > MAX_QUERY_LENGTH) {
-            return trimmed.substring(0, MAX_QUERY_LENGTH).trim();
+            return trimmed
+                    .substring(0, MAX_QUERY_LENGTH)
+                    .trim();
         }
 
         return trimmed;
     }
 
-    private static boolean thresholdReached(String query) {
+    private static boolean thresholdReached(
+            String query
+    ) {
         if (query == null || query.isEmpty()) {
             return false;
         }
 
-        return isNumeric(query) ? query.length() >= 1 : query.length() >= 2;
+        return isNumeric(query)
+                ? query.length() >= 1
+                : query.length() >= 2;
     }
 
-    private static boolean containsForbiddenChars(String query) {
+    private static boolean containsForbiddenChars(
+            String query
+    ) {
         for (int i = 0; i < query.length(); i++) {
             char c = query.charAt(i);
+
             if (c == '/' || c == '\\') {
                 return true;
             }
@@ -611,6 +966,7 @@ public class UserServiceImpl implements UserService {
 
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
+
             if (c < '0' || c > '9') {
                 return false;
             }
@@ -619,26 +975,36 @@ public class UserServiceImpl implements UserService {
         return true;
     }
 
-    private static String normalizeNumericToken(String value) {
+    private static String normalizeNumericToken(
+            String value
+    ) {
         if (value == null || value.isBlank()) {
             return "";
         }
 
         String trimmed = value.trim();
+
         if (!isNumeric(trimmed)) {
             return trimmed;
         }
 
-        String normalized = trimmed.replaceFirst("^0+", "");
-        return normalized.isEmpty() ? "0" : normalized;
+        String normalized =
+                trimmed.replaceFirst("^0+", "");
+
+        return normalized.isEmpty()
+                ? "0"
+                : normalized;
     }
 
-    private static String normalizeTokenForMatch(String token) {
+    private static String normalizeTokenForMatch(
+            String token
+    ) {
         if (token == null || token.isBlank()) {
             return "";
         }
 
         String trimmed = token.trim();
+
         if (isNumeric(trimmed)) {
             return normalizeNumericToken(trimmed);
         }
