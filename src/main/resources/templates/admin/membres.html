@@ -334,16 +334,42 @@
 
                                         </div>
 
-                                        <!-- Information métier principale disponible sur le compte -->
-                                        <div class="mt-6">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                                Cotisation
+                                        <!--
+                                            Adresse email affichée directement dans la carte.
+                                            Elle reste volontairement non cliquable à ce stade :
+                                            une éventuelle action mailto fera l'objet d'une
+                                            amélioration ergonomique séparée.
+                                        -->
+                                        <p class="mt-3 break-all text-sm text-gray-700"
+                                           th:text="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))
+                                               ? user.email
+                                               : 'Email non renseigné'}">
+                                            jean.dupont@email.fr
+                                        </p>
+
+                                        <!-- Informations métier utiles à la consultation rapide -->
+                                        <div class="mt-5 space-y-2 text-sm">
+
+                                            <p class="break-words text-gray-700">
+                                                <span class="font-medium text-gray-900">
+                                                    Cotisation :
+                                                </span>
+
+                                                <span th:text="${user.subscriptionUser ? 'À jour' : 'Non à jour'}">
+                                                    À jour
+                                                </span>
                                             </p>
 
-                                            <p class="mt-2 text-sm font-medium text-gray-900"
-                                               th:text="${user.subscriptionUser ? 'À jour' : 'Non à jour'}">
-                                                À jour
+                                            <p class="break-words text-gray-700">
+                                                <span class="font-medium text-gray-900">
+                                                    ID utilisateur :
+                                                </span>
+
+                                                <span th:text="${user.idUser}">
+                                                    1
+                                                </span>
                                             </p>
+
                                         </div>
 
                                     </div>
@@ -421,21 +447,49 @@
                                     </div>
 
                                     <!--
-                                        Information métier conservée dans la carte :
-                                        état de la cotisation.
+                                        L'email est affiché directement dans la carte afin
+                                        d'identifier rapidement le compte sans devoir ouvrir
+                                        la fiche détaillée.
 
-                                        Les informations secondaires ou techniques
-                                        restent disponibles dans la fiche détaillée.
+                                        Il reste non cliquable pour le moment.
                                     -->
-                                    <div class="mt-6 min-h-[4.5rem]">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                            Cotisation
+                                    <p class="mt-3 break-all text-sm text-gray-700"
+                                       th:text="${user.email != null && !#strings.isEmpty(#strings.trim(user.email))
+                                           ? user.email
+                                           : 'Email non renseigné'}">
+                                        jean.dupont@email.fr
+                                    </p>
+
+                                    <!--
+                                        Informations métier synthétiques.
+
+                                        Le format en lignes compactes évite l'ancien bloc
+                                        vertical "COTISATION / À jour" et rapproche la
+                                        structure des cartes Membres de celles utilisées
+                                        dans les écrans Bibliothèque et Emprunts.
+                                    -->
+                                    <div class="mt-5 space-y-2 text-sm">
+
+                                        <p class="break-words text-gray-700">
+                                            <span class="font-medium text-gray-900">
+                                                Cotisation :
+                                            </span>
+
+                                            <span th:text="${user.subscriptionUser ? 'À jour' : 'Non à jour'}">
+                                                À jour
+                                            </span>
                                         </p>
 
-                                        <p class="mt-2 text-sm font-medium text-gray-900"
-                                           th:text="${user.subscriptionUser ? 'À jour' : 'Non à jour'}">
-                                            À jour
+                                        <p class="break-words text-gray-700">
+                                            <span class="font-medium text-gray-900">
+                                                ID utilisateur :
+                                            </span>
+
+                                            <span th:text="${user.idUser}">
+                                                1
+                                            </span>
                                         </p>
+
                                     </div>
 
                                     <!-- Actions alignées au bas de toutes les cartes -->
