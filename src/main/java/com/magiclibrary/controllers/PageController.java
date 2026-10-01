@@ -59,6 +59,7 @@ public class PageController {
      */
     private static final int LOANS_PAGE_SIZE = 9;
     private static final int NOTIFICATIONS_PAGE_SIZE = 9;
+    private static final int NOTIFICATIONS_FETCH_BATCH_SIZE = 200;
     private static final int NOTIFICATIONS_SUGGEST_LIMIT = 8;
     private static final int CONTACT_MESSAGES_PAGE_SIZE = 9;
     private static final int CONTACT_MESSAGES_SUGGEST_LIMIT = 8;
@@ -436,11 +437,24 @@ public class PageController {
         return "mes-emprunts";
     }
 
+    // =========================================================================
+    // MES NOTIFICATIONS
+    // =========================================================================
+
     /*
      * Affiche les notifications du membre connecté.
+     *
+     * Deux boîtes sont disponibles côté membre :
+     *
+     * - received : notifications reçues et non archivées ;
+     * - archived : notifications archivées par le membre.
+     *
+     * Contrairement à l'administration, aucun historique "Envoyées"
+     * n'est exposé ici car les membres ne créent pas de notifications.
      */
     @GetMapping("/mes-notifications")
     public String myNotificationsPage(
+            @RequestParam(name = "box", required = false, defaultValue = "received") String box,
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "9") int size,
@@ -454,15 +468,75 @@ public class PageController {
 
         int safePage = Math.max(page, 0);
         int safeSize = size > 0 ? size : NOTIFICATIONS_PAGE_SIZE;
+        String resolvedQuery = q == null ? "" : q.trim();
 
-        Page<NotificationResponseDTO> notificationsPage =
-                notificationService.getNotificationsForUserPaged(user.getIdUser(), safePage, safeSize);
+        MemberNotificationBox resolvedBox =
+                MemberNotificationBox.fromRequestValue(box);
 
-        List<NotificationResponseDTO> notifications = notificationsPage.getContent();
-        boolean paginationEnabled = notificationsPage.getTotalElements() > NOTIFICATIONS_PAGE_SIZE;
+        Page<NotificationResponseDTO> notificationsPage;
+
+        /*
+         * Sans recherche, la pagination est directement déléguée à la couche
+         * métier et donc à la base de données.
+         */
+        if (resolvedQuery.isEmpty()) {
+            notificationsPage = loadMyNotificationsPage(
+                    resolvedBox,
+                    user.getIdUser(),
+                    safePage,
+                    safeSize
+            );
+        } else {
+            /*
+             * Pour conserver la recherche multicritère actuelle, toutes les
+             * notifications de la boîte active sont chargées puis filtrées.
+             *
+             * Le cloisonnement reste strict : une recherche dans Reçues ne
+             * consulte jamais les archives, et inversement.
+             */
+            List<NotificationResponseDTO> filteredNotifications =
+                    fetchMyNotificationsForBox(
+                            resolvedBox,
+                            user.getIdUser()
+                    ).stream()
+                            .filter(notification ->
+                                    matchesNotificationSuggestion(
+                                            notification,
+                                            normalizeSearchValue(resolvedQuery)
+                                    )
+                            )
+                            .toList();
+
+            notificationsPage = toNotificationPage(
+                    filteredNotifications,
+                    safePage,
+                    safeSize
+            );
+        }
+
+        List<NotificationResponseDTO> notifications =
+                notificationsPage.getContent();
+
+        boolean paginationEnabled =
+                notificationsPage.getTotalElements() > safeSize;
 
         model.addAttribute("notifications", notifications);
-        model.addAttribute("q", q);
+        model.addAttribute("q", resolvedQuery);
+
+        /*
+         * État de navigation utilisé par mes-notifications.html.
+         */
+        model.addAttribute("box", resolvedBox.getRequestValue());
+        model.addAttribute("boxLabel", resolvedBox.getLabel());
+        model.addAttribute(
+                "isReceivedBox",
+                resolvedBox == MemberNotificationBox.RECEIVED
+        );
+        model.addAttribute(
+                "isArchivedBox",
+                resolvedBox == MemberNotificationBox.ARCHIVED
+        );
+
         model.addAttribute("pageTitle", "Mes notifications");
         model.addAttribute("activePage", "mes-notifications");
 
@@ -482,10 +556,16 @@ public class PageController {
     /*
      * Fournit les suggestions pour l'autocomplétion des notifications
      * du membre connecté.
+     *
+     * Les suggestions sont limitées à la boîte active.
      */
-    @GetMapping(value = "/mes-notifications/suggest", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(
+            value = "/mes-notifications/suggest",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @ResponseBody
     public ResponseEntity<List<MyNotificationSuggestResponse>> suggestMyNotifications(
+            @RequestParam(name = "box", required = false, defaultValue = "received") String box,
             @RequestParam(name = "q", required = false) String q,
             Authentication authentication
     ) {
@@ -500,22 +580,81 @@ public class PageController {
             return ResponseEntity.ok(List.of());
         }
 
-        List<MyNotificationSuggestResponse> suggestions = notificationService.getNotificationsForUser(user.getIdUser())
-                .stream()
-                .filter(notification -> matchesNotificationSuggestion(notification, normalizedQuery))
-                .limit(NOTIFICATIONS_SUGGEST_LIMIT)
-                .map(this::toMyNotificationSuggestResponse)
-                .toList();
+        MemberNotificationBox resolvedBox =
+                MemberNotificationBox.fromRequestValue(box);
+
+        List<MyNotificationSuggestResponse> suggestions =
+                fetchMyNotificationsForBox(
+                        resolvedBox,
+                        user.getIdUser()
+                ).stream()
+                        .filter(notification ->
+                                matchesNotificationSuggestion(
+                                        notification,
+                                        normalizedQuery
+                                )
+                        )
+                        .limit(NOTIFICATIONS_SUGGEST_LIMIT)
+                        .map(this::toMyNotificationSuggestResponse)
+                        .toList();
 
         return ResponseEntity.ok(suggestions);
     }
 
     /*
-     * Marque une notification comme lue depuis la page membre
-     * puis redirige vers la liste des notifications.
+     * Marque une notification comme lue depuis la page membre.
+     *
+     * Cette action reste possible depuis Reçues comme depuis Archivées :
+     * l'archivage est indépendant du statut de lecture.
      */
     @PostMapping("/mes-notifications/{id}/read")
     public String markNotificationAsReadFromPage(
+            @PathVariable("id") Integer idNotification,
+            @RequestParam(name = "box", required = false, defaultValue = "received") String box,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "9") int size,
+            @RequestParam(name = "q", required = false) String q,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmailUser(email)
+                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+
+        MemberNotificationBox resolvedBox =
+                MemberNotificationBox.fromRequestValue(box);
+
+        notificationService.markAsRead(
+                idNotification,
+                user.getIdUser()
+        );
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Notification marquée comme lue."
+        );
+
+        addMyNotificationNavigationAttributes(
+                redirectAttributes,
+                resolvedBox,
+                page,
+                size,
+                q
+        );
+
+        return "redirect:/mes-notifications";
+    }
+
+    /*
+     * Archive logiquement une notification reçue par le membre.
+     *
+     * Aucune donnée n'est supprimée :
+     * la notification quitte simplement Reçues et devient visible
+     * dans Archivées.
+     */
+    @PostMapping("/mes-notifications/{id}/archive")
+    public String archiveMyNotification(
             @PathVariable("id") Integer idNotification,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "9") int size,
@@ -528,21 +667,284 @@ public class PageController {
         User user = userRepository.findByEmailUser(email)
                 .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
 
-        notificationService.markAsRead(idNotification, user.getIdUser());
+        notificationService.archiveNotification(
+                idNotification,
+                user.getIdUser()
+        );
 
-        redirectAttributes.addFlashAttribute("successMessage", "Notification marquée comme lue.");
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Notification archivée."
+        );
 
-        StringBuilder redirectUrl = new StringBuilder("redirect:/mes-notifications?page=")
-                .append(Math.max(page, 0))
-                .append("&size=")
-                .append(size > 0 ? size : NOTIFICATIONS_PAGE_SIZE);
+        /*
+         * Après archivage, on reste dans Reçues.
+         * La notification concernée n'y apparaîtra simplement plus.
+         */
+        addMyNotificationNavigationAttributes(
+                redirectAttributes,
+                MemberNotificationBox.RECEIVED,
+                page,
+                size,
+                q
+        );
 
-        if (q != null && !q.trim().isEmpty()) {
-            redirectAttributes.addAttribute("q", q.trim());
-            return "redirect:/mes-notifications?page=" + Math.max(page, 0) + "&size=" + (size > 0 ? size : NOTIFICATIONS_PAGE_SIZE);
+        return "redirect:/mes-notifications";
+    }
+
+    /*
+     * Restaure une notification archivée par le membre.
+     *
+     * La notification quitte Archivées et retourne dans Reçues.
+     */
+    @PostMapping("/mes-notifications/{id}/restore")
+    public String restoreMyNotification(
+            @PathVariable("id") Integer idNotification,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "9") int size,
+            @RequestParam(name = "q", required = false) String q,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmailUser(email)
+                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable."));
+
+        notificationService.restoreNotification(
+                idNotification,
+                user.getIdUser()
+        );
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Notification restaurée dans les notifications reçues."
+        );
+
+        /*
+         * Après restauration, on reste dans Archivées.
+         * La notification concernée n'y apparaîtra simplement plus.
+         */
+        addMyNotificationNavigationAttributes(
+                redirectAttributes,
+                MemberNotificationBox.ARCHIVED,
+                page,
+                size,
+                q
+        );
+
+        return "redirect:/mes-notifications";
+    }
+
+    /*
+     * Charge une page de notifications correspondant à la boîte membre active.
+     */
+    private Page<NotificationResponseDTO> loadMyNotificationsPage(
+            MemberNotificationBox box,
+            Integer idUser,
+            int page,
+            int size
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size > 0
+                ? size
+                : NOTIFICATIONS_PAGE_SIZE;
+
+        return switch (box) {
+            case RECEIVED ->
+                    notificationService.getReceivedNotificationsForUserPaged(
+                            idUser,
+                            safePage,
+                            safeSize
+                    );
+
+            case ARCHIVED ->
+                    notificationService.getArchivedNotificationsForUserPaged(
+                            idUser,
+                            safePage,
+                            safeSize
+                    );
+        };
+    }
+
+    /*
+     * Charge l'ensemble des notifications accessibles dans la boîte membre
+     * active.
+     *
+     * Cette méthode est utilisée uniquement par la recherche et les
+     * suggestions.
+     */
+    private List<NotificationResponseDTO> fetchMyNotificationsForBox(
+            MemberNotificationBox box,
+            Integer idUser
+    ) {
+        List<NotificationResponseDTO> notifications =
+                new ArrayList<>();
+
+        int page = 0;
+        Page<NotificationResponseDTO> notificationsPage;
+
+        do {
+            notificationsPage = loadMyNotificationsPage(
+                    box,
+                    idUser,
+                    page,
+                    NOTIFICATIONS_FETCH_BATCH_SIZE
+            );
+
+            notifications.addAll(
+                    notificationsPage.getContent()
+            );
+
+            page++;
+
+        } while (notificationsPage.hasNext());
+
+        return notifications;
+    }
+
+    /*
+     * Transforme une liste filtrée de notifications en page Spring.
+     */
+    private Page<NotificationResponseDTO> toNotificationPage(
+            List<NotificationResponseDTO> notifications,
+            int page,
+            int size
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = size > 0
+                ? size
+                : NOTIFICATIONS_PAGE_SIZE;
+
+        int start = safePage * safeSize;
+
+        if (start >= notifications.size()) {
+            return new PageImpl<>(
+                    List.of(),
+                    PageRequest.of(safePage, safeSize),
+                    notifications.size()
+            );
         }
 
-        return redirectUrl.toString();
+        int end = Math.min(
+                start + safeSize,
+                notifications.size()
+        );
+
+        List<NotificationResponseDTO> content =
+                notifications.subList(
+                        start,
+                        end
+                );
+
+        return new PageImpl<>(
+                content,
+                PageRequest.of(safePage, safeSize),
+                notifications.size()
+        );
+    }
+
+    /*
+     * Préserve l'état de navigation de la page Mes notifications après
+     * une action POST.
+     */
+    private void addMyNotificationNavigationAttributes(
+            RedirectAttributes redirectAttributes,
+            MemberNotificationBox box,
+            int page,
+            int size,
+            String q
+    ) {
+        redirectAttributes.addAttribute(
+                "box",
+                box.getRequestValue()
+        );
+
+        redirectAttributes.addAttribute(
+                "page",
+                Math.max(page, 0)
+        );
+
+        redirectAttributes.addAttribute(
+                "size",
+                size > 0
+                        ? size
+                        : NOTIFICATIONS_PAGE_SIZE
+        );
+
+        if (q != null
+                && !q.trim().isEmpty()) {
+
+            redirectAttributes.addAttribute(
+                    "q",
+                    q.trim()
+            );
+        }
+    }
+
+    /*
+     * Boîtes accessibles depuis l'espace notifications du membre.
+     *
+     * Aucun état SENT n'existe ici volontairement :
+     * les membres sont destinataires des notifications mais n'envoient
+     * pas de notifications administratives.
+     */
+    private enum MemberNotificationBox {
+
+        RECEIVED(
+                "received",
+                "Reçues"
+        ),
+
+        ARCHIVED(
+                "archived",
+                "Archivées"
+        );
+
+        private final String requestValue;
+        private final String label;
+
+        MemberNotificationBox(
+                String requestValue,
+                String label
+        ) {
+            this.requestValue = requestValue;
+            this.label = label;
+        }
+
+        public String getRequestValue() {
+            return requestValue;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        /*
+         * Résout la valeur reçue depuis l'URL.
+         *
+         * Toute valeur inconnue revient défensivement vers Reçues.
+         */
+        public static MemberNotificationBox fromRequestValue(
+                String value
+        ) {
+            if (value == null
+                    || value.isBlank()) {
+
+                return RECEIVED;
+            }
+
+            String normalized =
+                    value.trim();
+
+            for (MemberNotificationBox box : MemberNotificationBox.values()) {
+                if (box.requestValue.equalsIgnoreCase(normalized)) {
+                    return box;
+                }
+            }
+
+            return RECEIVED;
+        }
     }
 
     /*
@@ -630,26 +1032,70 @@ public class PageController {
 
     /*
      * Vérifie si une notification correspond à la recherche normalisée
-     * utilisée par l'autocomplétion.
+     * utilisée par l'autocomplétion et par la recherche de la page membre.
      */
-    private boolean matchesNotificationSuggestion(NotificationResponseDTO notification, String normalizedQuery) {
+    private boolean matchesNotificationSuggestion(
+            NotificationResponseDTO notification,
+            String normalizedQuery
+    ) {
         String haystack = normalizeSearchValue(
-                String.join(" ",
+                String.join(
+                        " ",
                         safeValue(notification.getIdNotification()),
                         safeValue(notification.getTitleNotification()),
                         safeValue(notification.getMessageNotification()),
                         safeValue(notification.getTargetLinkNotification()),
-                        notification.getCategoryNotification() != null ? notification.getCategoryNotification().name() : "",
-                        notification.getTypeNotification() != null ? notification.getTypeNotification().name() : "",
+
+                        notification.getCategoryNotification() != null
+                                ? notification.getCategoryNotification().name()
+                                : "",
+
+                        notification.getTypeNotification() != null
+                                ? notification.getTypeNotification().name()
+                                : "",
+
                         safeValue(notification.getPriorityNotification()),
-                        Boolean.TRUE.equals(notification.getReadNotification()) ? "lue lu read" : "non lue non lu unread",
+
+                        /*
+                         * L'identité éventuelle de l'expéditeur humain peut être
+                         * recherchée par le membre.
+                         */
+                        safeValue(notification.getSenderFirstName()),
+                        safeValue(notification.getSenderLastName()),
+                        safeValue(notification.getSenderEmail()),
+
+                        Boolean.TRUE.equals(notification.getReadNotification())
+                                ? "lue lu read"
+                                : "non lue non lu unread",
+
+                        Boolean.TRUE.equals(notification.getArchivedByRecipient())
+                                ? "archive archivee archivée archived"
+                                : "non archive non archivee non archivée",
+
                         notification.getDateNotification() != null
-                                ? notification.getDateNotification().format(NOTIFICATION_DATE_DISPLAY_FORMATTER)
+                                ? notification
+                                .getDateNotification()
+                                .format(NOTIFICATION_DATE_DISPLAY_FORMATTER)
+                                : "",
+
+                        notification.getDateNotification() != null
+                                ? notification
+                                .getDateNotification()
+                                .toLocalDate()
+                                .toString()
+                                : "",
+
+                        notification.getArchivedAtByRecipient() != null
+                                ? notification
+                                .getArchivedAtByRecipient()
+                                .format(NOTIFICATION_DATE_DISPLAY_FORMATTER)
                                 : ""
                 )
         );
 
-        return haystack.contains(normalizedQuery);
+        return haystack.contains(
+                normalizedQuery
+        );
     }
 
     private boolean matchesMyContactMessageSearch(ContactResponseDTO contact, String query) {

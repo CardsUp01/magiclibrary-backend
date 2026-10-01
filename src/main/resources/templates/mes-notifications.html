@@ -6,66 +6,186 @@
               th:with="notificationsCount=${notifications != null ? #lists.size(notifications) : 0},
                        isSingle=${notifications != null && #lists.size(notifications) == 1},
                        hasQuery=${q != null && !#strings.isEmpty(#strings.trim(q))},
-                       unreadCount=${notifications != null ? #aggregates.sum(notifications.![readNotification == null || !readNotification ? 1 : 0]) : 0}">
+                       unreadCount=${notifications != null ? #aggregates.sum(notifications.![readNotification == null || !readNotification ? 1 : 0]) : 0},
+                       resultsDisplayCount=${(hasQuery or paginationEnabled) ? totalElements : notificationsCount}">
 
         <!--
-            Page de consultation des notifications personnelles.
-            Permet au membre de rechercher, consulter et marquer comme lues
-            les notifications associées à son espace MagicLibrary.
+            =========================================================================
+            MES NOTIFICATIONS
+            =========================================================================
+
+            Deux boîtes sont proposées au membre :
+
+            - Reçues :
+              notifications personnelles non archivées ;
+
+            - Archivées :
+              notifications archivées logiquement par le membre.
+
+            L'archivage ne supprime aucune donnée.
+
+            Le statut de lecture reste indépendant :
+            une notification archivée peut encore être non lue et peut être
+            marquée comme lue depuis les archives.
+            =========================================================================
         -->
         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
 
             <div class="flex max-w-full flex-col gap-4">
 
-                <!-- En-tête de la page avec retour vers l'accueil -->
+                <!-- =============================================================
+                     EN-TÊTE
+                     ============================================================= -->
                 <div class="flex max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
                     <div class="min-w-0 max-w-full sm:flex-1">
-                        <h1 class="break-words text-base font-semibold text-gray-900">Mes notifications</h1>
+
+                        <h1 class="break-words text-base font-semibold text-gray-900">
+                            Mes notifications
+                        </h1>
 
                         <div class="mt-2 max-w-full space-y-2">
-                            <p class="break-words hyphens-auto text-sm text-gray-700">
+
+                            <p th:if="${isReceivedBox}"
+                               class="break-words hyphens-auto text-sm text-gray-700">
                                 Consultation des notifications liées à ton espace membre dans l’application MagicLibrary.
                             </p>
+
+                            <p th:if="${isArchivedBox}"
+                               class="break-words hyphens-auto text-sm text-gray-700">
+                                Consultation des notifications que tu as archivées.
+                            </p>
+
                         </div>
+
                     </div>
 
                     <div class="shrink-0 sm:self-start">
+
                         <a th:href="@{/accueil}"
                            class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                             Retour à l’accueil
                         </a>
+
                     </div>
+
                 </div>
 
-                <!-- Message de confirmation après action utilisateur -->
+                <!-- =============================================================
+                     BOÎTES
+                     ============================================================= -->
+                <nav class="flex max-w-full flex-wrap gap-2"
+                     aria-label="Boîtes de notifications">
+
+                    <a th:href="@{/mes-notifications(box='received', size=${pageSize})}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                       th:classappend="${isReceivedBox}
+                           ? ' border-gray-900 bg-gray-900 text-white'
+                           : ' border-gray-200 bg-white text-blue-700 hover:bg-gray-50'"
+                       th:attr="aria-current=${isReceivedBox ? 'page' : null}">
+                        Reçues
+                    </a>
+
+                    <a th:href="@{/mes-notifications(box='archived', size=${pageSize})}"
+                       class="inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
+                       th:classappend="${isArchivedBox}
+                           ? ' border-gray-900 bg-gray-900 text-white'
+                           : ' border-gray-200 bg-white text-blue-700 hover:bg-gray-50'"
+                       th:attr="aria-current=${isArchivedBox ? 'page' : null}">
+                        Archivées
+                    </a>
+
+                </nav>
+
+                <!-- =============================================================
+                     RETOURS D'ACTION
+                     ============================================================= -->
                 <div th:if="${successMessage != null}"
                      class="max-w-full overflow-hidden rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm"
                      role="status"
                      aria-live="polite">
-                    <span class="font-semibold">Succès :</span>
-                    <span th:text="${successMessage}">Notification marquée comme lue.</span>
+
+                    <span class="font-semibold">
+                        Succès :
+                    </span>
+
+                    <span th:text="${successMessage}">
+                        Opération effectuée.
+                    </span>
+
                 </div>
 
+                <div th:if="${errorMessage != null}"
+                     class="max-w-full overflow-hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm"
+                     role="alert"
+                     aria-live="assertive">
+
+                    <span class="font-semibold">
+                        Erreur :
+                    </span>
+
+                    <span th:text="${errorMessage}">
+                        Une anomalie est survenue.
+                    </span>
+
+                </div>
+
+                <!-- =============================================================
+                     RECHERCHE
+                     ============================================================= -->
                 <div class="flex max-w-full flex-col gap-4">
 
                     <div class="min-w-0 max-w-full flex-1">
 
                         <div class="flex max-w-full flex-col gap-3">
 
-                            <!-- Recherche dynamique dans les notifications visibles -->
-                            <form id="searchForm" th:action="@{/mes-notifications}" method="get" class="max-w-full">
-                                <input type="hidden" name="page" value="0" />
-                                <input type="hidden" name="size" th:value="${pageSize != null ? pageSize : 9}" />
+                            <form id="searchForm"
+                                  th:action="@{/mes-notifications}"
+                                  method="get"
+                                  class="max-w-full">
+
+                                <!--
+                                    La boîte active est conservée dans toutes
+                                    les recherches.
+                                -->
+                                <input type="hidden"
+                                       name="box"
+                                       th:value="${box}" />
+
+                                <input type="hidden"
+                                       name="page"
+                                       value="0" />
+
+                                <input type="hidden"
+                                       name="size"
+                                       th:value="${pageSize != null ? pageSize : 9}" />
 
                                 <div class="relative w-full max-w-full">
 
-                                    <label for="search" class="sr-only">Rechercher une notification</label>
+                                    <label for="search"
+                                           class="sr-only">
+                                        Rechercher une notification
+                                    </label>
 
                                     <div class="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center">
-                                        <svg aria-hidden="true" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none">
-                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+
+                                        <svg aria-hidden="true"
+                                             class="h-5 w-5 text-gray-500"
+                                             viewBox="0 0 24 24"
+                                             fill="none">
+
+                                            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"/>
+
+                                            <path d="M16.5 16.5 21 21"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"/>
+
                                         </svg>
+
                                     </div>
 
                                     <input id="search"
@@ -74,7 +194,7 @@
                                            inputmode="search"
                                            autocomplete="off"
                                            th:value="${q}"
-                                           placeholder="Rechercher par titre, message, type, catégorie, priorité, date…"
+                                           placeholder="Rechercher par titre, message, type, catégorie, expéditeur, date…"
                                            class="h-13 w-full rounded-md bg-white py-2 pl-11 pr-11 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
                                            aria-describedby="searchHint resultsCount resultsLabel"
                                            aria-controls="suggestPanel"
@@ -84,94 +204,258 @@
                                             type="button"
                                             class="hidden absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900"
                                             aria-label="Effacer la recherche">
-                                        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+
+                                        <svg aria-hidden="true"
+                                             class="h-4 w-4"
+                                             viewBox="0 0 24 24"
+                                             fill="none">
+
+                                            <path d="M6 6l12 12M18 6L6 18"
+                                                  stroke="currentColor"
+                                                  stroke-width="2"
+                                                  stroke-linecap="round"/>
+
                                         </svg>
+
                                     </button>
 
-                                    <button type="submit" class="sr-only">Rechercher</button>
+                                    <button type="submit"
+                                            class="sr-only">
+                                        Rechercher
+                                    </button>
 
                                     <div id="suggestPanel"
                                          class="hidden absolute z-20 mt-2 w-full overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-200"
                                          role="listbox"
                                          aria-label="Suggestions">
-                                        <div id="suggestInner" class="max-h-64 overflow-auto"></div>
+
+                                        <div id="suggestInner"
+                                             class="max-h-64 overflow-auto">
+                                        </div>
+
                                     </div>
 
-                                    <div id="suggestAnnounce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+                                    <div id="suggestAnnounce"
+                                         class="sr-only"
+                                         role="status"
+                                         aria-live="polite"
+                                         aria-atomic="true">
+                                    </div>
+
                                 </div>
+
                             </form>
 
                             <div class="flex max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+
                                 <div class="min-w-0 max-w-full flex-1">
-                                    <p id="searchHint" class="text-sm text-gray-600">
-                                        <span th:if="${!hasQuery}">Saisis au moins 2 caractères pour obtenir des suggestions.</span>
-                                        <span th:if="${hasQuery}">Recherche active : la liste visible se filtre automatiquement pendant la saisie.</span>
+
+                                    <p id="searchHint"
+                                       class="text-sm text-gray-600">
+
+                                        <span th:if="${!hasQuery}">
+                                            Saisis au moins 2 caractères pour obtenir des suggestions.
+                                        </span>
+
+                                        <span th:if="${hasQuery}">
+                                            Recherche active : la liste se met à jour automatiquement pendant la saisie.
+                                        </span>
+
                                     </p>
+
                                 </div>
 
-                                <!-- Compteur des notifications actuellement visibles -->
-                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5" aria-live="polite">
-                                    <span id="resultsCount" th:text="${notificationsCount}">0</span>
-                                    <span id="resultsLabel" th:text="${notificationsCount == 1 ? 'résultat visible' : 'résultats visibles'}">résultats visibles</span>
+                                <div class="shrink-0 text-sm font-medium text-gray-700 sm:pt-0.5"
+                                     aria-live="polite">
+
+                                    <span id="resultsCount"
+                                          th:text="${resultsDisplayCount}">
+                                        0
+                                    </span>
+
+                                    <span id="resultsLabel"
+                                          th:text="${resultsDisplayCount == 1 ? 'résultat' : 'résultats'}">
+                                        résultats
+                                    </span>
+
                                 </div>
+
                             </div>
 
                         </div>
+
                     </div>
 
                 </div>
 
             </div>
 
+            <!-- =================================================================
+                 CONTENU
+                 ================================================================= -->
             <div class="mt-6 max-w-full text-sm text-gray-700">
 
                 <section class="mt-6 max-w-full first:mt-0">
-                    <h2 class="text-base font-semibold text-gray-900">Notifications</h2>
 
-                    <!-- Résumé de l'état courant des notifications et de la pagination -->
+                    <h2 class="text-base font-semibold text-gray-900"
+                        th:text="${boxLabel != null ? boxLabel : 'Notifications'}">
+                        Notifications
+                    </h2>
+
+                    <!-- =========================================================
+                         RÉSUMÉ
+                         ========================================================= -->
                     <div class="mt-2 max-w-full space-y-2">
-                        <p th:if="${notificationsCount > 0}">
-                            <span class="font-medium text-gray-900" th:text="${notificationsCount}">0</span>
-                            <span th:text="${notificationsCount == 1 ? 'notification chargée sur cette page' : 'notifications chargées sur cette page'}">notifications chargées sur cette page</span>
+
+                        <p th:if="${notificationsCount > 0 && hasQuery}">
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1
+                                ? 'notification trouvée'
+                                : 'notifications trouvées'}">
+                                notifications trouvées
+                            </span>
+
+                        </p>
+
+                        <p th:if="${notificationsCount > 0 && !hasQuery}">
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${notificationsCount}">
+                                0
+                            </span>
+
+                            <span th:text="${notificationsCount == 1
+                                ? 'notification chargée sur cette page'
+                                : 'notifications chargées sur cette page'}">
+                                notifications chargées sur cette page
+                            </span>
+
                         </p>
 
                         <p th:if="${notificationsCount > 0}">
-                            <span class="font-medium text-gray-900" th:text="${unreadCount}">0</span>
-                            <span th:text="${unreadCount == 1 ? 'notification non lue visible' : 'notifications non lues visibles'}">notifications non lues visibles</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${unreadCount}">
+                                0
+                            </span>
+
+                            <span th:text="${unreadCount == 1
+                                ? 'notification non lue visible'
+                                : 'notifications non lues visibles'}">
+                                notifications non lues visibles
+                            </span>
+
                         </p>
 
-                        <p th:if="${notificationsCount == 0}">
-                            Aucune notification disponible pour le moment.
+                        <p th:if="${notificationsCount == 0 && hasQuery}">
+                            Aucune notification ne correspond à cette recherche.
                         </p>
 
-                        <p th:if="${paginationEnabled}" class="text-sm text-gray-600">
+                        <p th:if="${notificationsCount == 0 && !hasQuery && isReceivedBox}">
+                            Aucune notification reçue pour le moment.
+                        </p>
+
+                        <p th:if="${notificationsCount == 0 && !hasQuery && isArchivedBox}">
+                            Aucune notification archivée pour le moment.
+                        </p>
+
+                        <p th:if="${paginationEnabled}"
+                           class="text-sm text-gray-600">
+
                             <span>Page </span>
-                            <span class="font-medium text-gray-900" th:text="${currentPage + 1}">1</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${currentPage + 1}">
+                                1
+                            </span>
+
                             <span> sur </span>
-                            <span class="font-medium text-gray-900" th:text="${totalPages}">1</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalPages}">
+                                1
+                            </span>
+
                             <span> · </span>
-                            <span class="font-medium text-gray-900" th:text="${totalElements}">0</span>
-                            <span th:text="${totalElements == 1 ? ' notification au total' : ' notifications au total'}"> notifications au total</span>
+
+                            <span class="font-medium text-gray-900"
+                                  th:text="${totalElements}">
+                                0
+                            </span>
+
+                            <span th:text="${totalElements == 1
+                                ? ' notification au total'
+                                : ' notifications au total'}">
+                                notifications au total
+                            </span>
+
                         </p>
+
                     </div>
 
-                    <!-- État vide lorsqu'aucune notification n'est disponible -->
-                    <div class="mt-6 max-w-full" th:if="${notificationsCount == 0}">
+                    <!-- =========================================================
+                         ÉTAT VIDE
+                         ========================================================= -->
+                    <div class="mt-6 max-w-full"
+                         th:if="${notificationsCount == 0}">
+
                         <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
-                            <h2 class="text-base font-semibold text-gray-900">Aucune notification disponible</h2>
+
+                            <h2 class="text-base font-semibold text-gray-900"
+                                th:text="${hasQuery
+                                    ? 'Aucun résultat'
+                                    : (isReceivedBox
+                                        ? 'Aucune notification reçue'
+                                        : 'Aucune notification archivée')}">
+                                Aucune notification disponible
+                            </h2>
+
                             <div class="mt-2 space-y-2">
-                                <p class="break-words hyphens-auto">
-                                    Aucune notification n’est enregistrée pour le moment.
+
+                                <p th:if="${hasQuery}"
+                                   class="break-words hyphens-auto">
+                                    Essaie un autre mot-clé ou efface la recherche.
                                 </p>
+
+                                <p th:if="${!hasQuery && isReceivedBox}"
+                                   class="break-words hyphens-auto">
+                                    Aucune notification n’est actuellement enregistrée dans tes notifications reçues.
+                                </p>
+
+                                <p th:if="${!hasQuery && isArchivedBox}"
+                                   class="break-words hyphens-auto">
+                                    Tu n’as actuellement aucune notification archivée.
+                                </p>
+
+                                <div th:if="${hasQuery}">
+
+                                    <a th:href="@{/mes-notifications(box=${box}, size=${pageSize})}"
+                                       class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                        Effacer la recherche
+                                    </a>
+
+                                </div>
+
                             </div>
+
                         </section>
+
                     </div>
 
-                    <!-- Affichage des notifications personnelles -->
-                    <div class="mt-6 max-w-full" th:if="${notificationsCount > 0}">
+                    <!-- =========================================================
+                         CARTES
+                         ========================================================= -->
+                    <div class="mt-6 max-w-full"
+                         th:if="${notificationsCount > 0}">
 
-                        <!-- Variante pleine largeur utilisée lorsqu'une seule notification est affichée -->
+                        <!-- =====================================================
+                             UNE SEULE NOTIFICATION
+                             ===================================================== -->
                         <ul th:if="${isSingle}"
                             id="notificationListSingle"
                             class="grid max-w-full grid-cols-1 gap-4"
@@ -179,35 +463,35 @@
 
                             <li th:each="notification : ${notifications}"
                                 data-notification-card
-                                th:attr="data-id-notification=${notification.idNotification},
-                                         data-read=${notification.readNotification},
-                                         data-search=${#strings.toLowerCase(
-                                             'notification ' + (notification.idNotification ?: '') + ' ' +
-                                             'notif ' + (notification.idNotification ?: '') + ' ' +
-                                             (notification.titleNotification ?: '') + ' ' +
-                                             (notification.messageNotification ?: '') + ' ' +
-                                             (notification.targetLinkNotification ?: '') + ' ' +
-                                             (notification.typeNotification != null ? notification.typeNotification.name() : '') + ' ' +
-                                             (notification.categoryNotification != null ? notification.categoryNotification.name() : '') + ' ' +
-                                             (notification.priorityNotification ?: '') + ' ' +
-                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm') : '') + ' ' +
-                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'yyyy-MM-dd HH:mm') : '') + ' ' +
-                                             ((notification.readNotification != null && notification.readNotification) ? 'lue lu read traitee traitee' : 'non lue unread nouvelle active')
-                                         )}"
+                                th:with="senderName=${(notification.senderFirstName != null ? notification.senderFirstName : '')
+                                    + ' '
+                                    + (notification.senderLastName != null ? notification.senderLastName : '')}"
                                 class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300 sm:p-6">
 
                                 <div class="flex max-w-full flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
 
                                     <div class="min-w-0 max-w-full flex-1">
+
+                                        <!-- Badges -->
                                         <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+
                                             <h3 class="break-words text-base font-semibold text-gray-900">
+
                                                 <span>Notification</span>
-                                                <span th:text="${notification.idNotification}">0</span>
+
+                                                <span th:text="${notification.idNotification}">
+                                                    0
+                                                </span>
+
                                             </h3>
 
                                             <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
-                                                  th:text="${notification.readNotification != null && notification.readNotification ? 'Lue' : 'Non lue'}"
-                                                  th:classappend="${notification.readNotification != null && notification.readNotification ? ' bg-gray-50 text-gray-700 ring-gray-200' : ' bg-blue-50 text-blue-900 ring-blue-200'}">
+                                                  th:text="${notification.readNotification != null && notification.readNotification
+                                                      ? 'Lue'
+                                                      : 'Non lue'}"
+                                                  th:classappend="${notification.readNotification != null && notification.readNotification
+                                                      ? ' bg-gray-50 text-gray-700 ring-gray-200'
+                                                      : ' bg-blue-50 text-blue-900 ring-blue-200'}">
                                                 Non lue
                                             </span>
 
@@ -223,85 +507,249 @@
                                                 SYSTEM
                                             </span>
 
-                                            <span th:if="${notification.priorityNotification != null && !#strings.isEmpty(#strings.trim(notification.priorityNotification))}"
+                                            <span th:if="${notification.priorityNotification != null
+                                                         && !#strings.isEmpty(#strings.trim(notification.priorityNotification))}"
                                                   class="inline-flex rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700"
                                                   th:text="${notification.priorityNotification}">
                                                 HIGH
                                             </span>
+
+                                            <span th:if="${isArchivedBox}"
+                                                  class="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
+                                                Archivée
+                                            </span>
+
                                         </div>
 
+                                        <!-- Titre -->
                                         <p class="mt-4 break-words text-base font-semibold text-gray-900"
-                                           th:text="${notification.titleNotification != null && !#strings.isEmpty(#strings.trim(notification.titleNotification)) ? notification.titleNotification : 'Notification sans titre'}">
+                                           th:text="${notification.titleNotification != null
+                                               && !#strings.isEmpty(#strings.trim(notification.titleNotification))
+                                               ? notification.titleNotification
+                                               : 'Notification sans titre'}">
                                             Notification sans titre
                                         </p>
 
-                                        <p class="mt-3 break-words hyphens-auto text-sm text-gray-700"
-                                           th:text="${notification.messageNotification != null && !#strings.isEmpty(#strings.trim(notification.messageNotification)) ? notification.messageNotification : 'Aucun message disponible.'}">
+                                        <!-- Expéditeur humain éventuel -->
+                                        <div th:if="${notification.sentByUserId != null}"
+                                             class="mt-3">
+
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Envoyée par
+                                            </p>
+
+                                            <p class="mt-1 break-words text-sm text-gray-700"
+                                               th:text="${!#strings.isEmpty(#strings.trim(senderName))
+                                                   ? #strings.trim(senderName)
+                                                   : 'Équipe administrative'}">
+                                                Équipe administrative
+                                            </p>
+
+                                        </div>
+
+                                        <!-- Message -->
+                                        <p class="mt-4 break-words hyphens-auto text-sm text-gray-700"
+                                           th:text="${notification.messageNotification != null
+                                               && !#strings.isEmpty(#strings.trim(notification.messageNotification))
+                                               ? notification.messageNotification
+                                               : 'Aucun message disponible.'}">
                                             Aucun message disponible.
                                         </p>
 
-                                        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                        <!-- Métadonnées -->
+                                        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
                                             <div>
-                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Date</p>
+
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                    Date
+                                                </p>
+
                                                 <p class="mt-2 text-sm text-gray-700"
-                                                   th:text="${notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm') : '—'}">
+                                                   th:text="${notification.dateNotification != null
+                                                       ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm')
+                                                       : '—'}">
                                                     —
                                                 </p>
+
                                             </div>
 
                                             <div>
-                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">État</p>
+
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                    État
+                                                </p>
+
                                                 <p class="mt-2 text-sm text-gray-700"
-                                                   th:text="${notification.readNotification != null && notification.readNotification ? 'Déjà lue' : 'À consulter'}">
+                                                   th:text="${notification.readNotification != null && notification.readNotification
+                                                       ? 'Déjà lue'
+                                                       : 'À consulter'}">
                                                     À consulter
                                                 </p>
+
                                             </div>
 
-                                            <div th:if="${notification.targetLinkNotification != null && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}">
-                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Lien associé</p>
+                                            <div th:if="${isArchivedBox}">
+
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                    Archivée le
+                                                </p>
+
+                                                <p class="mt-2 text-sm text-gray-700"
+                                                   th:text="${notification.archivedAtByRecipient != null
+                                                       ? #temporals.format(notification.archivedAtByRecipient, 'dd/MM/yyyy HH:mm')
+                                                       : '—'}">
+                                                    —
+                                                </p>
+
+                                            </div>
+
+                                            <div th:if="${notification.targetLinkNotification != null
+                                                        && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}">
+
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                    Lien associé
+                                                </p>
+
                                                 <p class="mt-2 break-all text-sm text-gray-700"
                                                    th:text="${notification.targetLinkNotification}">
                                                     /lien
                                                 </p>
+
                                             </div>
+
                                         </div>
+
                                     </div>
 
+                                    <!-- =================================================
+                                         ACTIONS
+                                         ================================================= -->
                                     <div class="w-full shrink-0 border-t border-gray-100 pt-5 lg:w-auto lg:min-w-[24rem] lg:self-end lg:border-t-0 lg:pt-0">
-                                        <div class="flex w-full flex-col items-stretch gap-3 sm:flex-row">
-                                            <a th:if="${notification.targetLinkNotification != null && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}"
+
+                                        <div class="flex w-full flex-col items-stretch gap-3">
+
+                                            <a th:if="${notification.targetLinkNotification != null
+                                                      && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}"
                                                th:href="${notification.targetLinkNotification}"
-                                               class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                               class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                 Ouvrir le lien
                                             </a>
 
-                                            <form th:if="${notification.readNotification == null || !notification.readNotification}"
+                                            <!-- Lecture -->
+                                            <form th:if="${notification.readNotification == null
+                                                         || !notification.readNotification}"
                                                   th:action="@{/mes-notifications/{id}/read(id=${notification.idNotification})}"
                                                   method="post"
-                                                  class="flex w-full flex-1">
-                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                                <input type="hidden" name="page" th:value="${currentPage}" />
-                                                <input type="hidden" name="size" th:value="${pageSize}" />
-                                                <input type="hidden" name="q" th:value="${q}" />
+                                                  class="flex w-full">
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="box"
+                                                       th:value="${box}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
                                                 <button type="submit"
-                                                        class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                     Marquer comme lue
                                                 </button>
+
                                             </form>
 
-                                            <span th:if="${notification.readNotification != null && notification.readNotification}"
-                                                  class="inline-flex min-h-10 h-full w-full flex-1 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm font-semibold text-gray-500 shadow-sm">
+                                            <span th:if="${notification.readNotification != null
+                                                         && notification.readNotification}"
+                                                  class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm font-semibold text-gray-500 shadow-sm">
                                                 Déjà lue
                                             </span>
+
+                                            <!-- Archivage -->
+                                            <form th:if="${isReceivedBox}"
+                                                  th:action="@{/mes-notifications/{id}/archive(id=${notification.idNotification})}"
+                                                  method="post"
+                                                  class="flex w-full">
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Archiver
+                                                </button>
+
+                                            </form>
+
+                                            <!-- Restauration -->
+                                            <form th:if="${isArchivedBox}"
+                                                  th:action="@{/mes-notifications/{id}/restore(id=${notification.idNotification})}"
+                                                  method="post"
+                                                  class="flex w-full">
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Restaurer
+                                                </button>
+
+                                            </form>
+
                                         </div>
+
                                     </div>
 
                                 </div>
 
                             </li>
+
                         </ul>
 
-                        <!-- Variante en grille utilisée lorsque plusieurs notifications sont affichées -->
+                        <!-- =====================================================
+                             PLUSIEURS NOTIFICATIONS
+                             ===================================================== -->
                         <ul th:if="${!isSingle}"
                             id="notificationListGrid"
                             class="grid max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
@@ -309,33 +757,33 @@
 
                             <li th:each="notification : ${notifications}"
                                 data-notification-card
-                                th:attr="data-id-notification=${notification.idNotification},
-                                         data-read=${notification.readNotification},
-                                         data-search=${#strings.toLowerCase(
-                                             'notification ' + (notification.idNotification ?: '') + ' ' +
-                                             'notif ' + (notification.idNotification ?: '') + ' ' +
-                                             (notification.titleNotification ?: '') + ' ' +
-                                             (notification.messageNotification ?: '') + ' ' +
-                                             (notification.targetLinkNotification ?: '') + ' ' +
-                                             (notification.typeNotification != null ? notification.typeNotification.name() : '') + ' ' +
-                                             (notification.categoryNotification != null ? notification.categoryNotification.name() : '') + ' ' +
-                                             (notification.priorityNotification ?: '') + ' ' +
-                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'dd/MM/yyyy HH:mm') : '') + ' ' +
-                                             (notification.dateNotification != null ? #temporals.format(notification.dateNotification, 'yyyy-MM-dd HH:mm') : '') + ' ' +
-                                             ((notification.readNotification != null && notification.readNotification) ? 'lue lu read traitee traitee' : 'non lue unread nouvelle active')
-                                         )}"
+                                th:with="senderName=${(notification.senderFirstName != null ? notification.senderFirstName : '')
+                                    + ' '
+                                    + (notification.senderLastName != null ? notification.senderLastName : '')}"
                                 class="flex max-w-full flex-col overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:shadow hover:ring-gray-300">
 
                                 <div class="flex max-w-full flex-1 flex-col gap-4">
+
+                                    <!-- Badges -->
                                     <div class="flex max-w-full flex-wrap items-start gap-x-3 gap-y-2">
+
                                         <h3 class="break-words text-base font-semibold text-gray-900">
+
                                             <span>Notification</span>
-                                            <span th:text="${notification.idNotification}">0</span>
+
+                                            <span th:text="${notification.idNotification}">
+                                                0
+                                            </span>
+
                                         </h3>
 
                                         <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1"
-                                              th:text="${notification.readNotification != null && notification.readNotification ? 'Lue' : 'Non lue'}"
-                                              th:classappend="${notification.readNotification != null && notification.readNotification ? ' bg-gray-50 text-gray-700 ring-gray-200' : ' bg-blue-50 text-blue-900 ring-blue-200'}">
+                                              th:text="${notification.readNotification != null && notification.readNotification
+                                                  ? 'Lue'
+                                                  : 'Non lue'}"
+                                              th:classappend="${notification.readNotification != null && notification.readNotification
+                                                  ? ' bg-gray-50 text-gray-700 ring-gray-200'
+                                                  : ' bg-blue-50 text-blue-900 ring-blue-200'}">
                                             Non lue
                                         </span>
 
@@ -344,93 +792,208 @@
                                               th:text="${notification.categoryNotification}">
                                             INFO
                                         </span>
+
+                                        <span th:if="${isArchivedBox}"
+                                              class="inline-flex rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
+                                            Archivée
+                                        </span>
+
                                     </div>
 
                                     <div class="min-w-0 max-w-full flex-1">
+
                                         <p class="break-words text-base font-semibold text-gray-900"
-                                           th:text="${notification.titleNotification != null && !#strings.isEmpty(#strings.trim(notification.titleNotification)) ? notification.titleNotification : 'Notification sans titre'}">
+                                           th:text="${notification.titleNotification != null
+                                               && !#strings.isEmpty(#strings.trim(notification.titleNotification))
+                                               ? notification.titleNotification
+                                               : 'Notification sans titre'}">
                                             Notification sans titre
                                         </p>
 
+                                        <!-- Expéditeur humain éventuel -->
+                                        <p th:if="${notification.sentByUserId != null}"
+                                           class="mt-2 break-words text-sm text-gray-600">
+
+                                            <span>Envoyée par </span>
+
+                                            <span class="font-medium text-gray-900"
+                                                  th:text="${!#strings.isEmpty(#strings.trim(senderName))
+                                                      ? #strings.trim(senderName)
+                                                      : 'l’équipe administrative'}">
+                                                l’équipe administrative
+                                            </span>
+
+                                        </p>
+
                                         <p class="mt-3 line-clamp-4 break-words hyphens-auto text-sm text-gray-700"
-                                           th:text="${notification.messageNotification != null && !#strings.isEmpty(#strings.trim(notification.messageNotification)) ? notification.messageNotification : 'Aucun message disponible.'}">
+                                           th:text="${notification.messageNotification != null
+                                               && !#strings.isEmpty(#strings.trim(notification.messageNotification))
+                                               ? notification.messageNotification
+                                               : 'Aucun message disponible.'}">
                                             Aucun message disponible.
                                         </p>
 
                                         <p class="mt-3 break-words hyphens-auto text-sm text-gray-700"
-                                           th:text="${notification.dateNotification != null ? 'Reçue le ' + #temporals.format(notification.dateNotification, 'dd/MM/yyyy à HH:mm') : 'Date non définie'}">
+                                           th:text="${notification.dateNotification != null
+                                               ? 'Reçue le '
+                                                   + #temporals.format(notification.dateNotification, 'dd/MM/yyyy à HH:mm')
+                                               : 'Date non définie'}">
                                             Reçue le —
                                         </p>
 
+                                        <p th:if="${isArchivedBox}"
+                                           class="mt-2 break-words hyphens-auto text-sm text-gray-500"
+                                           th:text="${notification.archivedAtByRecipient != null
+                                               ? 'Archivée le '
+                                                   + #temporals.format(notification.archivedAtByRecipient, 'dd/MM/yyyy à HH:mm')
+                                               : 'Date d’archivage non définie'}">
+                                            Date d’archivage non définie
+                                        </p>
+
                                         <p class="mt-2 break-words hyphens-auto text-sm text-gray-500"
-                                           th:text="${notification.typeNotification != null ? notification.typeNotification : 'Type non défini'}">
+                                           th:text="${notification.typeNotification != null
+                                               ? notification.typeNotification
+                                               : 'Type non défini'}">
                                             Type non défini
                                         </p>
+
                                     </div>
 
+                                    <!-- Actions -->
                                     <div class="mt-auto border-t border-gray-100 pt-4">
+
                                         <div class="flex w-full flex-col items-stretch gap-3">
-                                            <a th:if="${notification.targetLinkNotification != null && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}"
+
+                                            <a th:if="${notification.targetLinkNotification != null
+                                                      && !#strings.isEmpty(#strings.trim(notification.targetLinkNotification))}"
                                                th:href="${notification.targetLinkNotification}"
-                                               class="inline-flex min-h-10 h-full w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                               class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                 Ouvrir le lien
                                             </a>
 
-                                            <form th:if="${notification.readNotification == null || !notification.readNotification}"
+                                            <form th:if="${notification.readNotification == null
+                                                         || !notification.readNotification}"
                                                   th:action="@{/mes-notifications/{id}/read(id=${notification.idNotification})}"
                                                   method="post"
                                                   class="flex w-full">
-                                                <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                                <input type="hidden" name="page" th:value="${currentPage}" />
-                                                <input type="hidden" name="size" th:value="${pageSize}" />
-                                                <input type="hidden" name="q" th:value="${q}" />
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="box"
+                                                       th:value="${box}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
                                                 <button type="submit"
-                                                        class="inline-flex min-h-10 h-full w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                                     Marquer comme lue
                                                 </button>
+
                                             </form>
 
-                                            <span th:if="${notification.readNotification != null && notification.readNotification}"
-                                                  class="inline-flex min-h-10 h-full w-full items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm font-semibold text-gray-500 shadow-sm">
+                                            <span th:if="${notification.readNotification != null
+                                                         && notification.readNotification}"
+                                                  class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-center text-sm font-semibold text-gray-500 shadow-sm">
                                                 Déjà lue
                                             </span>
+
+                                            <form th:if="${isReceivedBox}"
+                                                  th:action="@{/mes-notifications/{id}/archive(id=${notification.idNotification})}"
+                                                  method="post"
+                                                  class="flex w-full">
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Archiver
+                                                </button>
+
+                                            </form>
+
+                                            <form th:if="${isArchivedBox}"
+                                                  th:action="@{/mes-notifications/{id}/restore(id=${notification.idNotification})}"
+                                                  method="post"
+                                                  class="flex w-full">
+
+                                                <input th:if="${_csrf != null}"
+                                                       type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}" />
+
+                                                <input type="hidden"
+                                                       name="page"
+                                                       th:value="${currentPage}" />
+
+                                                <input type="hidden"
+                                                       name="size"
+                                                       th:value="${pageSize}" />
+
+                                                <input type="hidden"
+                                                       name="q"
+                                                       th:value="${q}" />
+
+                                                <button type="submit"
+                                                        class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-gray-900 bg-gray-900 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
+                                                    Restaurer
+                                                </button>
+
+                                            </form>
+
                                         </div>
+
                                     </div>
+
                                 </div>
 
                             </li>
 
                         </ul>
 
-                        <!-- État vide affiché lorsqu'une recherche locale ne retourne aucun résultat -->
-                        <div id="emptySearchState" class="mt-6 hidden max-w-full">
-                            <section class="max-w-full overflow-hidden rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 sm:p-6">
-                                <h2 class="text-base font-semibold text-gray-900">Aucun résultat</h2>
-                                <div class="mt-2 space-y-2">
-                                    <p class="break-words hyphens-auto">
-                                        Essaie un autre mot-clé ou efface la recherche.
-                                    </p>
-                                    <div>
-                                        <button id="emptyStateClearSearch"
-                                                type="button"
-                                                class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
-                                            Effacer la recherche
-                                        </button>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-
-                        <!-- Navigation entre les différentes pages de notifications -->
+                        <!-- =====================================================
+                             PAGINATION
+                             ===================================================== -->
                         <nav th:if="${paginationEnabled}"
                              class="mt-6 border-t border-gray-100 pt-6"
                              aria-label="Pagination des notifications">
+
                             <div class="flex max-w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
                                 <p class="text-sm text-gray-600">
                                     Navigation entre les pages de notifications.
                                 </p>
 
                                 <div class="flex max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
+
                                     <span th:if="${!hasPrevious}"
                                           aria-disabled="true"
                                           class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 shadow-sm cursor-not-allowed">
@@ -438,12 +1001,18 @@
                                     </span>
 
                                     <a th:if="${hasPrevious}"
-                                       th:href="@{/mes-notifications(page=${currentPage - 1}, size=${pageSize}, q=${q})}"
+                                       th:href="@{/mes-notifications(
+                                           box=${box},
+                                           page=${currentPage - 1},
+                                           size=${pageSize},
+                                           q=${q}
+                                       )}"
                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Précédent
                                     </a>
 
                                     <th:block th:each="pageNumber : ${#numbers.sequence(0, totalPages - 1)}">
+
                                         <span th:if="${pageNumber == currentPage}"
                                               aria-current="page"
                                               th:text="${pageNumber + 1}"
@@ -452,12 +1021,18 @@
                                         </span>
 
                                         <a th:if="${pageNumber != currentPage}"
-                                           th:href="@{/mes-notifications(page=${pageNumber}, size=${pageSize}, q=${q})}"
+                                           th:href="@{/mes-notifications(
+                                               box=${box},
+                                               page=${pageNumber},
+                                               size=${pageSize},
+                                               q=${q}
+                                           )}"
                                            th:text="${pageNumber + 1}"
                                            th:aria-label="'Aller à la page ' + (${pageNumber + 1})"
                                            class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                             1
                                         </a>
+
                                     </th:block>
 
                                     <span th:if="${!hasNext}"
@@ -467,12 +1042,20 @@
                                     </span>
 
                                     <a th:if="${hasNext}"
-                                       th:href="@{/mes-notifications(page=${currentPage + 1}, size=${pageSize}, q=${q})}"
+                                       th:href="@{/mes-notifications(
+                                           box=${box},
+                                           page=${currentPage + 1},
+                                           size=${pageSize},
+                                           q=${q}
+                                       )}"
                                        class="inline-flex min-h-10 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">
                                         Suivant
                                     </a>
+
                                 </div>
+
                             </div>
+
                         </nav>
 
                     </div>
@@ -484,9 +1067,18 @@
         </section>
 
         <!--
-            Gestion de la recherche locale, des suggestions serveur,
-            du compteur de résultats visibles, de l'état vide de recherche
-            et de la navigation clavier dans les suggestions.
+            =========================================================================
+            RECHERCHE / SUGGESTIONS
+            =========================================================================
+
+            La recherche n'est plus limitée aux seules cartes de la page courante.
+
+            Le paramètre q est envoyé au serveur et PageController recherche dans
+            l'ensemble de la boîte Reçues ou Archivées avant de reconstruire la
+            pagination.
+
+            Les suggestions sont elles aussi limitées à la boîte active.
+            =========================================================================
         -->
         <script>
             (function () {
@@ -497,75 +1089,95 @@
                 const inner = document.getElementById('suggestInner');
                 const suggestAnnounce = document.getElementById('suggestAnnounce');
                 const clearInline = document.getElementById('searchClearInline');
-                const resultsCount = document.getElementById('resultsCount');
-                const resultsLabel = document.getElementById('resultsLabel');
-                const emptySearchState = document.getElementById('emptySearchState');
-                const emptyStateClearSearch = document.getElementById('emptyStateClearSearch');
-                const cards = Array.from(document.querySelectorAll('[data-notification-card]'));
 
-                if (!search || !searchForm) return;
+                if (!search || !searchForm) {
+                    return;
+                }
+
+                const boxInput =
+                    searchForm.querySelector('input[name="box"]');
+
+                const sizeInput =
+                    searchForm.querySelector('input[name="size"]');
+
+                const currentBox =
+                    boxInput && boxInput.value
+                        ? boxInput.value
+                        : 'received';
+
+                const currentSize =
+                    sizeInput && sizeInput.value
+                        ? sizeInput.value
+                        : '9';
 
                 let activeIndex = -1;
                 let currentOptions = [];
                 let suggestTimer = null;
+                let submitTimer = null;
                 let fetchController = null;
                 let fetchSequence = 0;
-                let lastSubmittedValue = String(search.value || '').trim();
+                let lastSubmittedValue =
+                    String(search.value || '').trim();
 
-                function normalize(value) {
-                    return String(value ?? '').trim().toLowerCase();
+                function isNumericQuery(value) {
+                    return /^[0-9]+$/.test(
+                        String(value ?? '').trim()
+                    );
                 }
 
                 function thresholdReached(q) {
-                    return normalize(q).length >= 2;
+                    const raw =
+                        String(q ?? '').trim();
+
+                    if (!raw) {
+                        return false;
+                    }
+
+                    if (isNumericQuery(raw)) {
+                        return raw.length >= 1;
+                    }
+
+                    return raw.length >= 2;
                 }
 
                 function updateInlineClear(q) {
-                    if (!clearInline) return;
-                    clearInline.classList.toggle('hidden', !Boolean(normalize(q)));
-                }
-
-                function updateHint(q) {
-                    if (!hint) return;
-
-                    const trimmed = normalize(q);
-
-                    if (!trimmed) {
-                        hint.textContent = 'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                    if (!clearInline) {
                         return;
                     }
 
-                    hint.textContent = 'La liste visible se filtre automatiquement pendant la saisie.';
+                    const has =
+                        Boolean(
+                            String(q || '').trim()
+                        );
+
+                    clearInline.classList.toggle(
+                        'hidden',
+                        !has
+                    );
                 }
 
-                function updateResults(visibleCount) {
-                    if (resultsCount) {
-                        resultsCount.textContent = String(visibleCount);
+                function updateHint(q) {
+                    if (!hint) {
+                        return;
                     }
 
-                    if (resultsLabel) {
-                        resultsLabel.textContent = visibleCount === 1 ? 'résultat visible' : 'résultats visibles';
+                    const trimmed =
+                        String(q || '').trim();
+
+                    if (!trimmed) {
+                        hint.textContent =
+                            'Saisis au moins 2 caractères pour obtenir des suggestions.';
+                        return;
                     }
-                }
 
-                function updateEmptyState(visibleCount, hasQuery) {
-                    if (!emptySearchState) return;
-                    emptySearchState.classList.toggle('hidden', !(hasQuery && visibleCount === 0));
-                }
+                    if (isNumericQuery(trimmed)) {
+                        hint.textContent =
+                            'Suggestions disponibles dès 1 chiffre pour un identifiant.';
+                        return;
+                    }
 
-                function applyClientFilter() {
-                    const query = normalize(search.value);
-                    let visibleCount = 0;
-
-                    cards.forEach(function (card) {
-                        const haystack = normalize(card.getAttribute('data-search'));
-                        const matches = !query || haystack.includes(query);
-                        card.classList.toggle('hidden', !matches);
-                        if (matches) visibleCount += 1;
-                    });
-
-                    updateResults(visibleCount);
-                    updateEmptyState(visibleCount, Boolean(query));
+                    hint.textContent =
+                        'La page se met à jour automatiquement pendant la saisie.';
                 }
 
                 function escapeHtml(s) {
@@ -578,22 +1190,42 @@
                 }
 
                 function setPanel(open) {
-                    if (!panel) return;
+                    if (!panel) {
+                        return;
+                    }
 
-                    panel.classList.toggle('hidden', !open);
-                    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-                    search.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    panel.classList.toggle(
+                        'hidden',
+                        !open
+                    );
+
+                    panel.setAttribute(
+                        'aria-hidden',
+                        open ? 'false' : 'true'
+                    );
+
+                    search.setAttribute(
+                        'aria-expanded',
+                        open ? 'true' : 'false'
+                    );
 
                     if (!open) {
                         activeIndex = -1;
                         currentOptions = [];
-                        search.setAttribute('aria-activedescendant', '');
+
+                        search.setAttribute(
+                            'aria-activedescendant',
+                            ''
+                        );
                     }
                 }
 
                 function closePanel() {
                     setPanel(false);
-                    if (inner) inner.innerHTML = '';
+
+                    if (inner) {
+                        inner.innerHTML = '';
+                    }
                 }
 
                 function openPanel() {
@@ -601,21 +1233,53 @@
                 }
 
                 function renderOptions(list) {
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
                     if (list.length === 0) {
-                        inner.innerHTML = '<div class="px-3 py-3 text-sm text-gray-700">Aucun résultat en base pour cette recherche.</div>';
+
+                        inner.innerHTML =
+                            '<div class="px-3 py-3 text-sm text-gray-700">' +
+                            'Aucun résultat dans cette boîte.' +
+                            '</div>';
+
                         openPanel();
-                        if (suggestAnnounce) suggestAnnounce.textContent = 'Aucune suggestion.';
+
+                        if (suggestAnnounce) {
+                            suggestAnnounce.textContent =
+                                'Aucune suggestion.';
+                        }
+
                         return;
                     }
 
                     let html = '';
 
                     for (let i = 0; i < list.length; i++) {
-                        const it = list[i];
-                        const optId = 'suggest-opt-notification-' + escapeHtml(it.idNotification) + '-' + i;
-                        const primary = it.title ? ('Notification ' + (it.idNotification || '') + ' • ' + it.title) : ('Notification ' + (it.idNotification || ''));
+
+                        const it =
+                            list[i];
+
+                        const optId =
+                            'suggest-opt-notification-' +
+                            escapeHtml(it.idNotification) +
+                            '-' +
+                            i;
+
+                        const primary =
+                            it.title
+                                ? (
+                                    'Notification ' +
+                                    (it.idNotification || '') +
+                                    ' • ' +
+                                    it.title
+                                )
+                                : (
+                                    'Notification ' +
+                                    (it.idNotification || '')
+                                );
+
                         const secondaryParts = [
                             it.category || '',
                             it.type || '',
@@ -623,8 +1287,17 @@
                             it.readStatus || '',
                             it.date || ''
                         ].filter(Boolean);
-                        const secondary = secondaryParts.join(' • ');
-                        const ariaLabel = primary + (secondary ? (', ' + secondary) : '');
+
+                        const secondary =
+                            secondaryParts.join(' • ');
+
+                        const ariaLabel =
+                            primary +
+                            (
+                                secondary
+                                    ? ', ' + secondary
+                                    : ''
+                            );
 
                         html +=
                             '<div ' +
@@ -635,152 +1308,365 @@
                             'tabindex="-1" ' +
                             'data-suggest-index="' + i + '" ' +
                             'class="cursor-pointer px-3 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900">' +
-                            '<div class="break-words text-sm font-semibold text-gray-900">' + escapeHtml(primary) + '</div>' +
-                            '<div class="mt-1 break-words text-xs text-gray-600">' + escapeHtml(secondary) + '</div>' +
+
+                            '<div class="break-words text-sm font-semibold text-gray-900">' +
+                            escapeHtml(primary) +
+                            '</div>' +
+
+                            '<div class="mt-1 break-words text-xs text-gray-600">' +
+                            escapeHtml(secondary) +
+                            '</div>' +
+
                             '</div>';
                     }
 
                     inner.innerHTML = html;
+
                     openPanel();
 
                     if (suggestAnnounce) {
-                        suggestAnnounce.textContent = list.length === 1 ? '1 suggestion disponible.' : (list.length + ' suggestions disponibles.');
+                        suggestAnnounce.textContent =
+                            list.length === 1
+                                ? '1 suggestion disponible.'
+                                : (
+                                    list.length +
+                                    ' suggestions disponibles.'
+                                );
                     }
                 }
 
                 function setActive(newIndex) {
-                    if (!inner) return;
+                    if (!inner) {
+                        return;
+                    }
 
-                    const options = Array.from(inner.querySelectorAll('[role="option"][data-suggest-index]'));
-                    if (options.length === 0) return;
+                    const options =
+                        Array.from(
+                            inner.querySelectorAll(
+                                '[role="option"][data-suggest-index]'
+                            )
+                        );
 
-                    if (newIndex < 0) newIndex = options.length - 1;
-                    if (newIndex >= options.length) newIndex = 0;
+                    if (options.length === 0) {
+                        return;
+                    }
 
-                    activeIndex = newIndex;
+                    if (newIndex < 0) {
+                        newIndex =
+                            options.length - 1;
+                    }
+
+                    if (newIndex >= options.length) {
+                        newIndex = 0;
+                    }
+
+                    activeIndex =
+                        newIndex;
 
                     options.forEach(function (el, i) {
-                        const isActive = i === activeIndex;
-                        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                        el.classList.toggle('bg-gray-50', isActive);
+
+                        const isActive =
+                            i === activeIndex;
+
+                        el.setAttribute(
+                            'aria-selected',
+                            isActive ? 'true' : 'false'
+                        );
+
+                        el.classList.toggle(
+                            'bg-gray-50',
+                            isActive
+                        );
                     });
 
-                    const activeEl = options[activeIndex];
+                    const activeEl =
+                        options[activeIndex];
+
                     if (activeEl && activeEl.id) {
-                        search.setAttribute('aria-activedescendant', activeEl.id);
+
+                        search.setAttribute(
+                            'aria-activedescendant',
+                            activeEl.id
+                        );
+
                         try {
-                            activeEl.scrollIntoView({ block: 'nearest' });
+                            activeEl.scrollIntoView({
+                                block: 'nearest'
+                            });
                         } catch (e) {
                         }
                     }
                 }
 
                 function chooseSuggestionAt(idx) {
-                    const it = currentOptions[idx];
-                    if (!it) return;
+                    const it =
+                        currentOptions[idx];
 
-                    search.value = it.title || '';
-                    updateInlineClear(search.value);
-                    updateHint(search.value);
-                    closePanel();
-                    applyClientFilter();
-                    searchForm.requestSubmit();
-                }
-
-                async function fetchSuggest(q) {
-                    const trimmed = normalize(q);
-
-                    if (!thresholdReached(trimmed)) {
-                        if (inner) inner.innerHTML = '';
-                        closePanel();
+                    if (!it) {
                         return;
                     }
 
-                    if (!inner) return;
+                    if (submitTimer) {
+                        window.clearTimeout(
+                            submitTimer
+                        );
+                    }
+
+                    /*
+                     * Le titre produit une recherche compréhensible pour
+                     * l'utilisateur.
+                     *
+                     * En l'absence de titre, on utilise l'identifiant.
+                     */
+                    search.value =
+                        it.title
+                            ? it.title
+                            : String(it.idNotification || '');
+
+                    updateInlineClear(
+                        search.value
+                    );
+
+                    closePanel();
+
+                    searchForm.requestSubmit();
+                }
+
+                function submitSearchNow() {
+                    const trimmed =
+                        String(search.value || '').trim();
+
+                    if (trimmed === lastSubmittedValue) {
+                        return;
+                    }
+
+                    lastSubmittedValue =
+                        trimmed;
+
+                    closePanel();
+
+                    searchForm.requestSubmit();
+                }
+
+                function scheduleSearchSubmit() {
+                    const trimmed =
+                        String(search.value || '').trim();
+
+                    if (submitTimer) {
+                        window.clearTimeout(
+                            submitTimer
+                        );
+                    }
+
+                    if (!trimmed) {
+
+                        submitTimer =
+                            window.setTimeout(function () {
+                                submitSearchNow();
+                            }, 150);
+
+                        return;
+                    }
+
+                    if (!thresholdReached(trimmed)) {
+                        return;
+                    }
+
+                    submitTimer =
+                        window.setTimeout(function () {
+                            submitSearchNow();
+                        }, 650);
+                }
+
+                async function fetchSuggest(q) {
+                    const trimmed =
+                        String(q ?? '').trim();
+
+                    if (!thresholdReached(trimmed)) {
+
+                        if (inner) {
+                            inner.innerHTML = '';
+                        }
+
+                        closePanel();
+
+                        return;
+                    }
+
+                    if (!inner) {
+                        return;
+                    }
 
                     if (fetchController) {
                         fetchController.abort();
                     }
 
-                    fetchController = new AbortController();
-                    const currentFetch = ++fetchSequence;
+                    fetchController =
+                        new AbortController();
+
+                    const currentFetch =
+                        ++fetchSequence;
 
                     try {
-                        const url = '/mes-notifications/suggest?q=' + encodeURIComponent(trimmed);
-                        const res = await fetch(url, {
-                            headers: { 'Accept': 'application/json' },
-                            signal: fetchController.signal
-                        });
 
-                        if (!res.ok || currentFetch !== fetchSequence) {
+                        const url =
+                            '/mes-notifications/suggest' +
+                            '?box=' +
+                            encodeURIComponent(currentBox) +
+                            '&q=' +
+                            encodeURIComponent(trimmed);
+
+                        const res =
+                            await fetch(
+                                url,
+                                {
+                                    headers: {
+                                        'Accept': 'application/json'
+                                    },
+                                    signal:
+                                        fetchController.signal
+                                }
+                            );
+
+                        if (!res.ok
+                            || currentFetch !== fetchSequence) {
+
                             return;
                         }
 
-                        const data = await res.json();
-                        if (currentFetch !== fetchSequence) return;
+                        const data =
+                            await res.json();
 
-                        const list = Array.isArray(data) ? data : [];
-                        currentOptions = list.slice(0, 8).map(function (it) {
-                            return {
-                                idNotification: it && it.idNotification != null ? it.idNotification : '',
-                                title: it && it.title != null ? it.title : '',
-                                category: it && it.category != null ? it.category : '',
-                                type: it && it.type != null ? it.type : '',
-                                priority: it && it.priority != null ? it.priority : '',
-                                readStatus: it && it.readStatus != null ? it.readStatus : '',
-                                date: it && it.date != null ? it.date : ''
-                            };
-                        });
+                        if (currentFetch !== fetchSequence) {
+                            return;
+                        }
 
-                        renderOptions(currentOptions);
+                        const list =
+                            Array.isArray(data)
+                                ? data
+                                : [];
+
+                        currentOptions =
+                            list.slice(0, 8).map(function (it) {
+
+                                return {
+                                    idNotification:
+                                        it && it.idNotification != null
+                                            ? it.idNotification
+                                            : '',
+
+                                    title:
+                                        it && it.title != null
+                                            ? it.title
+                                            : '',
+
+                                    category:
+                                        it && it.category != null
+                                            ? it.category
+                                            : '',
+
+                                    type:
+                                        it && it.type != null
+                                            ? it.type
+                                            : '',
+
+                                    priority:
+                                        it && it.priority != null
+                                            ? it.priority
+                                            : '',
+
+                                    readStatus:
+                                        it && it.readStatus != null
+                                            ? it.readStatus
+                                            : '',
+
+                                    date:
+                                        it && it.date != null
+                                            ? it.date
+                                            : ''
+                                };
+                            });
+
+                        renderOptions(
+                            currentOptions
+                        );
 
                         if (currentOptions.length > 0) {
                             setActive(0);
                         }
+
                     } catch (e) {
-                        if (e && e.name === 'AbortError') return;
-                        if (inner) inner.innerHTML = '';
+
+                        if (e && e.name === 'AbortError') {
+                            return;
+                        }
+
+                        if (inner) {
+                            inner.innerHTML = '';
+                        }
+
                         closePanel();
                     }
                 }
 
                 function scheduleSuggest() {
-                    const q = search.value || '';
+                    const q =
+                        search.value || '';
+
                     updateHint(q);
 
-                    if (suggestTimer) window.clearTimeout(suggestTimer);
-                    suggestTimer = window.setTimeout(function () {
-                        fetchSuggest(q);
-                    }, 180);
-                }
+                    if (suggestTimer) {
+                        window.clearTimeout(
+                            suggestTimer
+                        );
+                    }
 
-                function clearSearch() {
-                    search.value = '';
-                    updateInlineClear('');
-                    updateHint('');
-                    closePanel();
-                    applyClientFilter();
-                    search.focus();
+                    suggestTimer =
+                        window.setTimeout(function () {
+                            fetchSuggest(q);
+                        }, 180);
                 }
 
                 function clearSearchAndSubmit() {
                     search.value = '';
+
                     updateInlineClear('');
                     updateHint('');
                     closePanel();
-                    searchForm.requestSubmit();
+
+                    if (submitTimer) {
+                        window.clearTimeout(
+                            submitTimer
+                        );
+                    }
+
+                    /*
+                     * On revient explicitement à la même boîte sans recherche.
+                     */
+                    window.location.href =
+                        '/mes-notifications' +
+                        '?box=' +
+                        encodeURIComponent(currentBox) +
+                        '&size=' +
+                        encodeURIComponent(currentSize);
                 }
 
                 function handleEscape(e) {
-                    const key = e && e.key ? e.key : '';
+                    const key =
+                        e && e.key
+                            ? e.key
+                            : '';
 
-                    if (key !== 'Escape' && key !== 'Esc') {
+                    if (key !== 'Escape'
+                        && key !== 'Esc') {
+
                         return false;
                     }
 
                     e.preventDefault();
 
-                    const currentValue = String(search.value || '').trim();
+                    const currentValue =
+                        String(search.value || '').trim();
 
                     if (currentValue) {
                         clearSearchAndSubmit();
@@ -788,128 +1674,290 @@
                     }
 
                     closePanel();
+
                     return true;
                 }
 
-                document.addEventListener('click', function (e) {
-                    if (!panel || panel.classList.contains('hidden')) return;
-                    const target = e.target;
-                    if (target === search || panel.contains(target)) return;
-                    closePanel();
-                });
+                document.addEventListener(
+                    'click',
+                    function (e) {
 
-                window.addEventListener('resize', function () {
-                    closePanel();
-                });
+                        if (!panel
+                            || panel.classList.contains('hidden')) {
 
-                window.addEventListener('scroll', function () {
-                    if (panel && !panel.classList.contains('hidden')) {
-                        closePanel();
-                    }
-                }, true);
-
-                document.addEventListener('keydown', function (e) {
-                    handleEscape(e);
-                }, true);
-
-                if (inner) {
-                    inner.addEventListener('mousedown', function (e) {
-                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
-                        if (!opt) return;
-                        e.preventDefault();
-                    });
-
-                    inner.addEventListener('click', function (e) {
-                        const opt = e.target && e.target.closest ? e.target.closest('[role="option"][data-suggest-index]') : null;
-                        if (!opt) return;
-                        const idx = Number(opt.getAttribute('data-suggest-index'));
-                        if (!Number.isFinite(idx)) return;
-                        chooseSuggestionAt(idx);
-                    });
-                }
-
-                if (clearInline) {
-                    clearInline.addEventListener('click', function () {
-                        clearSearchAndSubmit();
-                    });
-                }
-
-                if (emptyStateClearSearch) {
-                    emptyStateClearSearch.addEventListener('click', function () {
-                        clearSearchAndSubmit();
-                    });
-                }
-
-                search.addEventListener('keydown', function (e) {
-                    if (handleEscape(e)) return;
-
-                    const isOpen = panel && !panel.classList.contains('hidden');
-
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        if (!isOpen) {
-                            scheduleSuggest();
-                            window.setTimeout(function () {
-                                if (panel && !panel.classList.contains('hidden')) {
-                                    setActive(0);
-                                }
-                            }, 200);
-                        } else {
-                            setActive(activeIndex + 1);
+                            return;
                         }
-                        return;
-                    }
 
-                    if (e.key === 'ArrowUp') {
-                        if (isOpen) {
-                            e.preventDefault();
-                            setActive(activeIndex - 1);
-                        }
-                        return;
-                    }
+                        const target =
+                            e.target;
 
-                    if (e.key === 'Enter') {
-                        if (isOpen && activeIndex >= 0) {
-                            e.preventDefault();
-                            chooseSuggestionAt(activeIndex);
+                        if (target === search
+                            || panel.contains(target)) {
+
                             return;
                         }
 
                         closePanel();
-                        return;
                     }
+                );
 
-                    if (e.key === 'Tab' && isOpen) {
+                window.addEventListener(
+                    'resize',
+                    function () {
                         closePanel();
                     }
-                });
+                );
 
-                search.addEventListener('input', function () {
-                    updateInlineClear(search.value);
-                    applyClientFilter();
-                    scheduleSuggest();
-                });
+                window.addEventListener(
+                    'scroll',
+                    function () {
 
-                search.addEventListener('focus', function () {
-                    const q = normalize(search.value);
-                    if (q) scheduleSuggest();
-                });
+                        if (panel
+                            && !panel.classList.contains('hidden')) {
 
-                searchForm.addEventListener('submit', function () {
-                    closePanel();
-                    lastSubmittedValue = String(search.value || '').trim();
-                });
+                            closePanel();
+                        }
 
-                updateHint(search.value || '');
-                updateInlineClear(search.value || '');
-                applyClientFilter();
+                    },
+                    true
+                );
+
+                document.addEventListener(
+                    'keydown',
+                    function (e) {
+                        handleEscape(e);
+                    },
+                    true
+                );
+
+                if (inner) {
+
+                    inner.addEventListener(
+                        'mousedown',
+                        function (e) {
+
+                            const opt =
+                                e.target && e.target.closest
+                                    ? e.target.closest(
+                                        '[role="option"][data-suggest-index]'
+                                    )
+                                    : null;
+
+                            if (!opt) {
+                                return;
+                            }
+
+                            e.preventDefault();
+                        }
+                    );
+
+                    inner.addEventListener(
+                        'click',
+                        function (e) {
+
+                            const opt =
+                                e.target && e.target.closest
+                                    ? e.target.closest(
+                                        '[role="option"][data-suggest-index]'
+                                    )
+                                    : null;
+
+                            if (!opt) {
+                                return;
+                            }
+
+                            const idx =
+                                Number(
+                                    opt.getAttribute(
+                                        'data-suggest-index'
+                                    )
+                                );
+
+                            if (!Number.isFinite(idx)) {
+                                return;
+                            }
+
+                            chooseSuggestionAt(idx);
+                        }
+                    );
+                }
+
+                if (clearInline) {
+
+                    clearInline.addEventListener(
+                        'click',
+                        function () {
+                            clearSearchAndSubmit();
+                        }
+                    );
+                }
+
+                search.addEventListener(
+                    'keydown',
+                    function (e) {
+
+                        if (handleEscape(e)) {
+                            return;
+                        }
+
+                        const isOpen =
+                            panel
+                            && !panel.classList.contains('hidden');
+
+                        if (e.key === 'ArrowDown') {
+
+                            e.preventDefault();
+
+                            if (!isOpen) {
+
+                                scheduleSuggest();
+
+                                window.setTimeout(
+                                    function () {
+
+                                        if (panel
+                                            && !panel.classList.contains('hidden')) {
+
+                                            setActive(0);
+                                        }
+
+                                    },
+                                    200
+                                );
+
+                            } else {
+
+                                setActive(
+                                    activeIndex + 1
+                                );
+                            }
+
+                            return;
+                        }
+
+                        if (e.key === 'ArrowUp') {
+
+                            if (isOpen) {
+
+                                e.preventDefault();
+
+                                setActive(
+                                    activeIndex - 1
+                                );
+                            }
+
+                            return;
+                        }
+
+                        if (e.key === 'Enter') {
+
+                            if (isOpen
+                                && activeIndex >= 0) {
+
+                                e.preventDefault();
+
+                                chooseSuggestionAt(
+                                    activeIndex
+                                );
+
+                                return;
+                            }
+
+                            if (submitTimer) {
+                                window.clearTimeout(
+                                    submitTimer
+                                );
+                            }
+
+                            submitSearchNow();
+
+                            return;
+                        }
+
+                        if (e.key === 'Tab'
+                            && isOpen) {
+
+                            closePanel();
+                        }
+                    }
+                );
+
+                search.addEventListener(
+                    'input',
+                    function () {
+
+                        updateInlineClear(
+                            search.value
+                        );
+
+                        scheduleSuggest();
+                        scheduleSearchSubmit();
+                    }
+                );
+
+                search.addEventListener(
+                    'focus',
+                    function () {
+
+                        const q =
+                            String(search.value || '').trim();
+
+                        if (q) {
+                            scheduleSuggest();
+                        }
+                    }
+                );
+
+                searchForm.addEventListener(
+                    'submit',
+                    function () {
+                        closePanel();
+                    }
+                );
+
+                updateHint(
+                    search.value || ''
+                );
+
+                updateInlineClear(
+                    search.value || ''
+                );
+
                 closePanel();
 
-                const initialQuery = normalize(search.value || '');
+                const initialQuery =
+                    String(search.value || '').trim();
+
+                if (initialQuery) {
+
+                    window.setTimeout(
+                        function () {
+
+                            search.focus();
+
+                            const length =
+                                search.value.length;
+
+                            search.setSelectionRange(
+                                length,
+                                length
+                            );
+
+                        },
+                        80
+                    );
+                }
+
                 if (thresholdReached(initialQuery)) {
-                    window.setTimeout(function () {
-                        fetchSuggest(initialQuery);
-                    }, 120);
+
+                    window.setTimeout(
+                        function () {
+                            fetchSuggest(
+                                initialQuery
+                            );
+                        },
+                        120
+                    );
                 }
             })();
         </script>
